@@ -1,6 +1,7 @@
 :root {
     --bg-color: #0c0a09; /* stone-950 */
     --text-color: #e7e5e4; /* stone-200 */
+    --accent-color: #a855f7; /* purple-500 */
 }
 html { scroll-behavior: smooth; }
 body {
@@ -51,7 +52,7 @@ body, .notification-content {
 }
 .notification-tab.active {
     color: white;
-    border-color: #a855f7; /* purple-500 */
+    border-color: var(--accent-color);
 }
 .notification-content {
     display: none;
@@ -268,6 +269,13 @@ body, .notification-content {
 }
 
 /* Mobile Navigation Styles */
+#mobile-nav {
+    background: rgba(28, 25, 23, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 .mobile-nav-link {
     color: #a1a1aa; /* stone-400 */
     text-align: center;
@@ -275,7 +283,7 @@ body, .notification-content {
     transform: scale(0.95);
 }
 .mobile-nav-link.active-nav-mobile {
-    color: #e7e5e4; /* stone-200 */
+    color: var(--accent-color);
     transform: scale(1.05);
 }
 
