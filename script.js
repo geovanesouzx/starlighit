@@ -1,6 +1,31 @@
+// Firebase SDKs
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, getDocs, onSnapshot, query, where, addDoc, serverTimestamp, updateDoc, doc, arrayUnion, getDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { 
+    getAuth, 
+    onAuthStateChanged,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signInWithPopup,
+    GoogleAuthProvider,
+    signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { 
+    getFirestore, 
+    collection, 
+    getDocs, 
+    onSnapshot, 
+    query, 
+    where, 
+    addDoc, 
+    serverTimestamp, 
+    updateDoc, 
+    doc, 
+    arrayUnion, 
+    getDoc, 
+    orderBy 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+// Configuração do Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyA791i8R8Bmrn3toFxFltZ40TU7PUavev8",
     authDomain: "starlight-max.firebaseapp.com",
@@ -10,9 +35,14 @@ const firebaseConfig = {
     appId: "1:120477177511:web:5a75a2dd6d8089c829ed82"
 };
 
+// Inicialização do Firebase
+let app, db, auth;
 try {
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    auth = getAuth(app);
+    
+    // Disponibiliza no escopo global para o HTML (se necessário)
     window.db = db;
     window.getDocs = getDocs;
     window.collection = collection;
@@ -42,19 +72,179 @@ document.addEventListener('DOMContentLoaded', () => {
     // ESTADO DA APLICAÇÃO
     let myList = [];
     let currentHeroItem = null;
-    let hls; // Instância do HLS.js
-    let firestoreContent = []; // Armazenará o conteúdo do Firestore
-    let pendingRequests = []; // Armazenará os pedidos pendentes
-    let userId = localStorage.getItem('starlight-userId') || `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    localStorage.setItem('starlight-userId', userId);
+    let hls;
+    let firestoreContent = [];
+    let pendingRequests = [];
+    let userId = null; // Será definido pelo Firebase Auth
     let featuredItemIds = [];
     let heroCarouselInterval = null;
     let notifications = [];
     let lastNotificationCheck = localStorage.getItem('starlight-lastNotificationCheck') || 0;
     let dismissedNotifications = JSON.parse(localStorage.getItem('starlight-dismissedNotifications')) || [];
+    let isAppInitialized = false;
+
+    // --- LÓGICA DE AUTENTICAÇÃO ---
+    
+    const authScreen = document.getElementById('auth-screen');
+    const appContent = document.getElementById('app-content');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const googleSignInBtn = document.getElementById('google-signin-btn');
+    const showRegisterLink = document.getElementById('show-register');
+    const showLoginLink = document.getElementById('show-login');
+    const loginFormContainer = document.getElementById('login-form-container');
+    const registerFormContainer = document.getElementById('register-form-container');
+    const loginError = document.getElementById('login-error');
+    const registerError = document.getElementById('register-error');
+    const authLoadingOverlay = document.getElementById('auth-loading-overlay');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    const toggleAuthForms = () => {
+        loginFormContainer.classList.toggle('hidden');
+        registerFormContainer.classList.toggle('hidden');
+        loginError.textContent = '';
+        registerError.textContent = '';
+    };
+
+    showRegisterLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleAuthForms();
+    });
+
+    showLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleAuthForms();
+    });
+
+    const showAuthLoader = (show) => {
+        authLoadingOverlay.style.display = show ? 'flex' : 'none';
+    };
+
+    // Gerenciador de estado de autenticação
+    onAuthStateChanged(auth, user => {
+        if (user) {
+            // Usuário está logado
+            userId = user.uid; // Usa o UID do Firebase como identificador único
+            console.log("Usuário logado:", userId);
+
+            // Atualiza a UI do perfil
+            const userAvatar = document.getElementById('user-avatar');
+            const modalUserAvatar = document.getElementById('modal-user-avatar');
+            const modalUserEmail = document.getElementById('modal-user-email');
+            
+            if (user.photoURL) {
+                userAvatar.src = user.photoURL;
+                modalUserAvatar.src = user.photoURL;
+            } else {
+                 const initial = (user.email || 'U').charAt(0).toUpperCase();
+                 const placeholder = `https://placehold.co/80x80/7e22ce/FFFFFF?text=${initial}`;
+                 userAvatar.src = placeholder;
+                 modalUserAvatar.src = placeholder;
+            }
+            modalUserEmail.textContent = user.email;
+
+            authScreen.classList.add('opacity-0', 'pointer-events-none');
+            appContent.classList.remove('hidden');
+
+            if (!isAppInitialized) {
+                initializeAppLogic();
+                isAppInitialized = true;
+            }
+        } else {
+            // Usuário não está logado
+            userId = null;
+            console.log("Nenhum usuário logado.");
+            authScreen.classList.remove('opacity-0', 'pointer-events-none');
+            appContent.classList.add('hidden');
+        }
+    });
+
+    // Login com E-mail e Senha
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        showAuthLoader(true);
+        loginError.textContent = '';
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+        } catch (error) {
+            console.error("Erro de login:", error.code);
+            loginError.textContent = getAuthErrorMessage(error.code);
+        } finally {
+            showAuthLoader(false);
+        }
+    });
+
+    // Cadastro com E-mail e Senha
+    registerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        showAuthLoader(true);
+        registerError.textContent = '';
+        const email = document.getElementById('register-email').value;
+        const password = document.getElementById('register-password').value;
+
+        try {
+            await createUserWithEmailAndPassword(auth, email, password);
+        } catch (error) {
+            console.error("Erro de cadastro:", error.code);
+            registerError.textContent = getAuthErrorMessage(error.code);
+        } finally {
+            showAuthLoader(false);
+        }
+    });
+
+    // Login com Google
+    googleSignInBtn.addEventListener('click', async () => {
+        showAuthLoader(true);
+        const provider = new GoogleAuthProvider();
+        try {
+            await signInWithPopup(auth, provider);
+        } catch (error) {
+            console.error("Erro de login com Google:", error.code);
+            loginError.textContent = "Falha no login com Google.";
+        } finally {
+            showAuthLoader(false);
+        }
+    });
+
+    // Logout
+    logoutBtn.addEventListener('click', async () => {
+        try {
+            await signOut(auth);
+            // onAuthStateChanged vai cuidar de redirecionar
+            closeAllModals();
+        } catch (error) {
+            console.error("Erro ao sair:", error);
+            showToast("Erro ao tentar sair.", true);
+        }
+    });
+
+    // Tradução de erros do Firebase
+    function getAuthErrorMessage(errorCode) {
+        switch (errorCode) {
+            case 'auth/invalid-email':
+                return 'Formato de e-mail inválido.';
+            case 'auth/user-not-found':
+            case 'auth/wrong-password':
+                return 'E-mail ou senha incorretos.';
+            case 'auth/email-already-in-use':
+                return 'Este e-mail já está cadastrado.';
+            case 'auth/weak-password':
+                return 'A senha deve ter pelo menos 6 caracteres.';
+            case 'auth/too-many-requests':
+                return 'Muitas tentativas. Tente novamente mais tarde.';
+            default:
+                return 'Ocorreu um erro. Tente novamente.';
+        }
+    }
+    
+    // --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
 
     // --- RATING UTILITY ---
     const getRatingBadge = (rating) => {
+        if (!rating) return '';
         const ratingValue = rating.replace(/\D/g, ''); // Extracts numbers (e.g., '12')
         let colorClass = '';
         
@@ -186,6 +376,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('search-results-container').innerHTML = '';
                 searchInput.focus();
             }
+             if (modalId === 'modal-perfil') {
+                lucide.createIcons(); // Recria o ícone de logout se necessário
+             }
         }
     };
     
@@ -224,9 +417,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- GERENCIAMENTO DA MINHA LISTA ---
-    const saveMyList = () => localStorage.setItem('starlightMyList', JSON.stringify(myList));
+    const getMyListKey = () => `starlightMyList_${userId}`;
+    const saveMyList = () => localStorage.setItem(getMyListKey(), JSON.stringify(myList));
     const loadMyList = () => {
-        const storedList = localStorage.getItem('starlightMyList');
+        if (!userId) return;
+        const storedList = localStorage.getItem(getMyListKey());
         myList = storedList ? JSON.parse(storedList) : [];
     };
     const isInMyList = (id) => myList.some(item => item.docId === id);
@@ -1147,6 +1342,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.voteForRequest = async (requestId) => {
+        if (!userId) {
+            showToast("Você precisa estar logado para votar.", true);
+            return;
+        }
         try {
             const requestRef = window.doc(window.db, "pedidos", requestId);
             await window.updateDoc(requestRef, {
@@ -1224,22 +1423,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const isPlayerOpen = videoModal && !videoModal.classList.contains('hidden');
             
             if (isPlayerOpen && event.state?.playerOpen) {
-                 // This state was pushed by us, it means the player should just close
                  stopVideo();
             } else if (isPlayerOpen && !event.state?.playerOpen) {
-                 // The player is open but we're navigating away for real
                  stopVideo();
                  handleLocationChange();
             } else {
-                // Normal navigation
-                handleLocationChange();
+                 handleLocationChange();
             }
         });
 
         window.addEventListener('scroll', handleHeaderStyle, { passive: true });
     }
     
-    async function initializeApp() {
+    // Esta função agora é chamada somente após o login bem-sucedido
+    async function initializeAppLogic() {
+        console.log("Inicializando a lógica principal do app...");
         listenToFirestoreContent(); 
         listenForRequests();
         listenForNotifications();
@@ -1250,6 +1448,4 @@ document.addEventListener('DOMContentLoaded', () => {
         handleLocationChange();
     }
 
-    setTimeout(initializeApp, 500);
 });
-
