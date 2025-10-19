@@ -74,7 +74,6 @@ body, .notification-content {
 .glass-filter {
     z-index: 1;
     backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     filter: url(#glass-distortion) saturate(120%) brightness(1.1);
 }
 
@@ -106,12 +105,6 @@ body, .notification-content {
     box-shadow: inset 1px 1px 1px var(--highlight);
     transition: background 0.3s ease;
 }
-
-.glass-content {
-    position: relative;
-    z-index: 4;
-}
-
 
 @keyframes fadeInAuth {
     from {
@@ -146,7 +139,7 @@ form {
     pointer-events: none;
 }
 
-#auth-screen .glass-card h2 {
+.glass-card h2 {
     font-size: 38px;
     font-weight: 700;
     text-align: center;
@@ -342,15 +335,8 @@ input:-webkit-autofill:active {
         animation: pan-image 40s linear infinite alternate;
     }
 
-    #auth-screen .glass-card {
+    .glass-card {
         width: 90%;
-        max-width: 400px;
-    }
-    #auth-screen form {
-        padding: 25px 20px;
-    }
-    #auth-screen .glass-card h2 {
-        font-size: 32px;
     }
 }
 
@@ -446,6 +432,15 @@ input:-webkit-autofill:active {
 /* Modal e Telas */
 .modal, #screen-details { transition: opacity 0.3s ease, visibility 0.3s ease; }
 .modal.hidden, #screen-details.hidden { opacity: 0; visibility: hidden; }
+
+/* Efeito Liquid Glass e Animações */
+.liquid-glass {
+    background: rgba(41, 37, 36, 0.7); /* stone-800/70 */
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px); /* Para Safari */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
 
 /* Estilos do Seletor de Temporada Customizado */
 .custom-select-container { position: relative; display: inline-block; color: var(--text-color); }
@@ -644,3 +639,4 @@ input:-webkit-autofill:active {
         line-height: 1.5;
     }
 }
+

@@ -132,47 +132,41 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         const filterMap = document.querySelector('#glass-distortion feDisplacementMap');
-        
-        function setupGlassEffect(cardElement) {
-            const specular = cardElement.querySelector('.glass-specular');
+        const specular = glassCard.querySelector('.glass-specular');
 
-            function handleMouseMove(e) {
-                const rect = cardElement.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                
-                if (filterMap) {
-                    const scaleX = (x / rect.width - 0.5) * 60;
-                    const scaleY = (y / rect.height - 0.5) * 60;
-                    const scale = Math.sqrt(scaleX*scaleX + scaleY*scaleY);
-                    filterMap.setAttribute('scale', 50 + scale);
-                }
-                
-                if (specular) {
-                    specular.style.background = `radial-gradient(
-                        circle at ${x}px ${y}px,
-                        rgba(255,255,255,0.2) 0%,
-                        rgba(255,255,255,0.1) 20%,
-                        rgba(255,255,255,0) 50%
-                    )`;
-                }
+        function handleMouseMove(e) {
+            const rect = glassCard.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            if (filterMap) {
+                const scaleX = (x / rect.width - 0.5) * 60;
+                const scaleY = (y / rect.height - 0.5) * 60;
+                const scale = Math.sqrt(scaleX*scaleX + scaleY*scaleY);
+                filterMap.setAttribute('scale', 50 + scale);
             }
             
-            function handleMouseLeave() {
-                if (filterMap) {
-                    filterMap.setAttribute('scale', '77');
-                }
-                if (specular) {
-                    specular.style.background = 'none';
-                }
+            if (specular) {
+                specular.style.background = `radial-gradient(
+                    circle at ${x}px ${y}px,
+                    rgba(255,255,255,0.2) 0%,
+                    rgba(255,255,255,0.1) 20%,
+                    rgba(255,255,255,0) 50%
+                )`;
             }
-            
-            cardElement.addEventListener('mousemove', handleMouseMove);
-            cardElement.addEventListener('mouseleave', handleMouseLeave);
         }
         
-        document.querySelectorAll('.glass-card').forEach(setupGlassEffect);
-
+        function handleMouseLeave() {
+            if (filterMap) {
+                filterMap.setAttribute('scale', '77');
+            }
+            if (specular) {
+                specular.style.background = 'none';
+            }
+        }
+        
+        glassCard.addEventListener('mousemove', handleMouseMove);
+        glassCard.addEventListener('mouseleave', handleMouseLeave);
 
         function setupPasswordToggle(inputId, toggleId) {
             const passwordInput = document.getElementById(inputId);
@@ -469,7 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 searchInput.focus();
             }
              if (modalId === 'modal-perfil') {
-                  lucide.createIcons(); // Recria o ícone de logout se necessário
+                 lucide.createIcons(); // Recria o ícone de logout se necessário
              }
         }
     };
@@ -803,21 +797,21 @@ document.addEventListener('DOMContentLoaded', () => {
         let seasonsHtml = '';
         if (data.type === 'tv' && data.seasons) {
             const seasonNumbers = Object.keys(data.seasons).sort((a,b) => a - b);
-                 if (seasonNumbers.length > 0) {
-                       seasonsHtml = `
-                           <div class="mt-12">
-                               <div class="flex items-center space-x-4 mb-4">
-                                   <h3 class="text-2xl sm:text-3xl font-bold">Temporadas</h3>
-                                   <div id="custom-season-selector" class="custom-select-container">
-                                       <div class="custom-select-trigger"><span class="selected-option-text">${data.seasons[seasonNumbers[0]].title}</span></div>
-                                       <div class="custom-select-options">
-                                           ${seasonNumbers.map(num => `<div class="custom-select-option" data-value="${num}">${data.seasons[num].title}</div>`).join('')}
-                                       </div>
-                                   </div>
-                               </div>
-                               <div id="episodes-container" class="min-h-[200px] relative"></div>
-                           </div>`;
-                 }
+                if (seasonNumbers.length > 0) {
+                        seasonsHtml = `
+                            <div class="mt-12">
+                                <div class="flex items-center space-x-4 mb-4">
+                                    <h3 class="text-2xl sm:text-3xl font-bold">Temporadas</h3>
+                                    <div id="custom-season-selector" class="custom-select-container">
+                                        <div class="custom-select-trigger"><span class="selected-option-text">${data.seasons[seasonNumbers[0]].title}</span></div>
+                                        <div class="custom-select-options">
+                                            ${seasonNumbers.map(num => `<div class="custom-select-option" data-value="${num}">${data.seasons[num].title}</div>`).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="episodes-container" class="min-h-[200px] relative"></div>
+                            </div>`;
+                }
         }
         
         const genresHtml = data.genres ? data.genres.map(g => `<span class="bg-purple-600/50 text-white text-xs px-3 py-1 rounded-full">${g}</span>`).join('') : '';
@@ -1001,10 +995,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         case Hls.ErrorTypes.NETWORK_ERROR:
                             console.error("Erro de rede fatal;", data);
                             loaderContainer.innerHTML = `<div class="text-center text-red-400 p-4">
-                                                     <i data-lucide="alert-triangle" class="w-12 h-12 mx-auto mb-2"></i>
-                                                     <p class="font-bold">Erro ao carregar o vídeo.</p>
-                                                     <p class="text-sm text-stone-400">O vídeo pode não estar disponível ou há um problema de rede.</p>
-                                                 </div>`;
+                                                        <i data-lucide="alert-triangle" class="w-12 h-12 mx-auto mb-2"></i>
+                                                        <p class="font-bold">Erro ao carregar o vídeo.</p>
+                                                        <p class="text-sm text-stone-400">O vídeo pode não estar disponível ou há um problema de rede.</p>
+                                                    </div>`;
                             lucide.createIcons();
                             hls.destroy();
                             break;
