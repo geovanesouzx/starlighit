@@ -133,6 +133,28 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmCancelBtn.addEventListener('click', hideConfirm, { once: true });
     }
 
+    // --- SYNOPSIS TOGGLE ---
+    function setupReadMore(textElement, buttonElement) {
+        if (!textElement || !buttonElement) return;
+
+        setTimeout(() => {
+            const isOverflowing = textElement.scrollHeight > textElement.clientHeight;
+            if (isOverflowing) {
+                buttonElement.classList.remove('hidden');
+            } else {
+                buttonElement.classList.add('hidden');
+            }
+
+            const newButton = buttonElement.cloneNode(true);
+            buttonElement.parentNode.replaceChild(newButton, buttonElement);
+            
+            newButton.addEventListener('click', () => {
+                textElement.classList.toggle('synopsis-truncated');
+                newButton.textContent = textElement.classList.contains('synopsis-truncated') ? 'Ler mais' : 'Ler menos';
+            });
+        }, 100);
+    }
+
 
     // --- FUNÇÕES DE UTILIDADE E UI ---
     function shuffleArray(array) {
@@ -398,6 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 heroOverview.textContent = item.synopsis;
                 heroListBtn.dataset.listBtnId = item.docId;
                 updateAllMyListButtons(item.docId);
+                setupReadMore(heroOverview, document.getElementById('hero-toggle-overview-btn'));
             };
             
             if (featuredItems.length > 0) {
@@ -528,7 +551,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <span>Duração: ${durationDisplay}</span>
                                 </div>
                                 <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genresHtml}</div>
-                                <div class="mt-4 max-w-2xl mx-auto md:mx-0"><p class="text-stone-300 text-sm leading-relaxed">${data.synopsis}</p></div>
+                                <div class="mt-4 max-w-2xl mx-auto md:mx-0">
+                                    <p id="details-synopsis" class="synopsis-truncated text-stone-300 text-sm leading-relaxed">${data.synopsis}</p>
+                                    <button id="details-toggle-synopsis" class="text-purple-400 font-semibold mt-1 hidden">Ler mais</button>
+                                </div>
                                 <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
                                     ${watchButtonHtml}
                                     <button data-list-btn-id="${data.docId}" id="details-list-btn" class="bg-white/20 backdrop-blur-sm text-white font-semibold py-3 px-8 rounded-full flex items-center space-x-2 text-lg hover:bg-white/30"><i data-lucide="plus" class="w-6 h-6"></i><span>Minha Lista</span></button>
@@ -550,6 +576,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.type === 'tv' && data.seasons) {
             setupSeasonSelector(data);
         }
+
+        setupReadMore(document.getElementById('details-synopsis'), document.getElementById('details-toggle-synopsis'));
+        
         lucide.createIcons();
     }
     
@@ -723,6 +752,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.fullscreenElement) {
             document.exitFullscreen();
         }
+        try {
+            if (screen.orientation && screen.orientation.unlock) {
+                screen.orientation.unlock();
+            }
+        } catch(e) { console.warn("Could not unlock orientation", e); }
         videoModal.classList.add('hidden');
         header.classList.remove('hidden');
         handleHeaderStyle();
@@ -1148,6 +1182,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('notifications-btn').addEventListener('click', () => {
             renderNotifications();
+            const modal = document.getElementById('modal-notificacoes');
+            modal.style.top = `${header.offsetHeight + 5}px`;
             toggleModal('modal-notificacoes');
             if (notifications.length > 0 && notifications[0].createdAt) {
                 const latestTimestamp = notifications[0].createdAt.toMillis ? notifications[0].createdAt.toMillis() : new Date(notifications[0].createdAt).getTime();
@@ -1188,12 +1224,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('hero-watch-btn').addEventListener('click', () => { if(currentHeroItem) location.hash = `#details/${currentHeroItem.docId}`; });
         document.getElementById('hero-list-btn').addEventListener('click', () => { if(currentHeroItem) toggleMyListItem(currentHeroItem); });
         
-        document.getElementById('hero-toggle-overview-btn')?.addEventListener('click', (e) => {
-            const overviewEl = document.getElementById('hero-overview');
-            overviewEl.classList.toggle('synopsis-truncated');
-            e.target.textContent = overviewEl.classList.contains('synopsis-truncated') ? 'Ver mais' : 'Ver menos';
-        });
-
         setupPlayerEventListeners();
 
         window.addEventListener('popstate', (event) => {

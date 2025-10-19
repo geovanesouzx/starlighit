@@ -287,3 +287,31 @@ body, .notification-content {
     transform: scale(1.05);
 }
 
+/* Mobile specific layout fixes */
+@media (max-width: 640px) {
+    #hero-section {
+        padding-bottom: 8rem; 
+        align-items: flex-end;
+    }
+
+    /* Target button container in hero section */
+    #hero-section .mt-8 {
+        flex-wrap: nowrap;
+        gap: 0.75rem;
+    }
+
+    #hero-watch-btn, #hero-list-btn {
+        padding: 0.6rem 1rem;
+        font-size: 0.875rem;
+    }
+    
+    #hero-watch-btn i, #hero-list-btn i {
+        width: 1.125rem;
+        height: 1.125rem;
+    }
+
+    #details-synopsis {
+        line-height: 1.5;
+    }
+}
+
