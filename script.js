@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let hls;
     let firestoreContent = [];
     let pendingRequests = [];
-    let userId = null; // Será definido pelo Firebase Auth
+    let userId = null;
     let featuredItemIds = [];
     let heroCarouselInterval = null;
     let notifications = [];
@@ -83,38 +83,111 @@ document.addEventListener('DOMContentLoaded', () => {
     let dismissedNotifications = JSON.parse(localStorage.getItem('starlight-dismissedNotifications')) || [];
     let isAppInitialized = false;
 
-    // --- LÓGICA DE AUTENTICAÇÃO ---
+    // --- LÓGICA DE AUTENTICAÇÃO (NOVA UI) ---
     
     const authScreen = document.getElementById('auth-screen');
     const appContent = document.getElementById('app-content');
+    const glassCard = document.querySelector('.glass-card');
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
-    const googleSignInBtn = document.getElementById('google-signin-btn');
     const showRegisterLink = document.getElementById('show-register');
     const showLoginLink = document.getElementById('show-login');
-    const loginFormContainer = document.getElementById('login-form-container');
-    const registerFormContainer = document.getElementById('register-form-container');
+    const googleSignInBtn = document.getElementById('google-signin-btn');
     const loginError = document.getElementById('login-error');
     const registerError = document.getElementById('register-error');
     const authLoadingOverlay = document.getElementById('auth-loading-overlay');
     const logoutBtn = document.getElementById('logout-btn');
 
-    const toggleAuthForms = () => {
-        loginFormContainer.classList.toggle('hidden');
-        registerFormContainer.classList.toggle('hidden');
-        loginError.textContent = '';
-        registerError.textContent = '';
+    // UI Logic for Auth Screen
+    const setupAuthScreenUI = () => {
+        // Define a altura inicial
+        if (glassCard && loginForm) {
+            glassCard.style.height = loginForm.scrollHeight + 'px';
+        }
+
+        showRegisterLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            loginForm.style.opacity = '0';
+            loginForm.style.transform = 'translateX(-120%)';
+            loginForm.style.pointerEvents = 'none';
+
+            registerForm.style.opacity = '1';
+            registerForm.style.transform = 'translateX(0)';
+            registerForm.style.pointerEvents = 'auto';
+            
+            glassCard.style.height = registerForm.scrollHeight + 'px';
+        });
+
+        showLoginLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            registerForm.style.opacity = '0';
+            registerForm.style.transform = 'translateX(120%)';
+            registerForm.style.pointerEvents = 'none';
+
+            loginForm.style.opacity = '1';
+            loginForm.style.transform = 'translateX(0)';
+            loginForm.style.pointerEvents = 'auto';
+            
+            glassCard.style.height = loginForm.scrollHeight + 'px';
+        });
+        
+        const filterMap = document.querySelector('#glass-distortion feDisplacementMap');
+        const specular = glassCard.querySelector('.glass-specular');
+
+        function handleMouseMove(e) {
+            const rect = glassCard.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            if (filterMap) {
+                const scaleX = (x / rect.width - 0.5) * 60;
+                const scaleY = (y / rect.height - 0.5) * 60;
+                const scale = Math.sqrt(scaleX*scaleX + scaleY*scaleY);
+                filterMap.setAttribute('scale', 50 + scale);
+            }
+            
+            if (specular) {
+                specular.style.background = `radial-gradient(
+                    circle at ${x}px ${y}px,
+                    rgba(255,255,255,0.2) 0%,
+                    rgba(255,255,255,0.1) 20%,
+                    rgba(255,255,255,0) 50%
+                )`;
+            }
+        }
+        
+        function handleMouseLeave() {
+            if (filterMap) {
+                filterMap.setAttribute('scale', '77');
+            }
+            if (specular) {
+                specular.style.background = 'none';
+            }
+        }
+        
+        glassCard.addEventListener('mousemove', handleMouseMove);
+        glassCard.addEventListener('mouseleave', handleMouseLeave);
+
+        function setupPasswordToggle(inputId, toggleId) {
+            const passwordInput = document.getElementById(inputId);
+            const toggleIcon = document.getElementById(toggleId);
+            if (passwordInput && toggleIcon) {
+                toggleIcon.addEventListener('click', () => {
+                    const isPassword = passwordInput.type === 'password';
+                    passwordInput.type = isPassword ? 'text' : 'password';
+                    toggleIcon.className = isPassword 
+                        ? 'ri-eye-fill toggle-password' 
+                        : 'ri-eye-off-fill toggle-password';
+                });
+            }
+        }
+        
+        setupPasswordToggle('login-password', 'login-toggle');
+        setupPasswordToggle('register-password', 'register-toggle');
+        setupPasswordToggle('confirm-password', 'confirm-toggle');
     };
 
-    showRegisterLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        toggleAuthForms();
-    });
-
-    showLoginLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        toggleAuthForms();
-    });
+    setupAuthScreenUI();
 
     const showAuthLoader = (show) => {
         authLoadingOverlay.style.display = show ? 'flex' : 'none';
@@ -122,15 +195,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Gerenciador de estado de autenticação
     onAuthStateChanged(auth, user => {
-        // Remove a classe que esconde o conteúdo, garantindo que a tela correta apareça sem piscar.
         document.body.classList.remove('auth-state-unknown');
 
         if (user) {
-            // Usuário está logado
             userId = user.uid;
             console.log("Usuário logado:", userId);
 
-            // Atualiza a UI do perfil
             const userAvatar = document.getElementById('user-avatar');
             const modalUserAvatar = document.getElementById('modal-user-avatar');
             const modalUserEmail = document.getElementById('modal-user-email');
@@ -139,14 +209,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 userAvatar.src = user.photoURL;
                 modalUserAvatar.src = user.photoURL;
             } else {
-                 const initial = (user.email || 'U').charAt(0).toUpperCase();
-                 const placeholder = `https://placehold.co/80x80/7e22ce/FFFFFF?text=${initial}`;
-                 userAvatar.src = placeholder;
-                 modalUserAvatar.src = placeholder;
+                const initial = (user.email || 'U').charAt(0).toUpperCase();
+                const placeholder = `https://placehold.co/80x80/7e22ce/FFFFFF?text=${initial}`;
+                userAvatar.src = placeholder;
+                modalUserAvatar.src = placeholder;
             }
             modalUserEmail.textContent = user.email;
 
-            // Esconde a tela de login e mostra o conteúdo do app
             authScreen.classList.add('hidden');
             appContent.classList.remove('hidden');
 
@@ -155,11 +224,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 isAppInitialized = true;
             }
         } else {
-            // Usuário não está logado
             userId = null;
             console.log("Nenhum usuário logado.");
             
-            // Mostra a tela de login e esconde o conteúdo do app
             authScreen.classList.remove('hidden');
             appContent.classList.add('hidden');
         }
@@ -188,8 +255,22 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         showAuthLoader(true);
         registerError.textContent = '';
+        
+        const passwordInput = document.getElementById('register-password');
+        const confirmPasswordInput = document.getElementById('confirm-password');
+        passwordInput.classList.remove('error');
+        confirmPasswordInput.classList.remove('error');
+
+        if (passwordInput.value !== confirmPasswordInput.value) {
+            registerError.textContent = 'As senhas não coincidem.';
+            passwordInput.classList.add('error');
+            confirmPasswordInput.classList.add('error');
+            showAuthLoader(false);
+            return;
+        }
+
         const email = document.getElementById('register-email').value;
-        const password = document.getElementById('register-password').value;
+        const password = passwordInput.value;
 
         try {
             await createUserWithEmailAndPassword(auth, email, password);
@@ -382,7 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 searchInput.focus();
             }
              if (modalId === 'modal-perfil') {
-                lucide.createIcons(); // Recria o ícone de logout se necessário
+                 lucide.createIcons(); // Recria o ícone de logout se necessário
              }
         }
     };
@@ -914,10 +995,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         case Hls.ErrorTypes.NETWORK_ERROR:
                             console.error("Erro de rede fatal;", data);
                             loaderContainer.innerHTML = `<div class="text-center text-red-400 p-4">
-                                                            <i data-lucide="alert-triangle" class="w-12 h-12 mx-auto mb-2"></i>
-                                                            <p class="font-bold">Erro ao carregar o vídeo.</p>
-                                                            <p class="text-sm text-stone-400">O vídeo pode não estar disponível ou há um problema de rede.</p>
-                                                        </div>`;
+                                                        <i data-lucide="alert-triangle" class="w-12 h-12 mx-auto mb-2"></i>
+                                                        <p class="font-bold">Erro ao carregar o vídeo.</p>
+                                                        <p class="text-sm text-stone-400">O vídeo pode não estar disponível ou há um problema de rede.</p>
+                                                    </div>`;
                             lucide.createIcons();
                             hls.destroy();
                             break;
@@ -1454,4 +1535,3 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
-
