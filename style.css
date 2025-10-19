@@ -85,12 +85,18 @@ body, .notification-content {
     border-radius: 9999px;
     width: 40px;
     height: 40px;
-    display: flex;
+    display: none; /* Hidden on mobile */
     align-items: center;
     justify-content: center;
     opacity: 0;
     transition: opacity 0.2s, background-color 0.2s;
 }
+@media (min-width: 768px) {
+    .carousel-btn {
+        display: flex;
+    }
+}
+
 .carousel-container:hover .carousel-btn { opacity: 1; }
 .carousel-btn:hover { background-color: rgba(0,0,0,0.8); }
 .carousel-btn:disabled { opacity: 0 !important; cursor: not-allowed; }
@@ -112,12 +118,42 @@ body, .notification-content {
 
 /* Estilos do Seletor de Temporada Customizado */
 .custom-select-container { position: relative; display: inline-block; color: var(--text-color); }
-.custom-select-trigger { cursor: pointer; padding: 0.5rem 2.5rem 0.5rem 1rem; border-radius: 0.5rem; position: relative; transition: background-color 0.2s; }
+.custom-select-trigger {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    padding: 0.5rem 2.5rem 0.5rem 1rem;
+    border-radius: 9999px;
+    position: relative;
+    transition: background-color 0.2s;
+    font-weight: 500;
+}
+.custom-select-trigger:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
 .custom-select-trigger::after { content: '▼'; font-size: 0.8rem; position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); transition: transform 0.2s; }
 .custom-select-container.open .custom-select-trigger::after { transform: translateY(-50%) rotate(180deg); }
-.custom-select-options { position: absolute; top: 100%; left: 0; right: 0; z-index: 20; margin-top: 0.25rem; border-radius: 0.5rem; overflow: hidden; max-height: 200px; overflow-y: auto; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s; }
+.custom-select-options {
+    position: absolute;
+    top: 100%;
+    left: 0; right: 0;
+    z-index: 20;
+    margin-top: 0.5rem;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    max-height: 200px;
+    overflow-y: auto;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+    background: rgba(28, 25, 23, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
 .custom-select-container.open .custom-select-options { opacity: 1; visibility: visible; transform: translateY(0); }
-.custom-select-option { padding: 0.5rem 1rem; cursor: pointer; transition: background-color 0.2s; }
+.custom-select-option { padding: 0.75rem 1.25rem; cursor: pointer; transition: background-color 0.2s; }
 .custom-select-option:hover, .custom-select-option.selected { background-color: rgba(255, 255, 255, 0.1); }
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -136,8 +172,8 @@ body, .notification-content {
 /* --- Estilos do Player de Vídeo Customizado --- */
 #player-container { position: relative; width: 100%; height: 100%; background-color: #000; }
 #player-video { width: 100%; height: 100%; object-fit: contain; }
-.player-controls { position: absolute; bottom: 0; left: 0; right: 0; padding: 1rem 1.5rem; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); opacity: 0; transition: opacity 0.3s ease; z-index: 21; }
-#player-container:hover .player-controls, #player-container.paused .player-controls { opacity: 1; }
+.player-controls { position: absolute; bottom: 0; left: 0; right: 0; padding: 1rem 1.5rem; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); opacity: 1; transition: opacity 0.3s ease; z-index: 21; }
+.player-controls.hide-controls { opacity: 0; }
 .progress-bar-container { width: 100%; height: 16px; cursor: pointer; display: flex; align-items: center; }
 .progress-bar-background { width: 100%; height: 4px; background-color: rgba(255, 255, 255, 0.3); border-radius: 2px; transition: height 0.2s ease; }
 .progress-bar-container:hover .progress-bar-background { height: 6px; }
@@ -209,8 +245,8 @@ body, .notification-content {
 }
 
 .episode-thumbnail {
-    width: 140px;
-    height: 78px; /* 16:9 Aspect Ratio */
+    width: 120px;
+    height: 67px; /* 16:9 Aspect Ratio */
     object-fit: cover;
     border-radius: 0.375rem;
     flex-shrink: 0;
@@ -222,7 +258,7 @@ body, .notification-content {
 }
 
 .episode-synopsis {
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     color: #a1a1aa; /* stone-400 */
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -235,8 +271,11 @@ body, .notification-content {
 .mobile-nav-link {
     color: #a1a1aa; /* stone-400 */
     text-align: center;
-    transition: color 0.2s ease-in-out;
+    transition: color 0.2s ease-in-out, transform 0.2s ease-in-out;
+    transform: scale(0.95);
 }
 .mobile-nav-link.active-nav-mobile {
     color: #e7e5e4; /* stone-200 */
+    transform: scale(1.05);
 }
+

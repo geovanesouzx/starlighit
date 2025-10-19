@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const newIcon = document.createElement('i');
             newIcon.dataset.lucide = inList ? 'check' : 'plus';
-            const iconSizeClass = btn.id.includes('hero') ? 'w-7 h-7' : 'w-6 h-6';
+            const iconSizeClass = btn.id.includes('hero') ? 'w-6 h-6' : 'w-6 h-6';
             newIcon.classList.add(...iconSizeClass.split(' '));
 
             if (text) {
@@ -325,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const createContentCard = (item) => {
         if (!item || !item.poster) return '';
         const posterPath = item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
-        return `<a href="#details/${item.docId}" class="carousel-item w-40 sm:w-48 cursor-pointer group block"><div class="relative aspect-[2/3] rounded-lg overflow-hidden"><img src="${posterPath}" alt="Pôster de ${item.title}" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"></div></a>`;
+        return `<a href="#details/${item.docId}" class="carousel-item w-32 sm:w-48 cursor-pointer group block"><div class="relative aspect-[2/3] rounded-lg overflow-hidden"><img src="${posterPath}" alt="Pôster de ${item.title}" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"></div></a>`;
     };
     
     const createGridCard = (item) => {
@@ -338,9 +338,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if(!data || data.length === 0) return;
         const section = document.createElement('section');
         section.innerHTML = `
-            <h2 class="text-2xl sm:text-3xl font-bold text-white mb-4">${title}</h2>
+            <h2 class="text-xl sm:text-3xl font-bold text-white mb-4">${title}</h2>
             <div class="carousel-container -mx-4 sm:-mx-6 lg:-mx-8">
-                <div class="carousel space-x-4 px-4 sm:px-6 lg:px-8">${data.map(item => createContentCard(item)).join('')}</div>
+                <div class="carousel space-x-3 sm:space-x-4 px-4 sm:px-6 lg:px-8">${data.map(item => createContentCard(item)).join('')}</div>
                 <button class="carousel-btn prev" aria-label="Anterior"><i data-lucide="chevron-left" class="w-6 h-6"></i></button>
                 <button class="carousel-btn next" aria-label="Próximo"><i data-lucide="chevron-right" class="w-6 h-6"></i></button>
             </div>`;
@@ -487,8 +487,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         const watchButtonHtml = data.type === 'movie' ?
-            `<button id="details-watch-btn" class="bg-white text-black font-bold py-4 px-10 rounded-full flex items-center space-x-2 text-xl hover:bg-stone-200" data-video-url="${data.url}"><i data-lucide="play" class="w-6 h-6 fill-current"></i><span>Assistir Filme</span></button>` :
-            `<button disabled class="bg-stone-600 text-stone-400 font-bold py-4 px-10 rounded-full flex items-center space-x-2 text-xl cursor-not-allowed"><i data-lucide="list-video" class="w-6 h-6"></i><span>Selecione um EP</span></button>`;
+            `<button id="details-watch-btn" class="bg-white text-black font-bold py-3 px-8 rounded-full flex items-center space-x-2 text-lg hover:bg-stone-200" data-video-url="${data.url}"><i data-lucide="play" class="w-6 h-6 fill-current"></i><span>Assistir Filme</span></button>` :
+            `<button disabled class="bg-stone-600 text-stone-400 font-bold py-3 px-8 rounded-full flex items-center space-x-2 text-lg cursor-not-allowed"><i data-lucide="list-video" class="w-6 h-6"></i><span>Selecione um EP</span></button>`;
 
         let seasonsHtml = '';
         if (data.type === 'tv' && data.seasons) {
@@ -499,8 +499,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div class="flex items-center space-x-4 mb-4">
                                     <h3 class="text-2xl sm:text-3xl font-bold">Temporadas</h3>
                                     <div id="custom-season-selector" class="custom-select-container">
-                                        <div class="custom-select-trigger liquid-glass"><span class="selected-option-text">${data.seasons[seasonNumbers[0]].title}</span></div>
-                                        <div class="custom-select-options liquid-glass">
+                                        <div class="custom-select-trigger"><span class="selected-option-text">${data.seasons[seasonNumbers[0]].title}</span></div>
+                                        <div class="custom-select-options">
                                             ${seasonNumbers.map(num => `<div class="custom-select-option" data-value="${num}">${data.seasons[num].title}</div>`).join('')}
                                         </div>
                                     </div>
@@ -510,7 +510,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
         }
         
-        const genresHtml = data.genres ? data.genres.map(g => `<span class="bg-purple-600/50 text-white text-sm px-3 py-1 rounded-full">${g}</span>`).join('') : '';
+        const genresHtml = data.genres ? data.genres.map(g => `<span class="bg-purple-600/50 text-white text-xs px-3 py-1 rounded-full">${g}</span>`).join('') : '';
         const durationDisplay = data.type === 'movie' ? formatDuration(data.duration.replace(/\D/g, '')) : data.duration;
 
         detailsScreen.innerHTML = `
@@ -519,19 +519,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button id="close-details-btn" class="fixed top-5 right-5 z-20 bg-black/50 rounded-full p-2 hover:bg-black/80"><i data-lucide="x" class="w-6 h-6"></i></button>
                 <div class="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center min-h-screen pt-20 pb-12">
                         <div class="w-full md:flex md:space-x-8 items-center">
-                            <div class="flex-shrink-0 w-48 md:w-64 mx-auto md:mx-0"><img src="${data.poster}" alt="Pôster" class="w-full h-auto rounded-lg shadow-2xl"></div>
+                            <div class="flex-shrink-0 w-40 md:w-64 mx-auto md:mx-0"><img src="${data.poster}" alt="Pôster" class="w-full h-auto rounded-lg shadow-2xl"></div>
                             <div class="mt-6 md:mt-0 text-center md:text-left flex-grow">
-                                <h1 class="text-5xl md:text-6xl font-bold">${data.title}</h1>
-                                <div class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-lg text-stone-300">
+                                <h1 class="text-3xl md:text-6xl font-bold">${data.title}</h1>
+                                <div class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300">
                                     <span>${data.year}</span>
                                     ${getRatingBadge(data.rating)}
                                     <span>Duração: ${durationDisplay}</span>
                                 </div>
                                 <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genresHtml}</div>
-                                <div class="mt-4 max-w-2xl mx-auto md:mx-0"><p class="text-stone-300 text-base leading-relaxed">${data.synopsis}</p></div>
+                                <div class="mt-4 max-w-2xl mx-auto md:mx-0"><p class="text-stone-300 text-sm leading-relaxed">${data.synopsis}</p></div>
                                 <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
                                     ${watchButtonHtml}
-                                    <button data-list-btn-id="${data.docId}" id="details-list-btn" class="bg-white/20 backdrop-blur-sm text-white font-semibold py-4 px-10 rounded-full flex items-center space-x-2 text-xl hover:bg-white/30"><i data-lucide="plus" class="w-6 h-6"></i><span>Minha Lista</span></button>
+                                    <button data-list-btn-id="${data.docId}" id="details-list-btn" class="bg-white/20 backdrop-blur-sm text-white font-semibold py-3 px-8 rounded-full flex items-center space-x-2 text-lg hover:bg-white/30"><i data-lucide="plus" class="w-6 h-6"></i><span>Minha Lista</span></button>
                                 </div>
                             </div>
                         </div>
@@ -617,7 +617,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // Adiciona um estado ao histórico para lidar com o botão "voltar"
         history.pushState({ playerOpen: true }, "");
 
         let urlToLoad = originalUrl;
@@ -639,6 +638,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const loaderContainer = videoModal.querySelector('.loader-container');
         
         videoModal.classList.remove('hidden');
+
+        const isMobile = () => window.innerWidth <= 768;
+
+        if (isMobile()) {
+            const playerContainer = document.getElementById('player-container');
+            if (playerContainer.requestFullscreen) {
+                playerContainer.requestFullscreen().catch(err => {
+                    console.warn(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                });
+            }
+            try {
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('landscape').catch(err => {
+                        console.warn(`Could not lock screen orientation: ${err.message}`);
+                    });
+                }
+            } catch (e) {
+                console.warn('Screen Orientation API not available.', e);
+            }
+        }
+        
         handleHeaderStyle();
         loaderContainer.innerHTML = '<div class="loader"></div>';
         loaderContainer.style.display = 'flex';
@@ -711,6 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupPlayerEventListeners() {
         const playerContainer = document.getElementById('player-container');
         const video = document.getElementById('player-video');
+        const controls = document.getElementById('player-controls');
         const loader = playerContainer.querySelector('.loader-container');
         
         const playPauseBtn = document.getElementById('player-play-pause-btn');
@@ -724,9 +745,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const timeDisplay = document.getElementById('player-time-display');
         const fullscreenBtn = document.getElementById('player-fullscreen-btn');
         const backBtn = document.getElementById('player-back-btn');
+        
+        let controlsTimeout;
+
+        const hideControls = () => {
+            if (!video.paused) {
+                controls.classList.add('hide-controls');
+            }
+        };
+
+        const showControls = () => {
+            controls.classList.remove('hide-controls');
+            clearTimeout(controlsTimeout);
+            controlsTimeout = setTimeout(hideControls, 5000); 
+        };
+
+        playerContainer.addEventListener('mousemove', showControls);
+        playerContainer.addEventListener('touchstart', showControls, { passive: true });
 
         backBtn.addEventListener('click', () => {
-            // Usa o histórico para voltar, o que acionará o popstate listener
             history.back();
         });
 
@@ -754,11 +791,14 @@ document.addEventListener('DOMContentLoaded', () => {
             playPauseBtn.innerHTML = `<i data-lucide="pause" class="w-7 h-7"></i>`;
             playerContainer.classList.remove('paused');
             lucide.createIcons();
+            showControls();
         });
         video.addEventListener('pause', () => {
             playPauseBtn.innerHTML = `<i data-lucide="play" class="w-7 h-7"></i>`;
             playerContainer.classList.add('paused');
             lucide.createIcons();
+            clearTimeout(controlsTimeout);
+            controls.classList.remove('hide-controls');
         });
         video.addEventListener('waiting', () => { loader.style.display = 'flex'; });
         video.addEventListener('playing', () => { loader.style.display = 'none'; });
@@ -796,7 +836,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         fullscreenBtn.onclick = () => {
             if (document.fullscreenElement) document.exitFullscreen();
-            else playerContainer.requestFullscreen().catch(err => alert(`Erro: ${err.message}`));
+            else playerContainer.requestFullscreen().catch(err => console.warn(`Erro: ${err.message}`));
         };
         document.addEventListener('fullscreenchange', () => {
             if (document.fullscreenElement) fullscreenBtn.innerHTML = `<i data-lucide="minimize" class="w-6 h-6"></i>`;
@@ -945,7 +985,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('screen-home').classList.remove('hidden');
                 renderScreenContent('screen-home', true);
             }
-            // Atualiza navs de desktop e mobile
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.toggle('active-nav', link.dataset.screen === screenId);
             });
@@ -1140,7 +1179,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('keydown', (e) => { if (e.key === 'Escape') {
             const videoModal = document.getElementById('modal-video');
             if (videoModal && !videoModal.classList.contains('hidden')) {
-                history.back(); // Aciona o popstate para fechar o player
+                history.back();
             } else {
                 closeAllModals();
             }
@@ -1157,12 +1196,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setupPlayerEventListeners();
 
-        // Listener de popstate aprimorado para lidar com o player
         window.addEventListener('popstate', (event) => {
             const videoModal = document.getElementById('modal-video');
             if (videoModal && !videoModal.classList.contains('hidden')) {
                 stopVideo();
-                // O estado do player foi removido, mas não mude a tela
             } else {
                 handleLocationChange();
             }
@@ -1184,3 +1221,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setTimeout(initializeApp, 500);
 });
+
