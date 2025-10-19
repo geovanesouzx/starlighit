@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const TMDB_API_KEY = '5954890d9e9b723ff3032f2ec429fec3';
     const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
     const TMDB_IMG_URL = 'https://image.tmdb.org/t/p/w500';
+    const TMDB_STILL_URL = 'https://image.tmdb.org/t/p/w300';
 
     // ESTADO DA APLICAÇÃO
     let myList = [];
@@ -81,15 +82,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const formatDuration = (duration) => {
-         const minutes = parseInt(duration);
-         if (isNaN(minutes) || minutes === 0) return 'N/A';
-         if (minutes < 60) return `${minutes}m`;
+          const minutes = parseInt(duration);
+          if (isNaN(minutes) || minutes === 0) return 'N/A';
+          if (minutes < 60) return `${minutes}m`;
 
-         const hours = Math.floor(minutes / 60);
-         const remainingMinutes = minutes % 60;
-         let result = `${hours}h`;
-         if (remainingMinutes > 0) result += ` ${remainingMinutes}m`;
-         return result;
+          const hours = Math.floor(minutes / 60);
+          const remainingMinutes = minutes % 60;
+          let result = `${hours}h`;
+          if (remainingMinutes > 0) result += ` ${remainingMinutes}m`;
+          return result;
     };
 
 
@@ -176,13 +177,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const closeAllModals = () => {
-         document.querySelectorAll('.modal').forEach(m => {
-             if(m.id !== 'modal-video') m.classList.add('hidden');
-         });
-         const searchInput = document.getElementById('search-input');
-         if(searchInput) searchInput.value = '';
-         const searchResults = document.getElementById('search-results-container');
-         if(searchResults) searchResults.innerHTML = '';
+          document.querySelectorAll('.modal').forEach(m => {
+              if(m.id !== 'modal-video') m.classList.add('hidden');
+          });
+          const searchInput = document.getElementById('search-input');
+          if(searchInput) searchInput.value = '';
+          const searchResults = document.getElementById('search-results-container');
+          if(searchResults) searchResults.innerHTML = '';
     }
 
     const handleHeaderStyle = () => {
@@ -192,10 +193,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const isPlayerOpen = !document.getElementById('modal-video').classList.contains('hidden');
 
         if(isPlayerOpen) {
-            header.classList.add('scrolled'); // Use scrolled class for player view
-            header.style.zIndex = 120;
+            header.classList.add('hidden'); 
             return;
         }
+        header.classList.remove('hidden'); 
 
         header.style.zIndex = 50;
 
@@ -517,21 +518,21 @@ document.addEventListener('DOMContentLoaded', () => {
         let seasonsHtml = '';
         if (data.type === 'tv' && data.seasons) {
             const seasonNumbers = Object.keys(data.seasons).sort((a,b) => a - b);
-             if (seasonNumbers.length > 0) {
-                   seasonsHtml = `
-                        <div class="mt-12">
-                            <div class="flex items-center space-x-4 mb-4">
-                                <h3 class="text-2xl sm:text-3xl font-bold">Temporadas</h3>
-                                <div id="custom-season-selector" class="custom-select-container">
-                                    <div class="custom-select-trigger liquid-glass"><span class="selected-option-text">${data.seasons[seasonNumbers[0]].title}</span></div>
-                                    <div class="custom-select-options liquid-glass">
-                                        ${seasonNumbers.map(num => `<div class="custom-select-option" data-value="${num}">${data.seasons[num].title}</div>`).join('')}
-                                    </div>
-                                </div>
-                            </div>
-                            <div id="episodes-container" class="min-h-[200px] relative"></div>
-                        </div>`;
-             }
+               if (seasonNumbers.length > 0) {
+                     seasonsHtml = `
+                          <div class="mt-12">
+                              <div class="flex items-center space-x-4 mb-4">
+                                  <h3 class="text-2xl sm:text-3xl font-bold">Temporadas</h3>
+                                  <div id="custom-season-selector" class="custom-select-container">
+                                      <div class="custom-select-trigger liquid-glass"><span class="selected-option-text">${data.seasons[seasonNumbers[0]].title}</span></div>
+                                      <div class="custom-select-options liquid-glass">
+                                          ${seasonNumbers.map(num => `<div class="custom-select-option" data-value="${num}">${data.seasons[num].title}</div>`).join('')}
+                                      </div>
+                                  </div>
+                              </div>
+                              <div id="episodes-container" class="min-h-[200px] relative"></div>
+                          </div>`;
+               }
         }
         
         const genresHtml = data.genres ? data.genres.map(g => `<span class="bg-purple-600/50 text-white text-sm px-3 py-1 rounded-full">${g}</span>`).join('') : '';
@@ -572,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateAllMyListButtons(data.docId);
 
          if (data.type === 'tv' && data.seasons) {
-              setupSeasonSelector(data);
+             setupSeasonSelector(data);
          }
         lucide.createIcons();
     }
@@ -588,14 +589,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 showError(episodesContainer, 'Episódios não encontrados.');
                 return;
             }
-            episodesContainer.innerHTML = `<div class="flex flex-col space-y-3">${season.episodes.map((ep, index) => `
-                <div class="episode-item liquid-glass cursor-pointer" data-video-url="${ep.url}" style="opacity: 0; animation-delay: ${index * 0.05}s;">
-                    <img src="${ep.still_path || 'https://placehold.co/120x67/1c1917/999999?text=EP'}" alt="Miniatura do Episódio" class="episode-thumbnail">
-                    <div class="episode-info">
-                        <div class="episode-title-line">
-                            <h4 class="font-bold text-white text-base truncate">Ep ${index + 1}: ${ep.title}</h4>
-                            <i data-lucide="play-circle" class="w-6 h-6 text-purple-400 flex-shrink-0 ml-2"></i>
+            episodesContainer.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${season.episodes.map((ep, index) => `
+                <div class="episode-item group cursor-pointer" data-video-url="${ep.url}" style="--delay: ${index * 0.05}s;">
+                    <div class="relative flex-shrink-0">
+                        <img src="${ep.still_path ? `${TMDB_STILL_URL}${ep.still_path}` : 'https://placehold.co/120x67/1c1917/999999?text=EP'}" alt="Miniatura do Episódio" class="episode-thumbnail">
+                        <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i data-lucide="play-circle" class="w-8 h-8 text-white"></i>
                         </div>
+                    </div>
+                    <div class="episode-info">
+                        <h4 class="font-bold text-white text-base truncate">Ep ${index + 1}: ${ep.title}</h4>
                         <p class="episode-synopsis">${ep.overview || 'Nenhuma sinopse disponível.'}</p>
                     </div>
                 </div>`).join('')}</div>`;
@@ -684,10 +687,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         case Hls.ErrorTypes.NETWORK_ERROR:
                             console.error("Erro de rede fatal;", data);
                             loaderContainer.innerHTML = `<div class="text-center text-red-400 p-4">
-                                                            <i data-lucide="alert-triangle" class="w-12 h-12 mx-auto mb-2"></i>
-                                                            <p class="font-bold">Erro ao carregar o vídeo.</p>
-                                                            <p class="text-sm text-stone-400">O vídeo pode não estar disponível ou há um problema de rede.</p>
-                                                          </div>`;
+                                                          <i data-lucide="alert-triangle" class="w-12 h-12 mx-auto mb-2"></i>
+                                                          <p class="font-bold">Erro ao carregar o vídeo.</p>
+                                                          <p class="text-sm text-stone-400">O vídeo pode não estar disponível ou há um problema de rede.</p>
+                                                        </div>`;
                             lucide.createIcons();
                             hls.destroy();
                             break;
@@ -723,6 +726,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.exitFullscreen();
         }
         videoModal.classList.add('hidden');
+        header.classList.remove('hidden');
         handleHeaderStyle();
     }
 
@@ -898,13 +902,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Set active tab if novidades has new items
         if (novidades.length > 0) {
-             document.querySelectorAll('.notification-tab').forEach(tab => tab.classList.remove('active'));
-             document.querySelectorAll('.notification-content').forEach(content => content.classList.remove('active'));
-             document.querySelector('[data-tab="novidades"]').classList.add('active');
-             document.getElementById('notifications-novidades').classList.add('active');
+              document.querySelectorAll('.notification-tab').forEach(tab => tab.classList.remove('active'));
+              document.querySelectorAll('.notification-content').forEach(content => content.classList.remove('active'));
+              document.querySelector('[data-tab="novidades"]').classList.add('active');
+              document.getElementById('notifications-novidades').classList.add('active');
         } else {
-             document.querySelector('[data-tab="avisos"]').classList.add('active');
-             document.getElementById('notifications-avisos').classList.add('active');
+              document.querySelector('[data-tab="avisos"]').classList.add('active');
+              document.getElementById('notifications-avisos').classList.add('active');
         }
     }
 
@@ -1197,3 +1201,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setTimeout(initializeApp, 500);
 });
+

@@ -162,6 +162,10 @@ body, .notification-content {
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+#header.hidden {
+    transform: translateY(-100%);
+}
+
 /* Classification Square Styles */
 .rating-square {
     display: inline-flex;
@@ -185,33 +189,38 @@ body, .notification-content {
 
 /* Episode Item Custom Styles */
 .episode-item {
-    display: flex;
-    align-items: center;
-    padding: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.05);
     border-radius: 0.5rem;
-    cursor: pointer;
-    transition: background-color 0.2s;
+    overflow: hidden;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: background-color 0.2s, transform 0.2s;
+    opacity: 0;
+    animation: fadeInUp 0.4s ease-out forwards;
+    animation-delay: var(--delay);
 }
+
 .episode-item:hover {
-    background-color: rgba(255, 255, 255, 0.15);
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
 }
+
 .episode-thumbnail {
-    width: 120px;
-    height: 67.5px; /* 16:9 Aspect Ratio */
+    width: 140px;
+    height: 78px; /* 16:9 Aspect Ratio */
     object-fit: cover;
     border-radius: 0.375rem;
-    margin-right: 1rem;
     flex-shrink: 0;
 }
+
 .episode-info {
     flex-grow: 1;
     min-width: 0;
 }
-.episode-title-line {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
+
 .episode-synopsis {
     font-size: 0.875rem;
     color: #a1a1aa; /* stone-400 */
@@ -221,3 +230,4 @@ body, .notification-content {
     overflow: hidden;
     margin-top: 0.25rem;
 }
+
