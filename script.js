@@ -122,9 +122,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Gerenciador de estado de autenticação
     onAuthStateChanged(auth, user => {
+        // Remove a classe que esconde o conteúdo, garantindo que a tela correta apareça sem piscar.
+        document.body.classList.remove('auth-state-unknown');
+
         if (user) {
             // Usuário está logado
-            userId = user.uid; // Usa o UID do Firebase como identificador único
+            userId = user.uid;
             console.log("Usuário logado:", userId);
 
             // Atualiza a UI do perfil
@@ -143,7 +146,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             modalUserEmail.textContent = user.email;
 
-            authScreen.classList.add('opacity-0', 'pointer-events-none');
+            // Esconde a tela de login e mostra o conteúdo do app
+            authScreen.classList.add('hidden');
             appContent.classList.remove('hidden');
 
             if (!isAppInitialized) {
@@ -154,7 +158,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Usuário não está logado
             userId = null;
             console.log("Nenhum usuário logado.");
-            authScreen.classList.remove('opacity-0', 'pointer-events-none');
+            
+            // Mostra a tela de login e esconde o conteúdo do app
+            authScreen.classList.remove('hidden');
             appContent.classList.add('hidden');
         }
     });
@@ -213,7 +219,6 @@ document.addEventListener('DOMContentLoaded', () => {
     logoutBtn.addEventListener('click', async () => {
         try {
             await signOut(auth);
-            // onAuthStateChanged vai cuidar de redirecionar
             closeAllModals();
         } catch (error) {
             console.error("Erro ao sair:", error);
@@ -245,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- RATING UTILITY ---
     const getRatingBadge = (rating) => {
         if (!rating) return '';
-        const ratingValue = rating.replace(/\D/g, ''); // Extracts numbers (e.g., '12')
+        const ratingValue = rating.replace(/\D/g, ''); 
         let colorClass = '';
         
         switch (rating) {
@@ -1449,3 +1454,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+

@@ -3,6 +3,13 @@
     --text-color: #e7e5e4; /* stone-200 */
     --accent-color: #a855f7; /* purple-500 */
 }
+
+/* Rule to prevent content flash during auth check */
+body.auth-state-unknown #app-content,
+body.auth-state-unknown #auth-screen {
+    visibility: hidden;
+}
+
 html { scroll-behavior: smooth; }
 body {
     font-family: 'Poppins', sans-serif;
