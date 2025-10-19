@@ -15,6 +15,8 @@ body {
     font-family: 'Poppins', sans-serif;
     background-color: var(--bg-color);
     color: var(--text-color);
+    min-height: 100vh;
+    width: 100%;
 }
 body.overflow-hidden { overflow: hidden; }
 
@@ -25,90 +27,318 @@ body, .notification-content {
   scrollbar-width: none;  /* Firefox */
 }
 
-/* --- TELA DE AUTENTICAÇÃO --- */
+/* --- TELA DE AUTENTICAÇÃO (NOVA) --- */
+#auth-screen {
+    overflow: hidden; /* Evita barras de rolagem */
+}
 .auth-background {
     position: absolute;
     inset: 0;
-    background-image: linear-gradient(to top, rgba(12, 10, 9, 1), rgba(12, 10, 9, 0.7)), url('https://image.tmdb.org/t/p/original/rULWuutDcN5NvtiZi4FbsaRDPOT.jpg');
-    background-size: cover;
+    /* Fundo PADRÃO (PC) com a imagem fornecida */
+    background-image: url('https://image.tmdb.org/t/p/original/c2dPK558peXs9QzacwzHYQqqS2r.jpg');
+    background-size: 115% auto; /* Levemente ampliado para o pan */
     background-position: center;
-    filter: blur(8px) brightness(0.7);
-    transform: scale(1.1);
+    background-repeat: no-repeat;
+    /* Animação de movimento para a imagem */
+    animation: pan-image 30s linear infinite alternate;
 }
 
-#auth-container {
-    transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.5s ease-in-out;
-    animation: fadeInUp 0.6s ease-out forwards;
+@keyframes pan-image {
+    0% {
+        background-position: 0% 50%;
+    }
+    100% {
+        background-position: 100% 50%;
+    }
 }
 
-.auth-input {
+.glass-card {
+    --bg-color: rgba(255, 255, 255, 0.1); /* Cor de fundo mais sutil */
+    --highlight: rgba(255, 255, 255, 0.25); /* Destaque mais visível */
+    --text: #ffffff;
+    
+    position: relative;
+    width: 400px;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+    animation: fadeIn 1s ease-out;
+    transition: height 0.5s ease-in-out, width 0.3s ease-in-out;
+}
+
+.glass-filter,
+.glass-overlay,
+.glass-specular,
+.glass-distortion-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+}
+
+.glass-filter {
+    z-index: 1;
+    backdrop-filter: blur(8px); /* Desfoque um pouco mais forte */
+    filter: url(#glass-distortion) saturate(120%) brightness(1.1);
+}
+
+.glass-distortion-overlay {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.05) 0%, transparent 80%),
+                radial-gradient(circle at 80% 70%, rgba(255,255,255,0.05) 0%, transparent 80%);
+    background-size: 300% 300%;
+    animation: floatDistort 10s infinite ease-in-out;
+    mix-blend-mode: overlay;
+    z-index: 2;
+    pointer-events: none;
+}
+
+@keyframes floatDistort {
+    0% { background-position: 0% 0%; }
+    50% { background-position: 100% 100%; }
+    100% { background-position: 0% 0%; }
+}
+
+.glass-overlay {
+    z-index: 2;
+    background: var(--bg-color);
+}
+
+.glass-specular {
+    z-index: 3;
+    box-shadow: inset 1px 1px 1px var(--highlight);
+    transition: background 0.3s ease; /* Transição suave para o brilho */
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+form {
+    position: absolute;
+    top: 0;
+    left: 0;
+    padding: 30px 35px;
     width: 100%;
-    padding: 0.75rem; /* p-3 */
-    background-color: rgba(28, 25, 23, 0.5); /* bg-stone-900/50 */
-    border-radius: 0.5rem; /* rounded-lg */
-    color: white;
-    border: 2px solid transparent;
-    transition: all 300ms;
-}
-.auth-input::placeholder {
-    color: #a8a29e; /* placeholder-stone-400 */
-}
-.auth-input:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px #a855f7; /* focus:ring-2 focus:ring-purple-500 */
-    background-color: #1c1917; /* focus:bg-stone-900 */
+    transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.5s ease-in-out;
+    z-index: 4; /* Garante que o formulário fique acima do efeito de vidro */
 }
 
-.auth-button-primary {
-    width: 100%;
-    background-image: linear-gradient(to right, var(--accent-color), #ec4899);
-    color: white;
+#login-form {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+}
+
+#register-form {
+    opacity: 0;
+    transform: translateX(120%);
+    pointer-events: none;
+}
+
+.glass-card h2 {
+    font-size: 38px;
     font-weight: 700;
-    padding: 0.75rem 2.5rem;
-    border-radius: 0.5rem;
-    transition: all 300ms;
-    border: none;
+    text-align: center;
+    margin-bottom: 20px;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.glass-card .input-box {
+    position: relative;
+    width: 100%;
+    height: 55px;
+    margin: 35px 0;
+}
+
+.glass-card .input-box input {
+    background: rgba(255,255,255,0.08);
+    width: 100%;
+    height: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 30px;
+    padding: 15px 45px 15px 20px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    color: #fff;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px rgba(0,0,0,0.15) inset !important;
+    -webkit-text-fill-color: #fff !important; 
+    transition: background-color 5000s ease-in-out 0s; 
+}
+
+.glass-card .input-box input:focus {
+    border-color: rgba(255, 255, 255, 0.8);
+    background: rgba(255,255,255,0.15);
+}
+
+.input-box input.error {
+    border-color: #ff7a7a;
+    animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+.input-box label {
+    position: absolute;
+    top: 50%;
+    left: 20px;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.7);
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+.input-box input:focus ~ label,
+.input-box input:not(:placeholder-shown) ~ label {
+    top: 0;
+    left: 25px;
+    transform: translateY(-50%);
+    font-size: 13px;
+    color: #fff;
+    padding: 0 5px;
+    background: rgba(12,10,9,0.7); /* Match body bg for label bg */
+    border-radius: 4px;
+}
+
+.input-box i {
+    position: absolute;
+    top: 50%;
+    right: 18px;
+    transform: translateY(-50%);
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.8);
     cursor: pointer;
 }
-.auth-button-primary:hover {
-    transform: scale(1.05);
-    background-image: linear-gradient(to right, #9333ea, #db2777);
-}
 
-.auth-button-secondary {
-    width: 100%;
+.glass-card .options {
     display: flex;
     align-items: center;
-    justify-content: center;
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
-    font-weight: 700;
-    padding: 0.75rem 2rem;
-    border-radius: 0.5rem;
-    transition: all 300ms;
-    border: none;
+    justify-content: space-between;
+    font-size: 14px;
+    margin-top: -15px;
+    margin-bottom: 20px;
+}
+
+.options label {
+    display: flex;
+    align-items: center;
     cursor: pointer;
 }
-.auth-button-secondary:hover {
-    background-color: rgba(255, 255, 255, 0.2);
+
+.options label input {
+    accent-color: #fff;
+    margin-right: 6px;
 }
 
-.separator {
-    display: flex;
+.options a {
+    color: #fff;
+    text-decoration: none;
+}
+
+.options a:hover {
+    text-decoration: underline;
+}
+
+.btn {
+    display: inline-block;
+    background: #fff;
+    color: #0a2862; 
+    width: 100%;
+    border-radius: 30px;
+    font-size: 16px;
+    height: 45px;
+    line-height: 45px;
+    font-weight: 600;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    margin-bottom: 20px;
+    margin-top: 10px;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    background: #f0f0f0;
+}
+
+.btn:active {
+    transform: translateY(-1px) scale(0.98);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.social-login, .switch-form {
+    text-align: center;
+    font-size: 15px;
+}
+
+.social-login .social-btn {
+    color: #fff;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    margin: 0 10px;
+    background: none;
+    cursor: pointer;
+    display: inline-flex;
     align-items: center;
-    margin-top: 1.5rem;
-    margin-bottom: 1.5rem;
-    font-size: 0.75rem;
-    color: #78716c; /* stone-500 */
-    text-transform: uppercase;
 }
-.separator::before, .separator::after {
-    content: '';
-    flex-grow: 1;
-    border-bottom: 1px solid #44403c; /* stone-700 */
+
+.social-login .social-btn i {
+    font-size: 22px;
+    margin-right: 8px;
+    vertical-align: middle;
+    transition: transform 0.3s ease;
 }
-.separator::before { margin-right: 1rem; }
-.separator::after { margin-left: 1rem; }
+
+.social-login .social-btn:hover i {
+    transform: scale(1.2);
+}
+
+.social-login .social-btn:hover, .switch-form a:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+}
+
+.switch-form {
+    margin-top: 20px;
+}
+
+.switch-form a {
+    font-weight: 700;
+    cursor: pointer;
+}
+
+@media (max-width: 768px) {
+    .auth-background {
+        background-image: url('https://image.tmdb.org/t/p/original/8RivlvIUNxwrI9w9ypiC4ZzJ6S.jpg');
+        background-size: cover;
+        animation: pan-image 40s linear infinite alternate;
+    }
+    .glass-card {
+        width: 90%;
+    }
+}
 
 
 /* Estilos de Componentes */
@@ -200,6 +430,15 @@ body, .notification-content {
 /* Modal e Telas */
 .modal, #screen-details { transition: opacity 0.3s ease, visibility 0.3s ease; }
 .modal.hidden, #screen-details.hidden { opacity: 0; visibility: hidden; }
+
+/* Efeito Liquid Glass e Animações */
+.liquid-glass {
+    background: rgba(41, 37, 36, 0.7); /* stone-800/70 */
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px); /* Para Safari */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
 
 /* Estilos do Seletor de Temporada Customizado */
 .custom-select-container { position: relative; display: inline-block; color: var(--text-color); }
@@ -397,83 +636,5 @@ body, .notification-content {
     #details-synopsis {
         line-height: 1.5;
     }
-}
-
-/* Glass Card Container */
-.glass-card {
-  --bg-color: rgba(41, 37, 36, 0.7);
-  --highlight: rgba(255, 255, 255, 0.15);
-  --text: #ffffff;
-  
-  position: relative;
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
-}
-
-.glass-filter,
-.glass-overlay,
-.glass-specular,
-.glass-distortion-overlay {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-}
-
-.glass-filter {
-  z-index: 1;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  filter: url(#glass-distortion) saturate(120%) brightness(1.15);
-}
-
-.glass-distortion-overlay {
-  background: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.05) 0%, transparent 80%),
-              radial-gradient(circle at 80% 70%, rgba(255,255,255,0.05) 0%, transparent 80%);
-  background-size: 300% 300%;
-  animation: floatDistort 10s infinite ease-in-out;
-  mix-blend-mode: overlay;
-  z-index: 2;
-  pointer-events: none;
-}
-
-@keyframes floatDistort {
-  0% { background-position: 0% 0%; }
-  50% { background-position: 100% 100%; }
-  100% { background-position: 0% 0%; }
-}
-
-
-.glass-overlay {
-  z-index: 2;
-  background: var(--bg-color);
-}
-
-.glass-specular {
-  z-index: 3;
-  box-shadow: inset 1px 1px 1px var(--highlight);
-}
-
-.glass-content {
-  position: relative;
-  z-index: 4;
-  padding: 20px;
-  color: var(--text);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-}
-
-.glass-content h3 {
-  margin: 0 0 10px 0;
-  font-size: 24px;
-  font-weight: 600;
-}
-
-.glass-content p {
-  margin: 0;
-  opacity: 0.8;
 }
 

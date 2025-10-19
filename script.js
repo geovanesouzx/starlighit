@@ -1,85 +1,4 @@
-// Firebase SDKs
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { 
-    getAuth, 
-    onAuthStateChanged,
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    signInWithPopup,
-    GoogleAuthProvider,
-    signOut
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { 
-    getFirestore, 
-    collection, 
-    getDocs, 
-    onSnapshot, 
-    query, 
-    where, 
-    addDoc, 
-    serverTimestamp, 
-    updateDoc, 
-    doc, 
-    arrayUnion, 
-    getDoc, 
-    orderBy 
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-// Configuração do Firebase
-const firebaseConfig = {
-    apiKey: "AIzaSyA791i8R8Bmrn3toFxFltZ40TU7PUavev8",
-    authDomain: "starlight-max.firebaseapp.com",
-    projectId: "starlight-max",
-    storageBucket: "starlight-max.appspot.com",
-    messagingSenderId: "120477177511",
-    appId: "1:120477177511:web:5a75a2dd6d8089c829ed82"
-};
-
-// Inicialização do Firebase
-let app, db, auth;
-try {
-    app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    auth = getAuth(app);
-    
-    // Disponibiliza no escopo global para o HTML (se necessário)
-    window.db = db;
-    window.getDocs = getDocs;
-    window.collection = collection;
-    window.onSnapshot = onSnapshot;
-    window.query = query;
-    window.where = where;
-    window.addDoc = addDoc;
-    window.serverTimestamp = serverTimestamp;
-    window.updateDoc = updateDoc;
-    window.doc = doc;
-    window.arrayUnion = arrayUnion;
-    window.getDoc = getDoc;
-    window.orderBy = orderBy;
-    console.log("Firebase Initialized Successfully");
-} catch (error) {
-    console.error("Firebase Initialization Error:", error);
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    lucide.createIcons();
-    
-    const TMDB_API_KEY = '5954890d9e9b723ff3032f2ec429fec3';
-    const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-    const TMDB_IMG_URL = 'https://image.tmdb.org/t/p/w500';
-    const TMDB_STILL_URL = 'https://image.tmdb.org/t/p/w300';
-
-    // ESTADO DA APLICAÇÃO
-    let myList = [];
-    let currentHeroItem = null;
-    let hls;
-    let firestoreContent = [];
-    let pendingRequests = [];
-    let userId = null; // Será definido pelo Firebase Auth
-    let featuredItemIds = [];
-    let heroCarouselInterval = null;
-    let notifications = [];
-    let lastNotificationCheck = localStorage.getItem('starlight-lastNotificationCheck') || 0;
+// ... existing code ... -->
     let dismissedNotifications = JSON.parse(localStorage.getItem('starlight-dismissedNotifications')) || [];
     let isAppInitialized = false;
 
@@ -92,29 +11,103 @@ document.addEventListener('DOMContentLoaded', () => {
     const googleSignInBtn = document.getElementById('google-signin-btn');
     const showRegisterLink = document.getElementById('show-register');
     const showLoginLink = document.getElementById('show-login');
-    const loginFormContainer = document.getElementById('login-form-container');
-    const registerFormContainer = document.getElementById('register-form-container');
     const loginError = document.getElementById('login-error');
     const registerError = document.getElementById('register-error');
     const authLoadingOverlay = document.getElementById('auth-loading-overlay');
     const logoutBtn = document.getElementById('logout-btn');
+    const glassCard = document.querySelector('.glass-card');
 
-    const toggleAuthForms = () => {
-        loginFormContainer.classList.toggle('hidden');
-        registerFormContainer.classList.toggle('hidden');
-        loginError.textContent = '';
-        registerError.textContent = '';
-    };
 
-    showRegisterLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        toggleAuthForms();
-    });
+    // --- LÓGICA DA NOVA TELA DE LOGIN ---
+    if (glassCard && loginForm && registerForm && showRegisterLink && showLoginLink) {
+        // Define a altura inicial
+        glassCard.style.height = loginForm.scrollHeight + 'px';
 
-    showLoginLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        toggleAuthForms();
-    });
+        showRegisterLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            loginForm.style.opacity = '0';
+            loginForm.style.transform = 'translateX(-120%)';
+            loginForm.style.pointerEvents = 'none';
+
+            registerForm.style.opacity = '1';
+            registerForm.style.transform = 'translateX(0)';
+            registerForm.style.pointerEvents = 'auto';
+            
+            glassCard.style.height = registerForm.scrollHeight + 'px';
+        });
+
+        showLoginLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            registerForm.style.opacity = '0';
+            registerForm.style.transform = 'translateX(120%)';
+            registerForm.style.pointerEvents = 'none';
+
+            loginForm.style.opacity = '1';
+            loginForm.style.transform = 'translateX(0)';
+            loginForm.style.pointerEvents = 'auto';
+            
+            glassCard.style.height = loginForm.scrollHeight + 'px';
+        });
+        
+        // Efeito interativo (Mouse Move)
+        const filterMap = document.querySelector('#glass-distortion feDisplacementMap');
+        const specular = glassCard.querySelector('.glass-specular');
+
+        function handleMouseMove(e) {
+            const rect = glassCard.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            if (filterMap) {
+                 const scaleX = (x / rect.width - 0.5) * 60; // Mapeia -30 a 30
+                 const scaleY = (y / rect.height - 0.5) * 60;
+                 const scale = Math.sqrt(scaleX*scaleX + scaleY*scaleY);
+                 filterMap.setAttribute('scale', 50 + scale);
+            }
+            
+            if (specular) {
+                specular.style.background = `radial-gradient(
+                    circle at ${x}px ${y}px,
+                    rgba(255,255,255,0.2) 0%,
+                    rgba(255,255,255,0.1) 20%,
+                    rgba(255,255,255,0) 50%
+                )`;
+            }
+        }
+        
+        function handleMouseLeave() {
+            if (filterMap) {
+                filterMap.setAttribute('scale', '77');
+            }
+            if (specular) {
+                specular.style.background = 'none';
+            }
+        }
+        
+        glassCard.addEventListener('mousemove', handleMouseMove);
+        glassCard.addEventListener('mouseleave', handleMouseLeave);
+
+        // Mostrar/Esconder Senha
+        function setupPasswordToggle(inputId, toggleId) {
+            const passwordInput = document.getElementById(inputId);
+            const toggleIcon = document.getElementById(toggleId);
+            if (passwordInput && toggleIcon) {
+                toggleIcon.addEventListener('click', () => {
+                    const isPassword = passwordInput.type === 'password';
+                    passwordInput.type = isPassword ? 'text' : 'password';
+                    toggleIcon.className = isPassword 
+                        ? 'ri-eye-fill toggle-password' 
+                        : 'ri-eye-off-fill toggle-password';
+                });
+            }
+        }
+        
+        setupPasswordToggle('login-password', 'login-toggle');
+        setupPasswordToggle('register-password', 'register-toggle');
+        setupPasswordToggle('confirm-password', 'confirm-toggle');
+    }
+    // --- FIM DA LÓGICA DA NOVA TELA ---
+
 
     const showAuthLoader = (show) => {
         authLoadingOverlay.style.display = show ? 'flex' : 'none';
@@ -190,6 +183,20 @@ document.addEventListener('DOMContentLoaded', () => {
         registerError.textContent = '';
         const email = document.getElementById('register-email').value;
         const password = document.getElementById('register-password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+
+        // Validação de confirmação de senha
+        if (password !== confirmPassword) {
+            registerError.textContent = "As senhas não coincidem.";
+            document.getElementById('register-password').classList.add('error');
+            document.getElementById('confirm-password').classList.add('error');
+            showAuthLoader(false);
+            return; // Impede o envio para o Firebase
+        } else {
+             document.getElementById('register-password').classList.remove('error');
+            document.getElementById('confirm-password').classList.remove('error');
+        }
+
 
         try {
             await createUserWithEmailAndPassword(auth, email, password);
@@ -716,7 +723,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let seasonsHtml = '';
         if (data.type === 'tv' && data.seasons) {
             const seasonNumbers = Object.keys(data.seasons).sort((a,b) => a - b);
-                 if (seasonNumbers.length > 0) {
+                if (seasonNumbers.length > 0) {
                          seasonsHtml = `
                              <div class="mt-12">
                                  <div class="flex items-center space-x-4 mb-4">
@@ -730,7 +737,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                  </div>
                                  <div id="episodes-container" class="min-h-[200px] relative"></div>
                              </div>`;
-                 }
+                }
         }
         
         const genresHtml = data.genres ? data.genres.map(g => `<span class="bg-purple-600/50 text-white text-xs px-3 py-1 rounded-full">${g}</span>`).join('') : '';
@@ -914,10 +921,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         case Hls.ErrorTypes.NETWORK_ERROR:
                             console.error("Erro de rede fatal;", data);
                             loaderContainer.innerHTML = `<div class="text-center text-red-400 p-4">
-                                                     <i data-lucide="alert-triangle" class="w-12 h-12 mx-auto mb-2"></i>
-                                                     <p class="font-bold">Erro ao carregar o vídeo.</p>
-                                                     <p class="text-sm text-stone-400">O vídeo pode não estar disponível ou há um problema de rede.</p>
-                                                 </div>`;
+                                                                <i data-lucide="alert-triangle" class="w-12 h-12 mx-auto mb-2"></i>
+                                                                <p class="font-bold">Erro ao carregar o vídeo.</p>
+                                                                <p class="text-sm text-stone-400">O vídeo pode não estar disponível ou há um problema de rede.</p>
+                                                            </div>`;
                             lucide.createIcons();
                             hls.destroy();
                             break;
@@ -1451,54 +1458,6 @@ document.addEventListener('DOMContentLoaded', () => {
         loadMyList();
         initEventListeners();
         handleLocationChange();
-        
-        // Add mouse movement interactivity to glass elements
-        const glassElements = document.querySelectorAll('.glass-card');
-        
-        // Add mousemove effect for each glass element
-        glassElements.forEach(element => {
-          element.addEventListener('mousemove', handleMouseMove);
-          element.addEventListener('mouseleave', handleMouseLeave);
-        });
-        
-        // Handle mouse movement over glass elements
-        function handleMouseMove(e) {
-          const rect = this.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
-          
-          // Update filter turbulence based on mouse position
-          const filter = document.querySelector('#glass-distortion feDisplacementMap');
-          if (filter) {
-            const scaleX = (x / rect.width) * 100;
-            const scaleY = (y / rect.height) * 100;
-            filter.setAttribute('scale', Math.min(scaleX, scaleY));
-          }
-          
-          // Add highlight effect
-          const specular = this.querySelector('.glass-specular');
-          if (specular) {
-            specular.style.background = `radial-gradient(
-              circle at ${x}px ${y}px,
-              rgba(255,255,255,0.15) 0%,
-              rgba(255,255,255,0.05) 30%,
-              rgba(255,255,255,0) 60%
-            )`;
-          }
-        }
-        
-        // Reset effects when mouse leaves
-        function handleMouseLeave() {
-          const filter = document.querySelector('#glass-distortion feDisplacementMap');
-          if (filter) {
-            filter.setAttribute('scale', '77');
-          }
-          
-          const specular = this.querySelector('.glass-specular');
-          if (specular) {
-            specular.style.background = 'none';
-          }
-        }
     }
 
 });
