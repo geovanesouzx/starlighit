@@ -330,6 +330,7 @@ input:-webkit-autofill:active {
 /* --- Media Query para Telas Menores (Mobile) --- */
 @media (max-width: 768px) {
     #auth-screen {
+        /* Fundo novo para a versão mobile */
         background-image: url('https://image.tmdb.org/t/p/original/8RivlvIUNxwrI9w9ypiC4ZzJ6S.jpg');
         background-size: cover;
         animation: pan-image 40s linear infinite alternate;
@@ -337,6 +338,20 @@ input:-webkit-autofill:active {
 
     .glass-card {
         width: 90%;
+        max-width: 400px;
+    }
+
+    .glass-card form {
+        padding: 25px 20px;
+    }
+
+    .glass-card h2 {
+        font-size: 32px;
+        margin-bottom: 15px;
+    }
+
+    .glass-card .input-box {
+        margin: 25px 0;
     }
 }
 
@@ -433,12 +448,13 @@ input:-webkit-autofill:active {
 .modal, #screen-details { transition: opacity 0.3s ease, visibility 0.3s ease; }
 .modal.hidden, #screen-details.hidden { opacity: 0; visibility: hidden; }
 
-/* Efeito Liquid Glass e Animações */
+/* Efeito Liquid Glass UNIFICADO */
 .liquid-glass {
-    background: rgba(41, 37, 36, 0.7); /* stone-800/70 */
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px); /* Para Safari */
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px); /* Para Safari */
+    filter: url(#glass-distortion) saturate(120%) brightness(1.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
@@ -639,4 +655,3 @@ input:-webkit-autofill:active {
         line-height: 1.5;
     }
 }
-
