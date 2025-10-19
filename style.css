@@ -166,12 +166,13 @@ form {
     color: #fff;
 }
 
+/* CORREÇÃO PARA O AUTOFILL DO NAVEGADOR */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus, 
 input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px rgba(0,0,0,0.15) inset !important;
-    -webkit-text-fill-color: #fff !important; 
+    -webkit-box-shadow: 0 0 0 30px rgba(28, 25, 23, 0.9) inset !important; /* Cor de fundo escura */
+    -webkit-text-fill-color: #fff !important; /* Cor do texto */
     transition: background-color 5000s ease-in-out 0s; 
 }
 
@@ -203,8 +204,10 @@ input:-webkit-autofill:active {
     transition: all 0.3s ease;
 }
 
+/* CORREÇÃO PARA O LABEL NO AUTOFILL */
 .input-box input:focus ~ label,
-.input-box input:not(:placeholder-shown) ~ label {
+.input-box input:not(:placeholder-shown) ~ label,
+.input-box input:-webkit-autofill ~ label {
     top: 0;
     left: 25px;
     transform: translateY(-50%);
@@ -636,3 +639,4 @@ input:-webkit-autofill:active {
         line-height: 1.5;
     }
 }
+
