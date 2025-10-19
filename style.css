@@ -110,11 +110,11 @@ body, .notification-content {
 
 /* Efeito Liquid Glass e Animações */
 .liquid-glass {
-    background: rgba(28, 25, 23, 0.7); /* stone-900/70 */
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px); /* Para Safari */
+    background: rgba(41, 37, 36, 0.7); /* stone-800/70 */
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px); /* Para Safari */
     border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 /* Estilos do Seletor de Temporada Customizado */

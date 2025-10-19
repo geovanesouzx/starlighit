@@ -646,7 +646,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        history.pushState({ playerOpen: true }, "");
+        history.pushState({ playerOpen: true }, "Player");
 
         let urlToLoad = originalUrl;
         try {
@@ -752,11 +752,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.fullscreenElement) {
             document.exitFullscreen();
         }
-        try {
-            if (screen.orientation && screen.orientation.unlock) {
-                screen.orientation.unlock();
-            }
-        } catch(e) { console.warn("Could not unlock orientation", e); }
         videoModal.classList.add('hidden');
         header.classList.remove('hidden');
         handleHeaderStyle();
@@ -1182,8 +1177,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('notifications-btn').addEventListener('click', () => {
             renderNotifications();
-            const modal = document.getElementById('modal-notificacoes');
-            modal.style.top = `${header.offsetHeight + 5}px`;
             toggleModal('modal-notificacoes');
             if (notifications.length > 0 && notifications[0].createdAt) {
                 const latestTimestamp = notifications[0].createdAt.toMillis ? notifications[0].createdAt.toMillis() : new Date(notifications[0].createdAt).getTime();
@@ -1228,9 +1221,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.addEventListener('popstate', (event) => {
             const videoModal = document.getElementById('modal-video');
-            if (videoModal && !videoModal.classList.contains('hidden')) {
-                stopVideo();
+            const isPlayerOpen = videoModal && !videoModal.classList.contains('hidden');
+            
+            if (isPlayerOpen && event.state?.playerOpen) {
+                 // This state was pushed by us, it means the player should just close
+                 stopVideo();
+            } else if (isPlayerOpen && !event.state?.playerOpen) {
+                 // The player is open but we're navigating away for real
+                 stopVideo();
+                 handleLocationChange();
             } else {
+                // Normal navigation
                 handleLocationChange();
             }
         });
