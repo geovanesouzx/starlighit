@@ -1,4 +1,85 @@
-// ... existing code ... -->
+// Firebase SDKs
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { 
+    getAuth, 
+    onAuthStateChanged,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signInWithPopup,
+    GoogleAuthProvider,
+    signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { 
+    getFirestore, 
+    collection, 
+    getDocs, 
+    onSnapshot, 
+    query, 
+    where, 
+    addDoc, 
+    serverTimestamp, 
+    updateDoc, 
+    doc, 
+    arrayUnion, 
+    getDoc, 
+    orderBy 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// Configuração do Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyA791i8R8Bmrn3toFxFltZ40TU7PUavev8",
+    authDomain: "starlight-max.firebaseapp.com",
+    projectId: "starlight-max",
+    storageBucket: "starlight-max.appspot.com",
+    messagingSenderId: "120477177511",
+    appId: "1:120477177511:web:5a75a2dd6d8089c829ed82"
+};
+
+// Inicialização do Firebase
+let app, db, auth;
+try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    auth = getAuth(app);
+    
+    // Disponibiliza no escopo global para o HTML (se necessário)
+    window.db = db;
+    window.getDocs = getDocs;
+    window.collection = collection;
+    window.onSnapshot = onSnapshot;
+    window.query = query;
+    window.where = where;
+    window.addDoc = addDoc;
+    window.serverTimestamp = serverTimestamp;
+    window.updateDoc = updateDoc;
+    window.doc = doc;
+    window.arrayUnion = arrayUnion;
+    window.getDoc = getDoc;
+    window.orderBy = orderBy;
+    console.log("Firebase Initialized Successfully");
+} catch (error) {
+    console.error("Firebase Initialization Error:", error);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+    
+    const TMDB_API_KEY = '5954890d9e9b723ff3032f2ec429fec3';
+    const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+    const TMDB_IMG_URL = 'https://image.tmdb.org/t/p/w500';
+    const TMDB_STILL_URL = 'https://image.tmdb.org/t/p/w300';
+
+    // ESTADO DA APLICAÇÃO
+    let myList = [];
+    let currentHeroItem = null;
+    let hls;
+    let firestoreContent = [];
+    let pendingRequests = [];
+    let userId = null; // Será definido pelo Firebase Auth
+    let featuredItemIds = [];
+    let heroCarouselInterval = null;
+    let notifications = [];
+    let lastNotificationCheck = localStorage.getItem('starlight-lastNotificationCheck') || 0;
     let dismissedNotifications = JSON.parse(localStorage.getItem('starlight-dismissedNotifications')) || [];
     let isAppInitialized = false;
 
@@ -11,103 +92,29 @@
     const googleSignInBtn = document.getElementById('google-signin-btn');
     const showRegisterLink = document.getElementById('show-register');
     const showLoginLink = document.getElementById('show-login');
+    const loginFormContainer = document.getElementById('login-form-container');
+    const registerFormContainer = document.getElementById('register-form-container');
     const loginError = document.getElementById('login-error');
     const registerError = document.getElementById('register-error');
     const authLoadingOverlay = document.getElementById('auth-loading-overlay');
     const logoutBtn = document.getElementById('logout-btn');
-    const glassCard = document.querySelector('.glass-card');
 
+    const toggleAuthForms = () => {
+        loginFormContainer.classList.toggle('hidden');
+        registerFormContainer.classList.toggle('hidden');
+        loginError.textContent = '';
+        registerError.textContent = '';
+    };
 
-    // --- LÓGICA DA NOVA TELA DE LOGIN ---
-    if (glassCard && loginForm && registerForm && showRegisterLink && showLoginLink) {
-        // Define a altura inicial
-        glassCard.style.height = loginForm.scrollHeight + 'px';
+    showRegisterLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleAuthForms();
+    });
 
-        showRegisterLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            loginForm.style.opacity = '0';
-            loginForm.style.transform = 'translateX(-120%)';
-            loginForm.style.pointerEvents = 'none';
-
-            registerForm.style.opacity = '1';
-            registerForm.style.transform = 'translateX(0)';
-            registerForm.style.pointerEvents = 'auto';
-            
-            glassCard.style.height = registerForm.scrollHeight + 'px';
-        });
-
-        showLoginLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            registerForm.style.opacity = '0';
-            registerForm.style.transform = 'translateX(120%)';
-            registerForm.style.pointerEvents = 'none';
-
-            loginForm.style.opacity = '1';
-            loginForm.style.transform = 'translateX(0)';
-            loginForm.style.pointerEvents = 'auto';
-            
-            glassCard.style.height = loginForm.scrollHeight + 'px';
-        });
-        
-        // Efeito interativo (Mouse Move)
-        const filterMap = document.querySelector('#glass-distortion feDisplacementMap');
-        const specular = glassCard.querySelector('.glass-specular');
-
-        function handleMouseMove(e) {
-            const rect = glassCard.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            if (filterMap) {
-                 const scaleX = (x / rect.width - 0.5) * 60; // Mapeia -30 a 30
-                 const scaleY = (y / rect.height - 0.5) * 60;
-                 const scale = Math.sqrt(scaleX*scaleX + scaleY*scaleY);
-                 filterMap.setAttribute('scale', 50 + scale);
-            }
-            
-            if (specular) {
-                specular.style.background = `radial-gradient(
-                    circle at ${x}px ${y}px,
-                    rgba(255,255,255,0.2) 0%,
-                    rgba(255,255,255,0.1) 20%,
-                    rgba(255,255,255,0) 50%
-                )`;
-            }
-        }
-        
-        function handleMouseLeave() {
-            if (filterMap) {
-                filterMap.setAttribute('scale', '77');
-            }
-            if (specular) {
-                specular.style.background = 'none';
-            }
-        }
-        
-        glassCard.addEventListener('mousemove', handleMouseMove);
-        glassCard.addEventListener('mouseleave', handleMouseLeave);
-
-        // Mostrar/Esconder Senha
-        function setupPasswordToggle(inputId, toggleId) {
-            const passwordInput = document.getElementById(inputId);
-            const toggleIcon = document.getElementById(toggleId);
-            if (passwordInput && toggleIcon) {
-                toggleIcon.addEventListener('click', () => {
-                    const isPassword = passwordInput.type === 'password';
-                    passwordInput.type = isPassword ? 'text' : 'password';
-                    toggleIcon.className = isPassword 
-                        ? 'ri-eye-fill toggle-password' 
-                        : 'ri-eye-off-fill toggle-password';
-                });
-            }
-        }
-        
-        setupPasswordToggle('login-password', 'login-toggle');
-        setupPasswordToggle('register-password', 'register-toggle');
-        setupPasswordToggle('confirm-password', 'confirm-toggle');
-    }
-    // --- FIM DA LÓGICA DA NOVA TELA ---
-
+    showLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleAuthForms();
+    });
 
     const showAuthLoader = (show) => {
         authLoadingOverlay.style.display = show ? 'flex' : 'none';
@@ -183,20 +190,6 @@
         registerError.textContent = '';
         const email = document.getElementById('register-email').value;
         const password = document.getElementById('register-password').value;
-        const confirmPassword = document.getElementById('confirm-password').value;
-
-        // Validação de confirmação de senha
-        if (password !== confirmPassword) {
-            registerError.textContent = "As senhas não coincidem.";
-            document.getElementById('register-password').classList.add('error');
-            document.getElementById('confirm-password').classList.add('error');
-            showAuthLoader(false);
-            return; // Impede o envio para o Firebase
-        } else {
-             document.getElementById('register-password').classList.remove('error');
-            document.getElementById('confirm-password').classList.remove('error');
-        }
-
 
         try {
             await createUserWithEmailAndPassword(auth, email, password);
@@ -389,7 +382,7 @@
                 searchInput.focus();
             }
              if (modalId === 'modal-perfil') {
-                 lucide.createIcons(); // Recria o ícone de logout se necessário
+                lucide.createIcons(); // Recria o ícone de logout se necessário
              }
         }
     };
@@ -724,19 +717,19 @@
         if (data.type === 'tv' && data.seasons) {
             const seasonNumbers = Object.keys(data.seasons).sort((a,b) => a - b);
                 if (seasonNumbers.length > 0) {
-                         seasonsHtml = `
-                             <div class="mt-12">
-                                 <div class="flex items-center space-x-4 mb-4">
-                                     <h3 class="text-2xl sm:text-3xl font-bold">Temporadas</h3>
-                                     <div id="custom-season-selector" class="custom-select-container">
-                                         <div class="custom-select-trigger"><span class="selected-option-text">${data.seasons[seasonNumbers[0]].title}</span></div>
-                                         <div class="custom-select-options">
-                                             ${seasonNumbers.map(num => `<div class="custom-select-option" data-value="${num}">${data.seasons[num].title}</div>`).join('')}
-                                         </div>
-                                     </div>
-                                 </div>
-                                 <div id="episodes-container" class="min-h-[200px] relative"></div>
-                             </div>`;
+                        seasonsHtml = `
+                            <div class="mt-12">
+                                <div class="flex items-center space-x-4 mb-4">
+                                    <h3 class="text-2xl sm:text-3xl font-bold">Temporadas</h3>
+                                    <div id="custom-season-selector" class="custom-select-container">
+                                        <div class="custom-select-trigger"><span class="selected-option-text">${data.seasons[seasonNumbers[0]].title}</span></div>
+                                        <div class="custom-select-options">
+                                            ${seasonNumbers.map(num => `<div class="custom-select-option" data-value="${num}">${data.seasons[num].title}</div>`).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="episodes-container" class="min-h-[200px] relative"></div>
+                            </div>`;
                 }
         }
         
@@ -748,26 +741,26 @@
             <div class="relative z-10">
                 <button id="close-details-btn" class="fixed top-5 right-5 z-20 bg-black/50 rounded-full p-2 hover:bg-black/80"><i data-lucide="x" class="w-6 h-6"></i></button>
                 <div class="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center min-h-screen pt-20 pb-12">
-                         <div class="w-full md:flex md:space-x-8 items-center">
-                             <div class="flex-shrink-0 w-40 md:w-64 mx-auto md:mx-0"><img src="${data.poster}" alt="Pôster" class="w-full h-auto rounded-lg shadow-2xl"></div>
-                             <div class="mt-6 md:mt-0 text-center md:text-left flex-grow">
-                                 <h1 class="text-3xl md:text-6xl font-bold">${data.title}</h1>
-                                 <div class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300">
-                                     <span>${data.year}</span>
-                                     ${getRatingBadge(data.rating)}
-                                     <span>Duração: ${durationDisplay}</span>
-                                 </div>
-                                 <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genresHtml}</div>
-                                 <div class="mt-4 max-w-2xl mx-auto md:mx-0">
-                                     <p id="details-synopsis" class="synopsis-truncated text-stone-300 text-sm leading-relaxed">${data.synopsis}</p>
-                                     <button id="details-toggle-synopsis" class="text-purple-400 font-semibold mt-1 hidden">Ler mais</button>
-                                 </div>
-                                 <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
-                                     ${watchButtonHtml}
-                                     <button data-list-btn-id="${data.docId}" id="details-list-btn" class="bg-white/20 backdrop-blur-sm text-white font-semibold py-3 px-8 rounded-full flex items-center space-x-2 text-lg hover:bg-white/30"><i data-lucide="plus" class="w-6 h-6"></i><span>Minha Lista</span></button>
-                                 </div>
-                             </div>
-                         </div>
+                        <div class="w-full md:flex md:space-x-8 items-center">
+                            <div class="flex-shrink-0 w-40 md:w-64 mx-auto md:mx-0"><img src="${data.poster}" alt="Pôster" class="w-full h-auto rounded-lg shadow-2xl"></div>
+                            <div class="mt-6 md:mt-0 text-center md:text-left flex-grow">
+                                <h1 class="text-3xl md:text-6xl font-bold">${data.title}</h1>
+                                <div class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300">
+                                    <span>${data.year}</span>
+                                    ${getRatingBadge(data.rating)}
+                                    <span>Duração: ${durationDisplay}</span>
+                                </div>
+                                <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genresHtml}</div>
+                                <div class="mt-4 max-w-2xl mx-auto md:mx-0">
+                                    <p id="details-synopsis" class="synopsis-truncated text-stone-300 text-sm leading-relaxed">${data.synopsis}</p>
+                                    <button id="details-toggle-synopsis" class="text-purple-400 font-semibold mt-1 hidden">Ler mais</button>
+                                </div>
+                                <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
+                                    ${watchButtonHtml}
+                                    <button data-list-btn-id="${data.docId}" id="details-list-btn" class="bg-white/20 backdrop-blur-sm text-white font-semibold py-3 px-8 rounded-full flex items-center space-x-2 text-lg hover:bg-white/30"><i data-lucide="plus" class="w-6 h-6"></i><span>Minha Lista</span></button>
+                                </div>
+                            </div>
+                        </div>
                 </div>
                 <div class="container mx-auto px-4 sm:px-6 lg:px-8 pb-12">${seasonsHtml}</div>
             </div>`;
@@ -921,10 +914,10 @@
                         case Hls.ErrorTypes.NETWORK_ERROR:
                             console.error("Erro de rede fatal;", data);
                             loaderContainer.innerHTML = `<div class="text-center text-red-400 p-4">
-                                                                <i data-lucide="alert-triangle" class="w-12 h-12 mx-auto mb-2"></i>
-                                                                <p class="font-bold">Erro ao carregar o vídeo.</p>
-                                                                <p class="text-sm text-stone-400">O vídeo pode não estar disponível ou há um problema de rede.</p>
-                                                            </div>`;
+                                                            <i data-lucide="alert-triangle" class="w-12 h-12 mx-auto mb-2"></i>
+                                                            <p class="font-bold">Erro ao carregar o vídeo.</p>
+                                                            <p class="text-sm text-stone-400">O vídeo pode não estar disponível ou há um problema de rede.</p>
+                                                        </div>`;
                             lucide.createIcons();
                             hls.destroy();
                             break;

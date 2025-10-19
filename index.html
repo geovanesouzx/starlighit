@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Starlight Play - Filmes e Séries</title>
-    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/128/705/705062.png">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/128/705/705/705062.png">
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -20,9 +20,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Remix Icons for new Auth Screen -->
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet"/>
-
     <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
@@ -31,76 +28,47 @@
     <!-- Tela de Autenticação -->
     <section id="auth-screen" class="fixed inset-0 z-[200] flex items-center justify-center p-4 transition-opacity duration-500">
         <div class="auth-background"></div>
-
-        <!-- SVG Filter para a Distorção do Vidro -->
-        <svg style="display: none">
-            <filter id="glass-distortion">
-                <feTurbulence type="turbulence" baseFrequency="0.008" numOctaves="2" result="noise" />
-                <feDisplacementMap in="SourceGraphic" in2="noise" scale="77" />
-            </filter>
-        </svg>
-
-        <div class="glass-card">
-            <div class="glass-filter"></div>
-            <div class="glass-overlay"></div>
-            <div class="glass-specular"></div>
-            <div class="glass-distortion-overlay"></div>
-
-            <div id="auth-loading-overlay" class="absolute inset-0 bg-stone-900/80 z-20 hidden items-center justify-center rounded-[20px]">
+        <div id="auth-container" class="liquid-glass rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div id="auth-loading-overlay" class="absolute inset-0 bg-stone-900/80 z-20 hidden items-center justify-center">
                  <div class="loader"></div>
             </div>
-
-            <!-- FORMULÁRIO DE LOGIN -->
-            <form action="#" id="login-form">
-                <h2>Entrar</h2>
-                <div class="input-box">
-                    <input type="email" id="login-email" required placeholder=" " autocomplete="email">
-                    <label for="login-email">Email</label>
-                    <i class="ri-mail-fill"></i>
-                </div>
-                <div class="input-box">
-                    <input type="password" id="login-password" required placeholder=" " autocomplete="current-password">
-                    <label for="login-password">Senha</label>
-                    <i class="ri-eye-off-fill toggle-password" id="login-toggle"></i>
-                </div>
-                <div class="options">
-                    <label><input type="checkbox"> Lembrar de mim</label>
-                    <a href="#">Esqueceu a senha?</a>
-                </div>
-                 <p id="login-error" class="text-red-400 text-sm text-center h-5 -mt-3 mb-3"></p>
-                <button type="submit" class="btn">Entrar</button>
-                <div class="social-login">
-                     <button type="button" id="google-signin-btn" class="social-btn"><i class="ri-google-fill"></i> Google</button>
-                </div>
-                <div class="switch-form">
-                    <p>Não tem uma conta? <a id="show-register">Crie uma</a></p>
-                </div>
-            </form>
-
-            <!-- FORMULÁRIO DE CADASTRO -->
-            <form action="#" id="register-form">
-                <h2>Criar Conta</h2>
-                 <div class="input-box">
-                    <input type="email" id="register-email" required placeholder=" " autocomplete="email">
-                    <label for="register-email">Email</label>
-                    <i class="ri-mail-fill"></i>
-                </div>
-                <div class="input-box">
-                    <input type="password" id="register-password" required placeholder=" " autocomplete="new-password">
-                    <label for="register-password">Senha</label>
-                    <i class="ri-eye-off-fill toggle-password" id="register-toggle"></i>
-                </div>
-                <div class="input-box">
-                    <input type="password" id="confirm-password" required placeholder=" " autocomplete="new-password">
-                    <label for="confirm-password">Confirmar Senha</label>
-                    <i class="ri-eye-off-fill toggle-password" id="confirm-toggle"></i>
-                </div>
-                 <p id="register-error" class="text-red-400 text-sm text-center h-5 -mt-3 mb-3"></p>
-                <button type="submit" class="btn">Registrar</button>
-                <div class="switch-form">
-                    <p>Já tem uma conta? <a id="show-login">Entrar</a></p>
-                </div>
-            </form>
+            <!-- Formulário de Login -->
+            <div id="login-form-container">
+                <form id="login-form" class="p-8">
+                    <h2 class="text-3xl font-bold text-center text-white mb-2">Bem-vindo de volta!</h2>
+                    <p class="text-stone-400 text-center mb-6">Entre para continuar na Starlight.</p>
+                    <div class="space-y-4">
+                        <input type="email" id="login-email" placeholder="Seu e-mail" class="auth-input" required>
+                        <input type="password" id="login-password" placeholder="Sua senha" class="auth-input" required>
+                    </div>
+                    <p id="login-error" class="text-red-400 text-sm text-center mt-4 h-5"></p>
+                    <button type="submit" class="auth-button-primary mt-6">Entrar</button>
+                    <div class="separator">ou entre com</div>
+                    <button type="button" id="google-signin-btn" class="auth-button-secondary">
+                        <svg class="w-5 h-5 mr-2" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.222,0-9.522-3.441-11.127-8.161l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C39.999,35.902,44,30.416,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                        Google
+                    </button>
+                    <p class="text-center text-sm text-stone-400 mt-6">
+                        Não tem uma conta? <a href="#" id="show-register" class="font-semibold text-purple-400 hover:text-purple-300">Cadastre-se</a>
+                    </p>
+                </form>
+            </div>
+            <!-- Formulário de Cadastro -->
+             <div id="register-form-container" class="hidden">
+                <form id="register-form" class="p-8">
+                    <h2 class="text-3xl font-bold text-center text-white mb-2">Crie sua Conta</h2>
+                    <p class="text-stone-400 text-center mb-6">É rápido e fácil!</p>
+                    <div class="space-y-4">
+                        <input type="email" id="register-email" placeholder="Seu e-mail" class="auth-input" required>
+                        <input type="password" id="register-password" placeholder="Crie uma senha" class="auth-input" required>
+                    </div>
+                    <p id="register-error" class="text-red-400 text-sm text-center mt-4 h-5"></p>
+                    <button type="submit" class="auth-button-primary mt-6">Cadastrar</button>
+                    <p class="text-center text-sm text-stone-400 mt-6">
+                        Já tem uma conta? <a href="#" id="show-login" class="font-semibold text-purple-400 hover:text-purple-300">Faça login</a>
+                    </p>
+                </form>
+            </div>
         </div>
     </section>
 
@@ -238,7 +206,7 @@
                      <span>Sair</span>
                  </button>
              </div>
-        </div>
+         </div>
         
         <!-- MODAL DO LEITOR DE VÍDEO -->
         <div id="modal-video" class="modal hidden fixed inset-0 bg-black z-[110] flex items-center justify-center">
