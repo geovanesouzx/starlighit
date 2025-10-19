@@ -83,10 +83,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let dismissedNotifications = JSON.parse(localStorage.getItem('starlight-dismissedNotifications')) || [];
     let isAppInitialized = false;
 
-    // --- LÓGICA DE AUTENTICAÇÃO E UI DA TELA DE LOGIN ---
+    // --- LÓGICA DE AUTENTICAÇÃO (NOVA UI) ---
     
     const authScreen = document.getElementById('auth-screen');
     const appContent = document.getElementById('app-content');
+    const glassCard = document.querySelector('.glass-card');
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
     const showRegisterLink = document.getElementById('show-register');
@@ -96,14 +97,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const registerError = document.getElementById('register-error');
     const authLoadingOverlay = document.getElementById('auth-loading-overlay');
     const logoutBtn = document.getElementById('logout-btn');
-    const glassCardAuth = authScreen.querySelector('.glass-card');
 
-    // Troca entre formulários de login e registro
-    const setupAuthFormToggle = () => {
-        const loginFormHeight = loginForm.scrollHeight;
-        const registerFormHeight = registerForm.scrollHeight;
-        
-        glassCardAuth.style.height = loginFormHeight + 'px';
+    // UI Logic for Auth Screen
+    const setupAuthScreenUI = () => {
+        // Define a altura inicial
+        if (glassCard && loginForm) {
+            glassCard.style.height = loginForm.scrollHeight + 'px';
+        }
 
         showRegisterLink.addEventListener('click', (e) => {
             e.preventDefault();
@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
             registerForm.style.transform = 'translateX(0)';
             registerForm.style.pointerEvents = 'auto';
             
-            glassCardAuth.style.height = registerFormHeight + 'px';
+            glassCard.style.height = registerForm.scrollHeight + 'px';
         });
 
         showLoginLink.addEventListener('click', (e) => {
@@ -128,28 +128,66 @@ document.addEventListener('DOMContentLoaded', () => {
             loginForm.style.transform = 'translateX(0)';
             loginForm.style.pointerEvents = 'auto';
             
-            glassCardAuth.style.height = loginFormHeight + 'px';
+            glassCard.style.height = loginForm.scrollHeight + 'px';
         });
-    };
-    setupAuthFormToggle();
+        
+        const filterMap = document.querySelector('#glass-distortion feDisplacementMap');
+        const specular = glassCard.querySelector('.glass-specular');
 
-    // Lógica para mostrar/esconder senha
-    const setupPasswordToggles = () => {
-        document.querySelectorAll('.toggle-password').forEach(toggle => {
-            toggle.addEventListener('click', () => {
-                const inputId = toggle.id.replace('-toggle', '-password');
-                const passwordInput = document.getElementById(inputId);
-                if (passwordInput) {
+        function handleMouseMove(e) {
+            const rect = glassCard.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            if (filterMap) {
+                const scaleX = (x / rect.width - 0.5) * 60;
+                const scaleY = (y / rect.height - 0.5) * 60;
+                const scale = Math.sqrt(scaleX*scaleX + scaleY*scaleY);
+                filterMap.setAttribute('scale', 50 + scale);
+            }
+            
+            if (specular) {
+                specular.style.background = `radial-gradient(
+                    circle at ${x}px ${y}px,
+                    rgba(255,255,255,0.2) 0%,
+                    rgba(255,255,255,0.1) 20%,
+                    rgba(255,255,255,0) 50%
+                )`;
+            }
+        }
+        
+        function handleMouseLeave() {
+            if (filterMap) {
+                filterMap.setAttribute('scale', '77');
+            }
+            if (specular) {
+                specular.style.background = 'none';
+            }
+        }
+        
+        glassCard.addEventListener('mousemove', handleMouseMove);
+        glassCard.addEventListener('mouseleave', handleMouseLeave);
+
+        function setupPasswordToggle(inputId, toggleId) {
+            const passwordInput = document.getElementById(inputId);
+            const toggleIcon = document.getElementById(toggleId);
+            if (passwordInput && toggleIcon) {
+                toggleIcon.addEventListener('click', () => {
                     const isPassword = passwordInput.type === 'password';
                     passwordInput.type = isPassword ? 'text' : 'password';
-                    toggle.className = isPassword 
+                    toggleIcon.className = isPassword 
                         ? 'ri-eye-fill toggle-password' 
                         : 'ri-eye-off-fill toggle-password';
-                }
-            });
-        });
+                });
+            }
+        }
+        
+        setupPasswordToggle('login-password', 'login-toggle');
+        setupPasswordToggle('register-password', 'register-toggle');
+        setupPasswordToggle('confirm-password', 'confirm-toggle');
     };
-    setupPasswordToggles();
+
+    setupAuthScreenUI();
 
     const showAuthLoader = (show) => {
         authLoadingOverlay.style.display = show ? 'flex' : 'none';
@@ -163,7 +201,6 @@ document.addEventListener('DOMContentLoaded', () => {
             userId = user.uid;
             console.log("Usuário logado:", userId);
 
-            // Atualiza UI do perfil
             const userAvatar = document.getElementById('user-avatar');
             const modalUserAvatar = document.getElementById('modal-user-avatar');
             const modalUserEmail = document.getElementById('modal-user-email');
@@ -172,10 +209,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 userAvatar.src = user.photoURL;
                 modalUserAvatar.src = user.photoURL;
             } else {
-                 const initial = (user.email || 'U').charAt(0).toUpperCase();
-                 const placeholder = `https://placehold.co/80x80/7e22ce/FFFFFF?text=${initial}`;
-                 userAvatar.src = placeholder;
-                 modalUserAvatar.src = placeholder;
+                const initial = (user.email || 'U').charAt(0).toUpperCase();
+                const placeholder = `https://placehold.co/80x80/7e22ce/FFFFFF?text=${initial}`;
+                userAvatar.src = placeholder;
+                modalUserAvatar.src = placeholder;
             }
             modalUserEmail.textContent = user.email;
 
@@ -195,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Submissão dos formulários
+    // Login com E-mail e Senha
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         showAuthLoader(true);
@@ -206,131 +243,97 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await signInWithEmailAndPassword(auth, email, password);
         } catch (error) {
+            console.error("Erro de login:", error.code);
             loginError.textContent = getAuthErrorMessage(error.code);
         } finally {
             showAuthLoader(false);
         }
     });
 
+    // Cadastro com E-mail e Senha
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const password = document.getElementById('register-password');
-        const confirm = document.getElementById('confirm-password');
-        
-        password.classList.remove('error');
-        confirm.classList.remove('error');
+        showAuthLoader(true);
         registerError.textContent = '';
+        
+        const passwordInput = document.getElementById('register-password');
+        const confirmPasswordInput = document.getElementById('confirm-password');
+        passwordInput.classList.remove('error');
+        confirmPasswordInput.classList.remove('error');
 
-        if (password.value !== confirm.value) {
+        if (passwordInput.value !== confirmPasswordInput.value) {
             registerError.textContent = 'As senhas não coincidem.';
-            password.classList.add('error');
-            confirm.classList.add('error');
+            passwordInput.classList.add('error');
+            confirmPasswordInput.classList.add('error');
+            showAuthLoader(false);
             return;
         }
-        
-        showAuthLoader(true);
+
         const email = document.getElementById('register-email').value;
+        const password = passwordInput.value;
 
         try {
-            await createUserWithEmailAndPassword(auth, email, password.value);
+            await createUserWithEmailAndPassword(auth, email, password);
         } catch (error) {
+            console.error("Erro de cadastro:", error.code);
             registerError.textContent = getAuthErrorMessage(error.code);
         } finally {
             showAuthLoader(false);
         }
     });
 
+    // Login com Google
     googleSignInBtn.addEventListener('click', async () => {
         showAuthLoader(true);
         const provider = new GoogleAuthProvider();
         try {
             await signInWithPopup(auth, provider);
         } catch (error) {
+            console.error("Erro de login com Google:", error.code);
             loginError.textContent = "Falha no login com Google.";
         } finally {
             showAuthLoader(false);
         }
     });
 
+    // Logout
     logoutBtn.addEventListener('click', async () => {
         try {
             await signOut(auth);
             closeAllModals();
         } catch (error) {
+            console.error("Erro ao sair:", error);
             showToast("Erro ao tentar sair.", true);
         }
     });
-    
+
     // Tradução de erros do Firebase
     function getAuthErrorMessage(errorCode) {
         switch (errorCode) {
-            case 'auth/invalid-email': return 'Formato de e-mail inválido.';
+            case 'auth/invalid-email':
+                return 'Formato de e-mail inválido.';
             case 'auth/user-not-found':
-            case 'auth/wrong-password': return 'E-mail ou senha incorretos.';
-            case 'auth/email-already-in-use': return 'Este e-mail já está cadastrado.';
-            case 'auth/weak-password': return 'A senha deve ter pelo menos 6 caracteres.';
-            case 'auth/too-many-requests': return 'Muitas tentativas. Tente novamente mais tarde.';
-            default: return 'Ocorreu um erro. Tente novamente.';
+            case 'auth/wrong-password':
+                return 'E-mail ou senha incorretos.';
+            case 'auth/email-already-in-use':
+                return 'Este e-mail já está cadastrado.';
+            case 'auth/weak-password':
+                return 'A senha deve ter pelo menos 6 caracteres.';
+            case 'auth/too-many-requests':
+                return 'Muitas tentativas. Tente novamente mais tarde.';
+            default:
+                return 'Ocorreu um erro. Tente novamente.';
         }
     }
     
-    // --- LÓGICA DO EFEITO INTERATIVO LIQUID GLASS ---
-    const setupGlassEffect = () => {
-        const filterMap = document.querySelector('#glass-distortion feDisplacementMap');
-
-        function handleMouseMove(e) {
-            const card = e.currentTarget;
-            const specular = card.querySelector('.glass-specular');
-            if (!specular) return;
-
-            const rect = card.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            if (filterMap) {
-                const scaleX = (x / rect.width - 0.5) * 60;
-                const scaleY = (y / rect.height - 0.5) * 60;
-                const scale = Math.sqrt(scaleX * scaleX + scaleY * scaleY);
-                filterMap.setAttribute('scale', 50 + scale);
-            }
-            
-            specular.style.background = `radial-gradient(
-                circle at ${x}px ${y}px,
-                rgba(255,255,255,0.2) 0%,
-                rgba(255,255,255,0.1) 20%,
-                rgba(255,255,255,0) 50%
-            )`;
-        }
-        
-        function handleMouseLeave(e) {
-            const card = e.currentTarget;
-            const specular = card.querySelector('.glass-specular');
-            if (!specular) return;
-
-            if (filterMap) {
-                filterMap.setAttribute('scale', '77');
-            }
-            specular.style.background = 'none';
-        }
-        
-        document.querySelectorAll('.glass-card').forEach(card => {
-            card.addEventListener('mousemove', handleMouseMove);
-            card.addEventListener('mouseleave', handleMouseLeave);
-        });
-    };
-    setupGlassEffect();
-
     // --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
-    
-    // --- FUNÇÕES DE UTILIDADE E UI ---
-    const header = document.getElementById('header');
-    const main = document.getElementById('main-content');
-    const detailsScreen = document.getElementById('screen-details');
 
+    // --- RATING UTILITY ---
     const getRatingBadge = (rating) => {
         if (!rating) return '';
-        const ratingValue = rating.replace(/\D/g, '');
+        const ratingValue = rating.replace(/\D/g, ''); 
         let colorClass = '';
+        
         switch (rating) {
             case 'Livre': colorClass = 'rating-Livre'; break;
             case '10': colorClass = 'rating-10'; break;
@@ -340,7 +343,9 @@ document.addEventListener('DOMContentLoaded', () => {
             case '18': colorClass = 'rating-18'; break;
             default: colorClass = 'bg-stone-500';
         }
+
         const displayValue = rating === 'Livre' ? 'L' : ratingValue;
+        
         return `<div class="rating-square ${colorClass}">${displayValue}</div>`;
     };
 
@@ -348,14 +353,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const minutes = parseInt(duration);
         if (isNaN(minutes) || minutes === 0) return 'N/A';
         if (minutes < 60) return `${minutes}m`;
+
         const hours = Math.floor(minutes / 60);
         const remainingMinutes = minutes % 60;
         let result = `${hours}h`;
         if (remainingMinutes > 0) result += ` ${remainingMinutes}m`;
         return result;
     };
-    
-    // Funções de Toast e Confirmação
+
+
+    // ELEMENTOS DOM
+    const header = document.getElementById('header');
+    const main = document.getElementById('main-content');
+    const detailsScreen = document.getElementById('screen-details');
+
+    // --- CUSTOM MODALS ---
     const toast = document.getElementById('toast-notification');
     const toastMessage = document.getElementById('toast-message');
     let toastTimeout;
@@ -396,10 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmOkBtn.addEventListener('click', handleOk, { once: true });
         confirmCancelBtn.addEventListener('click', hideConfirm, { once: true });
     }
-    
-    // ... O restante do seu script.js permanece o mesmo ...
-    // (Funções de busca, renderização de conteúdo, player de vídeo, etc.)
-    
+
     // --- SYNOPSIS TOGGLE ---
     function setupReadMore(textElement, buttonElement) {
         if (!textElement || !buttonElement) return;
@@ -1247,7 +1256,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('starlight-dismissedNotifications', JSON.stringify(dismissedNotifications));
                 updateNotificationBell(); 
             }
-            const notifItem = removeBtn.closest('.notification-item, a');
+            const notifItem = removeBtn.closest('.notification-item');
             if (notifItem) {
                 notifItem.style.transition = 'opacity 0.3s, height 0.3s';
                 notifItem.style.opacity = '0';
@@ -1526,4 +1535,3 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
-
