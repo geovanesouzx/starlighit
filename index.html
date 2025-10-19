@@ -24,6 +24,13 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="text-stone-200 pb-24 lg:pb-0 auth-state-unknown">
+    <!-- SVG Filter for Glass Distortion -->
+    <svg style="display: none">
+      <filter id="glass-distortion">
+        <feTurbulence type="turbulence" baseFrequency="0.008" numOctaves="2" result="noise" />
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="77" />
+      </filter>
+    </svg>
 
     <!-- Tela de Autenticação -->
     <section id="auth-screen" class="fixed inset-0 z-[200] flex items-center justify-center p-4 transition-opacity duration-500">
@@ -165,9 +172,19 @@
                     </div>
                 </div>
             </div>
-            <div id="screen-em-breve" class="screen hidden container mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
+            <div id="screen-em-breve" class="screen hidden container mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col items-center justify-center text-center">
                 <h1 class="text-4xl sm:text-5xl font-bold mb-8 pt-20">Em Breve</h1>
                 <p>Funcionalidade em desenvolvimento.</p>
+
+                <div class="glass-card mt-8">
+                  <div class="glass-filter"></div>
+                  <div class="glass-overlay"></div>
+                  <div class="glass-specular"></div>
+                  <div class="glass-content">
+                    <h3>Liquid Glass Card</h3>
+                    <p>Modern glassmorphism with distortion effects</p>
+                  </div>
+                </div>
             </div>
         </main>
 
@@ -206,7 +223,7 @@
                      <span>Sair</span>
                  </button>
              </div>
-         </div>
+        </div>
         
         <!-- MODAL DO LEITOR DE VÍDEO -->
         <div id="modal-video" class="modal hidden fixed inset-0 bg-black z-[110] flex items-center justify-center">
