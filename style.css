@@ -201,15 +201,6 @@ body, .notification-content {
 .modal, #screen-details { transition: opacity 0.3s ease, visibility 0.3s ease; }
 .modal.hidden, #screen-details.hidden { opacity: 0; visibility: hidden; }
 
-/* Efeito Liquid Glass e Animações */
-.liquid-glass {
-    background: rgba(41, 37, 36, 0.7); /* stone-800/70 */
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px); /* Para Safari */
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
 /* Estilos do Seletor de Temporada Customizado */
 .custom-select-container { position: relative; display: inline-block; color: var(--text-color); }
 .custom-select-trigger {
@@ -406,5 +397,83 @@ body, .notification-content {
     #details-synopsis {
         line-height: 1.5;
     }
+}
+
+/* Glass Card Container */
+.glass-card {
+  --bg-color: rgba(41, 37, 36, 0.7);
+  --highlight: rgba(255, 255, 255, 0.15);
+  --text: #ffffff;
+  
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+}
+
+.glass-filter,
+.glass-overlay,
+.glass-specular,
+.glass-distortion-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.glass-filter {
+  z-index: 1;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  filter: url(#glass-distortion) saturate(120%) brightness(1.15);
+}
+
+.glass-distortion-overlay {
+  background: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.05) 0%, transparent 80%),
+              radial-gradient(circle at 80% 70%, rgba(255,255,255,0.05) 0%, transparent 80%);
+  background-size: 300% 300%;
+  animation: floatDistort 10s infinite ease-in-out;
+  mix-blend-mode: overlay;
+  z-index: 2;
+  pointer-events: none;
+}
+
+@keyframes floatDistort {
+  0% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
+}
+
+
+.glass-overlay {
+  z-index: 2;
+  background: var(--bg-color);
+}
+
+.glass-specular {
+  z-index: 3;
+  box-shadow: inset 1px 1px 1px var(--highlight);
+}
+
+.glass-content {
+  position: relative;
+  z-index: 4;
+  padding: 20px;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.glass-content h3 {
+  margin: 0 0 10px 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.glass-content p {
+  margin: 0;
+  opacity: 0.8;
 }
 

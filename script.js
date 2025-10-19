@@ -382,7 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 searchInput.focus();
             }
              if (modalId === 'modal-perfil') {
-                lucide.createIcons(); // Recria o ícone de logout se necessário
+                 lucide.createIcons(); // Recria o ícone de logout se necessário
              }
         }
     };
@@ -716,21 +716,21 @@ document.addEventListener('DOMContentLoaded', () => {
         let seasonsHtml = '';
         if (data.type === 'tv' && data.seasons) {
             const seasonNumbers = Object.keys(data.seasons).sort((a,b) => a - b);
-                if (seasonNumbers.length > 0) {
-                        seasonsHtml = `
-                            <div class="mt-12">
-                                <div class="flex items-center space-x-4 mb-4">
-                                    <h3 class="text-2xl sm:text-3xl font-bold">Temporadas</h3>
-                                    <div id="custom-season-selector" class="custom-select-container">
-                                        <div class="custom-select-trigger"><span class="selected-option-text">${data.seasons[seasonNumbers[0]].title}</span></div>
-                                        <div class="custom-select-options">
-                                            ${seasonNumbers.map(num => `<div class="custom-select-option" data-value="${num}">${data.seasons[num].title}</div>`).join('')}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div id="episodes-container" class="min-h-[200px] relative"></div>
-                            </div>`;
-                }
+                 if (seasonNumbers.length > 0) {
+                         seasonsHtml = `
+                             <div class="mt-12">
+                                 <div class="flex items-center space-x-4 mb-4">
+                                     <h3 class="text-2xl sm:text-3xl font-bold">Temporadas</h3>
+                                     <div id="custom-season-selector" class="custom-select-container">
+                                         <div class="custom-select-trigger"><span class="selected-option-text">${data.seasons[seasonNumbers[0]].title}</span></div>
+                                         <div class="custom-select-options">
+                                             ${seasonNumbers.map(num => `<div class="custom-select-option" data-value="${num}">${data.seasons[num].title}</div>`).join('')}
+                                         </div>
+                                     </div>
+                                 </div>
+                                 <div id="episodes-container" class="min-h-[200px] relative"></div>
+                             </div>`;
+                 }
         }
         
         const genresHtml = data.genres ? data.genres.map(g => `<span class="bg-purple-600/50 text-white text-xs px-3 py-1 rounded-full">${g}</span>`).join('') : '';
@@ -741,26 +741,26 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="relative z-10">
                 <button id="close-details-btn" class="fixed top-5 right-5 z-20 bg-black/50 rounded-full p-2 hover:bg-black/80"><i data-lucide="x" class="w-6 h-6"></i></button>
                 <div class="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center min-h-screen pt-20 pb-12">
-                        <div class="w-full md:flex md:space-x-8 items-center">
-                            <div class="flex-shrink-0 w-40 md:w-64 mx-auto md:mx-0"><img src="${data.poster}" alt="Pôster" class="w-full h-auto rounded-lg shadow-2xl"></div>
-                            <div class="mt-6 md:mt-0 text-center md:text-left flex-grow">
-                                <h1 class="text-3xl md:text-6xl font-bold">${data.title}</h1>
-                                <div class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300">
-                                    <span>${data.year}</span>
-                                    ${getRatingBadge(data.rating)}
-                                    <span>Duração: ${durationDisplay}</span>
-                                </div>
-                                <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genresHtml}</div>
-                                <div class="mt-4 max-w-2xl mx-auto md:mx-0">
-                                    <p id="details-synopsis" class="synopsis-truncated text-stone-300 text-sm leading-relaxed">${data.synopsis}</p>
-                                    <button id="details-toggle-synopsis" class="text-purple-400 font-semibold mt-1 hidden">Ler mais</button>
-                                </div>
-                                <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
-                                    ${watchButtonHtml}
-                                    <button data-list-btn-id="${data.docId}" id="details-list-btn" class="bg-white/20 backdrop-blur-sm text-white font-semibold py-3 px-8 rounded-full flex items-center space-x-2 text-lg hover:bg-white/30"><i data-lucide="plus" class="w-6 h-6"></i><span>Minha Lista</span></button>
-                                </div>
-                            </div>
-                        </div>
+                         <div class="w-full md:flex md:space-x-8 items-center">
+                             <div class="flex-shrink-0 w-40 md:w-64 mx-auto md:mx-0"><img src="${data.poster}" alt="Pôster" class="w-full h-auto rounded-lg shadow-2xl"></div>
+                             <div class="mt-6 md:mt-0 text-center md:text-left flex-grow">
+                                 <h1 class="text-3xl md:text-6xl font-bold">${data.title}</h1>
+                                 <div class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300">
+                                     <span>${data.year}</span>
+                                     ${getRatingBadge(data.rating)}
+                                     <span>Duração: ${durationDisplay}</span>
+                                 </div>
+                                 <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genresHtml}</div>
+                                 <div class="mt-4 max-w-2xl mx-auto md:mx-0">
+                                     <p id="details-synopsis" class="synopsis-truncated text-stone-300 text-sm leading-relaxed">${data.synopsis}</p>
+                                     <button id="details-toggle-synopsis" class="text-purple-400 font-semibold mt-1 hidden">Ler mais</button>
+                                 </div>
+                                 <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
+                                     ${watchButtonHtml}
+                                     <button data-list-btn-id="${data.docId}" id="details-list-btn" class="bg-white/20 backdrop-blur-sm text-white font-semibold py-3 px-8 rounded-full flex items-center space-x-2 text-lg hover:bg-white/30"><i data-lucide="plus" class="w-6 h-6"></i><span>Minha Lista</span></button>
+                                 </div>
+                             </div>
+                         </div>
                 </div>
                 <div class="container mx-auto px-4 sm:px-6 lg:px-8 pb-12">${seasonsHtml}</div>
             </div>`;
@@ -914,10 +914,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         case Hls.ErrorTypes.NETWORK_ERROR:
                             console.error("Erro de rede fatal;", data);
                             loaderContainer.innerHTML = `<div class="text-center text-red-400 p-4">
-                                                            <i data-lucide="alert-triangle" class="w-12 h-12 mx-auto mb-2"></i>
-                                                            <p class="font-bold">Erro ao carregar o vídeo.</p>
-                                                            <p class="text-sm text-stone-400">O vídeo pode não estar disponível ou há um problema de rede.</p>
-                                                        </div>`;
+                                                     <i data-lucide="alert-triangle" class="w-12 h-12 mx-auto mb-2"></i>
+                                                     <p class="font-bold">Erro ao carregar o vídeo.</p>
+                                                     <p class="text-sm text-stone-400">O vídeo pode não estar disponível ou há um problema de rede.</p>
+                                                 </div>`;
                             lucide.createIcons();
                             hls.destroy();
                             break;
@@ -1451,6 +1451,54 @@ document.addEventListener('DOMContentLoaded', () => {
         loadMyList();
         initEventListeners();
         handleLocationChange();
+        
+        // Add mouse movement interactivity to glass elements
+        const glassElements = document.querySelectorAll('.glass-card');
+        
+        // Add mousemove effect for each glass element
+        glassElements.forEach(element => {
+          element.addEventListener('mousemove', handleMouseMove);
+          element.addEventListener('mouseleave', handleMouseLeave);
+        });
+        
+        // Handle mouse movement over glass elements
+        function handleMouseMove(e) {
+          const rect = this.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          
+          // Update filter turbulence based on mouse position
+          const filter = document.querySelector('#glass-distortion feDisplacementMap');
+          if (filter) {
+            const scaleX = (x / rect.width) * 100;
+            const scaleY = (y / rect.height) * 100;
+            filter.setAttribute('scale', Math.min(scaleX, scaleY));
+          }
+          
+          // Add highlight effect
+          const specular = this.querySelector('.glass-specular');
+          if (specular) {
+            specular.style.background = `radial-gradient(
+              circle at ${x}px ${y}px,
+              rgba(255,255,255,0.15) 0%,
+              rgba(255,255,255,0.05) 30%,
+              rgba(255,255,255,0) 60%
+            )`;
+          }
+        }
+        
+        // Reset effects when mouse leaves
+        function handleMouseLeave() {
+          const filter = document.querySelector('#glass-distortion feDisplacementMap');
+          if (filter) {
+            filter.setAttribute('scale', '77');
+          }
+          
+          const specular = this.querySelector('.glass-specular');
+          if (specular) {
+            specular.style.background = 'none';
+          }
+        }
     }
 
 });
