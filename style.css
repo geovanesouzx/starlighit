@@ -171,7 +171,7 @@ input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus, 
 input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px rgba(28, 25, 23, 0.9) inset !important; /* Cor de fundo escura */
+    -webkit-box-shadow: 0 0 0 30px rgba(255, 255, 255, 0.08) inset !important; /* Cor de fundo translúcida original */
     -webkit-text-fill-color: #fff !important; /* Cor do texto */
     transition: background-color 5000s ease-in-out 0s; 
 }
@@ -214,7 +214,7 @@ input:-webkit-autofill:active {
     font-size: 13px;
     color: #fff;
     padding: 0 5px;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(12, 10, 9, 0.8); /* Fundo escuro para o label flutuante */
     border-radius: 4px;
 }
 
