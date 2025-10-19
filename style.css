@@ -231,3 +231,12 @@ body, .notification-content {
     margin-top: 0.25rem;
 }
 
+/* Mobile Navigation Styles */
+.mobile-nav-link {
+    color: #a1a1aa; /* stone-400 */
+    text-align: center;
+    transition: color 0.2s ease-in-out;
+}
+.mobile-nav-link.active-nav-mobile {
+    color: #e7e5e4; /* stone-200 */
+}

@@ -58,22 +58,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const ratingValue = rating.replace(/\D/g, ''); // Extracts numbers (e.g., '12')
         let colorClass = '';
         
-        // Map ratings to the new color scheme
         switch (rating) {
-            case 'Livre':
-                colorClass = 'rating-Livre'; break; // Verde
-            case '10':
-                colorClass = 'rating-10'; break; // Azul
-            case '12':
-                colorClass = 'rating-12'; break; // Amarelo
-            case '14':
-                colorClass = 'rating-14'; break; // Laranja
-            case '16':
-                colorClass = 'rating-16'; break; // Vermelho
-            case '18':
-                colorClass = 'rating-18'; break; // Preto
-            default:
-                colorClass = 'bg-stone-500'; // Fallback
+            case 'Livre': colorClass = 'rating-Livre'; break;
+            case '10': colorClass = 'rating-10'; break;
+            case '12': colorClass = 'rating-12'; break;
+            case '14': colorClass = 'rating-14'; break;
+            case '16': colorClass = 'rating-16'; break;
+            case '18': colorClass = 'rating-18'; break;
+            default: colorClass = 'bg-stone-500';
         }
 
         const displayValue = rating === 'Livre' ? 'L' : ratingValue;
@@ -82,15 +74,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const formatDuration = (duration) => {
-          const minutes = parseInt(duration);
-          if (isNaN(minutes) || minutes === 0) return 'N/A';
-          if (minutes < 60) return `${minutes}m`;
+        const minutes = parseInt(duration);
+        if (isNaN(minutes) || minutes === 0) return 'N/A';
+        if (minutes < 60) return `${minutes}m`;
 
-          const hours = Math.floor(minutes / 60);
-          const remainingMinutes = minutes % 60;
-          let result = `${hours}h`;
-          if (remainingMinutes > 0) result += ` ${remainingMinutes}m`;
-          return result;
+        const hours = Math.floor(minutes / 60);
+        const remainingMinutes = minutes % 60;
+        let result = `${hours}h`;
+        if (remainingMinutes > 0) result += ` ${remainingMinutes}m`;
+        return result;
     };
 
 
@@ -143,7 +135,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- FUNÇÕES DE UTILIDADE E UI ---
-    // Utility function to shuffle an array (Fisher-Yates)
     function shuffleArray(array) {
         for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -177,13 +168,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const closeAllModals = () => {
-          document.querySelectorAll('.modal').forEach(m => {
-              if(m.id !== 'modal-video') m.classList.add('hidden');
-          });
-          const searchInput = document.getElementById('search-input');
-          if(searchInput) searchInput.value = '';
-          const searchResults = document.getElementById('search-results-container');
-          if(searchResults) searchResults.innerHTML = '';
+        document.querySelectorAll('.modal').forEach(m => {
+            if(m.id !== 'modal-video') m.classList.add('hidden');
+        });
+        const searchInput = document.getElementById('search-input');
+        if(searchInput) searchInput.value = '';
+        const searchResults = document.getElementById('search-results-container');
+        if(searchResults) searchResults.innerHTML = '';
     }
 
     const handleHeaderStyle = () => {
@@ -256,7 +247,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchFeaturedItems() {
         if (!window.db) return;
         try {
-            // Fetch the data once immediately, as listener is async
             const docSnap = await window.getDoc(window.doc(window.db, 'config', 'featured'));
             if (docSnap.exists()) {
                 featuredItemIds = docSnap.data().items || [];
@@ -271,21 +261,18 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(listenToFirestoreContent, 500);
             return;
         }
-        // Use onSnapshot for real-time updates on content
         window.onSnapshot(window.collection(window.db, 'content'), (snapshot) => {
             firestoreContent = [];
             snapshot.forEach(doc => {
                 firestoreContent.push({ docId: doc.id, ...doc.data() });
             });
             console.log("Conteúdo do Firestore atualizado em tempo real!", firestoreContent.length);
-            // Trigger full UI refresh if we are on the home screen
             const currentScreen = location.hash.slice(1) || 'screen-home';
             if (currentScreen === 'screen-home' || currentScreen === 'screen-filmes' || currentScreen === 'screen-series') {
                 renderScreenContent(currentScreen, true);
             }
         });
 
-        // Use onSnapshot for real-time updates on featured items
         window.onSnapshot(window.doc(window.db, 'config', 'featured'), (docSnap) => {
             featuredItemIds = docSnap.exists() ? (docSnap.data().items || []) : [];
              console.log("Destaques atualizados em tempo real!");
@@ -295,23 +282,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Função para buscar lançamentos no TMDB e filtrar pelo catálogo
     async function fetchNewReleases() {
         const url = `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&language=pt-BR&sort_by=release_date.desc&include_adult=false&include_video=false&page=1&primary_release_date.lte=${new Date().toISOString().split('T')[0]}`;
-         try {
+        try {
             const response = await fetch(url);
             const data = await response.json();
             
             if (!data || !data.results) return [];
 
-            // Filtra os 20 lançamentos mais recentes que JÁ ESTÃO no nosso catálogo
             const newReleases = data.results
-                .filter(movie => movie.release_date && movie.release_date.substring(0,4) >= (new Date().getFullYear() - 1)) // Filtra por filmes lançados no último ano
+                .filter(movie => movie.release_date && movie.release_date.substring(0,4) >= (new Date().getFullYear() - 1))
                 .map(movie => firestoreContent.find(item => String(item.tmdb_id) === String(movie.id)))
                 .filter(item => item !== undefined)
                 .slice(0, 20); 
 
-            // Embaralha para que não fiquem na ordem estrita do TMDB
             return shuffleArray(newReleases);
 
         } catch (error) {
@@ -345,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const createGridCard = (item) => {
-         if (!item || !item.poster) return '';
+        if (!item || !item.poster) return '';
         const posterPath = item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
         return `<a href="#details/${item.docId}" class="group block cursor-pointer"><div class="relative aspect-[2/3] rounded-lg overflow-hidden bg-stone-800"><img src="${posterPath}" alt="Pôster de ${item.title}" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"></div><h4 class="text-white text-sm mt-2 truncate">${item.title}</h4></a>`;
     };
@@ -380,7 +364,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const screenElement = document.getElementById(screenId);
         if (!screenElement) return;
         
-        // Render Home Screen
         if (screenId === 'screen-home') {
             const carouselsContainer = document.getElementById('home-carousels');
             showLoader(carouselsContainer);
@@ -401,7 +384,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 heroBgImage.src = item.backdrop || '';
                 heroTitle.textContent = item.title;
                 
-                // Display details
                 const durationDisplay = item.type === 'movie' ? formatDuration(item.duration.replace(/\D/g, '')) : item.duration;
                 const genresDisplay = item.genres ? item.genres.slice(0, 3).join(' • ') : '';
                 
@@ -429,11 +411,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         setTimeout(() => {
                             updateHeroUI(featuredItems[currentFeaturedIndex]);
                             heroSection.classList.remove('fading');
-                        }, 700); // Should match transition duration
+                        }, 700);
                     }, 5000);
                 }
             } else if (firestoreContent.length > 0) {
-                // Fallback to a random item if no featured items are set
                 updateHeroUI(firestoreContent[Math.floor(Math.random() * firestoreContent.length)]);
             } else {
                 heroSection.innerHTML = '<p class="text-center">Nenhum conteúdo para exibir.</p>';
@@ -441,7 +422,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             carouselsContainer.innerHTML = '';
             
-            // 1. Carrossel: Adicionado Recentemente (os 10 últimos)
             const recentlyAdded = [...firestoreContent]
                 .sort((a, b) => {
                     const dateA = a.addedAt?.toMillis ? a.addedAt.toMillis() : 0;
@@ -451,16 +431,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 .slice(0, 10);
             createCarousel(carouselsContainer, "Adicionado Recentemente", recentlyAdded);
 
-            // 2. Carrossel: Lançamentos (TMDB)
             const newReleases = await fetchNewReleases();
             createCarousel(carouselsContainer, "Lançamentos", newReleases);
             
-            // 3. Carrosséis por Gênero
             const allGenres = [...new Set(firestoreContent.flatMap(item => item.genres || []))].filter(g => g && g !== 'Documentário');
             
             for (const genre of shuffleArray(allGenres)) {
                 const filteredContent = firestoreContent.filter(item => item.genres && item.genres.includes(genre));
-                // Shuffle content inside genre carousels to avoid repetition
                 createCarousel(carouselsContainer, genre, shuffleArray(filteredContent));
             }
 
@@ -471,7 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (screenId === 'screen-minha-lista') {
             const grid = document.getElementById('minha-lista-grid');
             const myListItems = myList.map(listItem => firestoreContent.find(content => content.docId === listItem.docId)).filter(Boolean);
-            if (myListItems.length > 0) grid.innerHTML = myListItems.map(item => createContentCard(item)).join('');
+            if (myListItems.length > 0) grid.innerHTML = myListItems.map(item => createGridCard(item)).join('');
             else grid.innerHTML = '<p class="col-span-full text-center text-stone-400">Sua lista está vazia.</p>';
         } else if (screenId === 'screen-pedidos') {
             renderPendingRequests();
@@ -479,7 +456,6 @@ document.addEventListener('DOMContentLoaded', () => {
         lucide.createIcons();
     }
 
-    // --- FILTER AND GRID RENDERING LOGIC ---
     function renderFilteredGrid(type) {
         const gridId = type === 'tv' ? 'series-grid' : 'filmes-grid';
         const grid = document.getElementById(gridId);
@@ -490,7 +466,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let content = firestoreContent.filter(item => item.type === type);
 
         if (content.length > 0) {
-            // Keep list dynamic (shuffled)
             grid.innerHTML = shuffleArray(content).map(item => createGridCard(item)).join('');
         } else {
             showError(grid, 'Nenhum conteúdo encontrado.');
@@ -518,21 +493,21 @@ document.addEventListener('DOMContentLoaded', () => {
         let seasonsHtml = '';
         if (data.type === 'tv' && data.seasons) {
             const seasonNumbers = Object.keys(data.seasons).sort((a,b) => a - b);
-               if (seasonNumbers.length > 0) {
-                     seasonsHtml = `
-                          <div class="mt-12">
-                              <div class="flex items-center space-x-4 mb-4">
-                                  <h3 class="text-2xl sm:text-3xl font-bold">Temporadas</h3>
-                                  <div id="custom-season-selector" class="custom-select-container">
-                                      <div class="custom-select-trigger liquid-glass"><span class="selected-option-text">${data.seasons[seasonNumbers[0]].title}</span></div>
-                                      <div class="custom-select-options liquid-glass">
-                                          ${seasonNumbers.map(num => `<div class="custom-select-option" data-value="${num}">${data.seasons[num].title}</div>`).join('')}
-                                      </div>
-                                  </div>
-                              </div>
-                              <div id="episodes-container" class="min-h-[200px] relative"></div>
-                          </div>`;
-               }
+                if (seasonNumbers.length > 0) {
+                        seasonsHtml = `
+                            <div class="mt-12">
+                                <div class="flex items-center space-x-4 mb-4">
+                                    <h3 class="text-2xl sm:text-3xl font-bold">Temporadas</h3>
+                                    <div id="custom-season-selector" class="custom-select-container">
+                                        <div class="custom-select-trigger liquid-glass"><span class="selected-option-text">${data.seasons[seasonNumbers[0]].title}</span></div>
+                                        <div class="custom-select-options liquid-glass">
+                                            ${seasonNumbers.map(num => `<div class="custom-select-option" data-value="${num}">${data.seasons[num].title}</div>`).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="episodes-container" class="min-h-[200px] relative"></div>
+                            </div>`;
+                }
         }
         
         const genresHtml = data.genres ? data.genres.map(g => `<span class="bg-purple-600/50 text-white text-sm px-3 py-1 rounded-full">${g}</span>`).join('') : '';
@@ -543,23 +518,23 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="relative z-10">
                 <button id="close-details-btn" class="fixed top-5 right-5 z-20 bg-black/50 rounded-full p-2 hover:bg-black/80"><i data-lucide="x" class="w-6 h-6"></i></button>
                 <div class="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center min-h-screen pt-20 pb-12">
-                     <div class="w-full md:flex md:space-x-8 items-center">
-                        <div class="flex-shrink-0 w-48 md:w-64 mx-auto md:mx-0"><img src="${data.poster}" alt="Pôster" class="w-full h-auto rounded-lg shadow-2xl"></div>
-                        <div class="mt-6 md:mt-0 text-center md:text-left flex-grow">
-                            <h1 class="text-5xl md:text-6xl font-bold">${data.title}</h1>
-                            <div class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-lg text-stone-300">
-                                <span>${data.year}</span>
-                                ${getRatingBadge(data.rating)}
-                                <span>Duração: ${durationDisplay}</span>
-                            </div>
-                            <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genresHtml}</div>
-                            <div class="mt-4 max-w-2xl mx-auto md:mx-0"><p class="text-stone-300 text-base leading-relaxed">${data.synopsis}</p></div>
-                            <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
-                                ${watchButtonHtml}
-                                <button data-list-btn-id="${data.docId}" id="details-list-btn" class="bg-white/20 backdrop-blur-sm text-white font-semibold py-4 px-10 rounded-full flex items-center space-x-2 text-xl hover:bg-white/30"><i data-lucide="plus" class="w-6 h-6"></i><span>Minha Lista</span></button>
+                        <div class="w-full md:flex md:space-x-8 items-center">
+                            <div class="flex-shrink-0 w-48 md:w-64 mx-auto md:mx-0"><img src="${data.poster}" alt="Pôster" class="w-full h-auto rounded-lg shadow-2xl"></div>
+                            <div class="mt-6 md:mt-0 text-center md:text-left flex-grow">
+                                <h1 class="text-5xl md:text-6xl font-bold">${data.title}</h1>
+                                <div class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-lg text-stone-300">
+                                    <span>${data.year}</span>
+                                    ${getRatingBadge(data.rating)}
+                                    <span>Duração: ${durationDisplay}</span>
+                                </div>
+                                <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genresHtml}</div>
+                                <div class="mt-4 max-w-2xl mx-auto md:mx-0"><p class="text-stone-300 text-base leading-relaxed">${data.synopsis}</p></div>
+                                <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
+                                    ${watchButtonHtml}
+                                    <button data-list-btn-id="${data.docId}" id="details-list-btn" class="bg-white/20 backdrop-blur-sm text-white font-semibold py-4 px-10 rounded-full flex items-center space-x-2 text-xl hover:bg-white/30"><i data-lucide="plus" class="w-6 h-6"></i><span>Minha Lista</span></button>
+                                </div>
                             </div>
                         </div>
-                    </div>
                 </div>
                 <div class="container mx-auto px-4 sm:px-6 lg:px-8 pb-12">${seasonsHtml}</div>
             </div>`;
@@ -572,9 +547,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         updateAllMyListButtons(data.docId);
 
-         if (data.type === 'tv' && data.seasons) {
-             setupSeasonSelector(data);
-         }
+        if (data.type === 'tv' && data.seasons) {
+            setupSeasonSelector(data);
+        }
         lucide.createIcons();
     }
     
@@ -642,6 +617,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
+        // Adiciona um estado ao histórico para lidar com o botão "voltar"
+        history.pushState({ playerOpen: true }, "");
+
         let urlToLoad = originalUrl;
         try {
             const urlObject = new URL(originalUrl);
@@ -673,8 +651,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const isHlsStream = urlToLoad.includes('.m3u8');
 
         if (Hls.isSupported() && isHlsStream) {
-             const hlsConfig = { startLevel: -1, capLevelToPlayerSize: true, maxBufferSize: 120, maxBufferLength: 30 };
-             hls = new Hls(hlsConfig);
+            const hlsConfig = { startLevel: -1, capLevelToPlayerSize: true, maxBufferSize: 120, maxBufferLength: 30 };
+            hls = new Hls(hlsConfig);
             hls.loadSource(urlToLoad);
             hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -687,9 +665,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         case Hls.ErrorTypes.NETWORK_ERROR:
                             console.error("Erro de rede fatal;", data);
                             loaderContainer.innerHTML = `<div class="text-center text-red-400 p-4">
-                                                          <i data-lucide="alert-triangle" class="w-12 h-12 mx-auto mb-2"></i>
-                                                          <p class="font-bold">Erro ao carregar o vídeo.</p>
-                                                          <p class="text-sm text-stone-400">O vídeo pode não estar disponível ou há um problema de rede.</p>
+                                                            <i data-lucide="alert-triangle" class="w-12 h-12 mx-auto mb-2"></i>
+                                                            <p class="font-bold">Erro ao carregar o vídeo.</p>
+                                                            <p class="text-sm text-stone-400">O vídeo pode não estar disponível ou há um problema de rede.</p>
                                                         </div>`;
                             lucide.createIcons();
                             hls.destroy();
@@ -747,7 +725,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const fullscreenBtn = document.getElementById('player-fullscreen-btn');
         const backBtn = document.getElementById('player-back-btn');
 
-        backBtn.addEventListener('click', stopVideo);
+        backBtn.addEventListener('click', () => {
+            // Usa o histórico para voltar, o que acionará o popstate listener
+            history.back();
+        });
 
         const formatTime = (seconds) => {
             if (isNaN(seconds)) return '00:00';
@@ -846,7 +827,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const latestTimestamp = notifications[0].createdAt ? (notifications[0].createdAt.toMillis ? notifications[0].createdAt.toMillis() : new Date(notifications[0].createdAt).getTime()) : 0;
         
-        // Check if there's a new notification that hasn't been dismissed (if it's a Novidade)
         const newUndismissedNotification = notifications.find(n => {
             const notifTime = n.createdAt ? (n.createdAt.toMillis ? n.createdAt.toMillis() : new Date(n.createdAt).getTime()) : 0;
             const isNew = notifTime > lastNotificationCheck;
@@ -891,7 +871,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     </a>`;
             }
             
-            // Non-clickable notification item
             return `<div class="${classes}">${contentHTML} ${dismissBtn}</div>`;
         };
 
@@ -900,20 +879,18 @@ document.addEventListener('DOMContentLoaded', () => {
         
         lucide.createIcons();
         
-        // Set active tab if novidades has new items
         if (novidades.length > 0) {
-              document.querySelectorAll('.notification-tab').forEach(tab => tab.classList.remove('active'));
-              document.querySelectorAll('.notification-content').forEach(content => content.classList.remove('active'));
-              document.querySelector('[data-tab="novidades"]').classList.add('active');
-              document.getElementById('notifications-novidades').classList.add('active');
+            document.querySelectorAll('.notification-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.notification-content').forEach(content => content.classList.remove('active'));
+            document.querySelector('[data-tab="novidades"]').classList.add('active');
+            document.getElementById('notifications-novidades').classList.add('active');
         } else {
-              document.querySelector('[data-tab="avisos"]').classList.add('active');
-              document.getElementById('notifications-avisos').classList.add('active');
+            document.querySelector('[data-tab="avisos"]').classList.add('active');
+            document.getElementById('notifications-avisos').classList.add('active');
         }
     }
 
     document.getElementById('modal-notificacoes').addEventListener('click', (e) => {
-        // Handle tab switching
         if (e.target.matches('.notification-tab')) {
             document.querySelectorAll('.notification-tab').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.notification-content').forEach(content => content.classList.remove('active'));
@@ -921,7 +898,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById(`notifications-${e.target.dataset.tab}`).classList.add('active');
         }
 
-        // Handle dismiss button
         const removeBtn = e.target.closest('.remove-notification-btn');
         if (removeBtn) {
             const notifId = removeBtn.dataset.notifId;
@@ -936,12 +912,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 notifItem.style.opacity = '0';
                 notifItem.style.height = '0';
                 setTimeout(() => {
-                   // Remove the associated separator HR element as well
-                   let hr = notifItem.nextElementSibling;
-                   if (hr && hr.tagName === 'HR') hr.remove();
-                   notifItem.remove();
-                   // Re-render if both lists are empty
-                   if (document.getElementById('notifications-novidades').children.length === 0) renderNotifications();
+                    let hr = notifItem.nextElementSibling;
+                    if (hr && hr.tagName === 'HR') hr.remove();
+                    notifItem.remove();
+                    if (document.getElementById('notifications-novidades').children.length === 0) renderNotifications();
                 }, 300);
             }
         }
@@ -951,10 +925,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- NAVEGAÇÃO E ROTEAMENTO ---
     const handleLocationChange = () => {
         clearInterval(heroCarouselInterval);
-        const isPlayerOpen = !document.getElementById('modal-video').classList.contains('hidden');
-        if (isPlayerOpen) {
-            stopVideo();
-        }
+        
         closeAllModals();
 
         const hash = location.hash;
@@ -969,13 +940,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const activeScreen = document.getElementById(screenId);
             if (activeScreen) {
                 activeScreen.classList.remove('hidden');
-                renderScreenContent(screenId, true); // Force reload to get fresh data/carousels
+                renderScreenContent(screenId, true);
             } else {
                 document.getElementById('screen-home').classList.remove('hidden');
                 renderScreenContent('screen-home', true);
             }
+            // Atualiza navs de desktop e mobile
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.toggle('active-nav', link.dataset.screen === screenId);
+            });
+            document.querySelectorAll('.mobile-nav-link').forEach(link => {
+                link.classList.toggle('active-nav-mobile', link.dataset.screen === screenId);
             });
         }
         handleHeaderStyle();
@@ -1000,8 +975,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function searchTMDBForRequest(query) {
-         const url = `${TMDB_BASE_URL}/search/multi?api_key=${TMDB_API_KEY}&language=pt-BR&query=${encodeURIComponent(query)}`;
-         try {
+        const url = `${TMDB_BASE_URL}/search/multi?api_key=${TMDB_API_KEY}&language=pt-BR&query=${encodeURIComponent(query)}`;
+        try {
             const response = await fetch(url);
             const data = await response.json();
             const validResults = data.results.filter(r => (r.media_type === 'movie' || r.media_type === 'tv') && r.poster_path);
@@ -1033,7 +1008,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.handleRequestSelection = async (item) => {
-         // 1. Check if item already exists in catalog
         const existingItem = firestoreContent.find(c => String(c.tmdb_id) === String(item.id));
         if (existingItem) {
             showToast("Este item já está disponível no catálogo!");
@@ -1041,14 +1015,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 2. Check if a pending request already exists
         const existingRequest = pendingRequests.find(r => String(r.tmdbId) === String(item.id));
         if (existingRequest) {
             showToast("Este item já foi solicitado. Você pode votar nele na lista abaixo.");
             return;
         }
         
-        // 3. Create new request
         showConfirm('Confirmar Pedido', `Tem a certeza que quer pedir "${item.title || item.name}"?`, async () => {
             try {
                 const newRequest = {
@@ -1122,7 +1094,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- INICIALIZAÇÃO E EVENT LISTENERS ---
     function initEventListeners() {
-        document.querySelectorAll('.nav-link, #logo-link').forEach(link => {
+        document.querySelectorAll('.nav-link, #logo-link, .mobile-nav-link').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const targetHash = e.currentTarget.getAttribute('href');
@@ -1138,13 +1110,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('notifications-btn').addEventListener('click', () => {
             renderNotifications();
             toggleModal('modal-notificacoes');
-
-            // Mark notifications as read
             if (notifications.length > 0 && notifications[0].createdAt) {
                 const latestTimestamp = notifications[0].createdAt.toMillis ? notifications[0].createdAt.toMillis() : new Date(notifications[0].createdAt).getTime();
                 lastNotificationCheck = latestTimestamp;
                 localStorage.setItem('starlight-lastNotificationCheck', latestTimestamp);
-                updateNotificationBell(); // Hide dot immediately
+                updateNotificationBell();
             }
         });
 
@@ -1159,16 +1129,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 (item.genres && item.genres.some(g => g.toLowerCase().includes(query)))
             );
             if(results.length > 0) {
-                 resultsContainer.innerHTML = `<div class="grid grid-cols-2 md:grid-cols-3 gap-2">${results.map(createContentCard).join('')}</div>`;
+                resultsContainer.innerHTML = `<div class="grid grid-cols-2 md:grid-cols-3 gap-2">${results.map(createGridCard).join('')}</div>`;
+                 lucide.createIcons();
             } else {
-                 resultsContainer.innerHTML = '<p class="text-center text-stone-400">Nenhum resultado encontrado.</p>';
+                resultsContainer.innerHTML = '<p class="text-center text-stone-400">Nenhum resultado encontrado.</p>';
             }
         });
 
         window.addEventListener('click', (e) => { if (e.target.classList.contains('modal')) closeAllModals(); });
         window.addEventListener('keydown', (e) => { if (e.key === 'Escape') {
-            if(!document.getElementById('modal-video').classList.contains('hidden')) stopVideo();
-            else closeAllModals();
+            const videoModal = document.getElementById('modal-video');
+            if (videoModal && !videoModal.classList.contains('hidden')) {
+                history.back(); // Aciona o popstate para fechar o player
+            } else {
+                closeAllModals();
+            }
         }});
         
         document.getElementById('hero-watch-btn').addEventListener('click', () => { if(currentHeroItem) location.hash = `#details/${currentHeroItem.docId}`; });
@@ -1182,17 +1157,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setupPlayerEventListeners();
 
-        window.addEventListener('popstate', handleLocationChange);
+        // Listener de popstate aprimorado para lidar com o player
+        window.addEventListener('popstate', (event) => {
+            const videoModal = document.getElementById('modal-video');
+            if (videoModal && !videoModal.classList.contains('hidden')) {
+                stopVideo();
+                // O estado do player foi removido, mas não mude a tela
+            } else {
+                handleLocationChange();
+            }
+        });
+
         window.addEventListener('scroll', handleHeaderStyle, { passive: true });
     }
     
     async function initializeApp() {
-        // Setup real-time listeners first
         listenToFirestoreContent(); 
         listenForRequests();
         listenForNotifications();
         
-        // Initial load for featured items (which triggers initial screen render via listener)
         await fetchFeaturedItems(); 
         loadMyList();
         initEventListeners();
@@ -1201,4 +1184,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setTimeout(initializeApp, 500);
 });
-

@@ -23,9 +23,9 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="text-stone-200">
+<body class="text-stone-200 pb-24 lg:pb-0">
 
-    <!-- Cabeçalho e Navegação -->
+    <!-- Cabeçalho e Navegação (Desktop) -->
     <header id="header" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300">
         <div class="container mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-20">
@@ -62,24 +62,24 @@
             <!-- Seção Herói -->
             <section id="hero-section" class="relative h-screen flex items-end text-white px-4 sm:px-8 lg:px-12 pb-32">
                  <div class="absolute inset-0 overflow-hidden">
-                    <img id="hero-bg-image" src="" alt="Filme em destaque" class="absolute inset-0 w-full h-full object-cover">
-                    <div class="absolute inset-0 hero-gradient"></div>
-                </div>
-                <div class="relative z-10 container mx-auto hero-content">
-                    <div class="max-w-2xl">
-                        <span class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase">Em Destaque</span>
-                        <h1 id="hero-title" class="text-4xl md:text-5xl font-bold mt-4" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.7);"></h1>
-                        <div id="hero-meta" class="flex items-center flex-wrap gap-x-4 gap-y-2 mt-6 text-lg text-stone-300"></div>
-                        <div class="mt-6 max-w-xl">
-                            <p id="hero-overview" class="text-stone-200 synopsis-truncated text-lg leading-relaxed"></p>
-                            <button id="hero-toggle-overview-btn" class="text-purple-400 font-semibold mt-1 hidden">Ver mais</button>
-                        </div>
-                        <div class="mt-8 flex flex-wrap gap-4">
-                            <button id="hero-watch-btn" class="bg-white text-black font-bold py-4 px-10 rounded-full flex items-center space-x-2 text-xl hover:bg-stone-200 transition-all duration-300 transform hover:scale-105"><i data-lucide="play" class="w-7 h-7 fill-current"></i><span>Assistir</span></button>
-                            <button id="hero-list-btn" class="bg-white/20 backdrop-blur-sm text-white font-semibold py-4 px-10 rounded-full flex items-center space-x-2 text-xl hover:bg-white/30 transition-all duration-300 transform hover:scale-105"><i data-lucide="plus" class="w-7 h-7"></i><span>Minha Lista</span></button>
-                        </div>
-                    </div>
-                </div>
+                     <img id="hero-bg-image" src="" alt="Filme em destaque" class="absolute inset-0 w-full h-full object-cover">
+                     <div class="absolute inset-0 hero-gradient"></div>
+                 </div>
+                 <div class="relative z-10 container mx-auto hero-content">
+                     <div class="max-w-2xl">
+                         <span class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase">Em Destaque</span>
+                         <h1 id="hero-title" class="text-4xl md:text-5xl font-bold mt-4" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.7);"></h1>
+                         <div id="hero-meta" class="flex items-center flex-wrap gap-x-4 gap-y-2 mt-6 text-lg text-stone-300"></div>
+                         <div class="mt-6 max-w-xl">
+                             <p id="hero-overview" class="text-stone-200 synopsis-truncated text-lg leading-relaxed"></p>
+                             <button id="hero-toggle-overview-btn" class="text-purple-400 font-semibold mt-1 hidden">Ver mais</button>
+                         </div>
+                         <div class="mt-8 flex flex-wrap gap-4">
+                             <button id="hero-watch-btn" class="bg-white text-black font-bold py-4 px-10 rounded-full flex items-center space-x-2 text-xl hover:bg-stone-200 transition-all duration-300 transform hover:scale-105"><i data-lucide="play" class="w-7 h-7 fill-current"></i><span>Assistir</span></button>
+                             <button id="hero-list-btn" class="bg-white/20 backdrop-blur-sm text-white font-semibold py-4 px-10 rounded-full flex items-center space-x-2 text-xl hover:bg-white/30 transition-all duration-300 transform hover:scale-105"><i data-lucide="plus" class="w-7 h-7"></i><span>Minha Lista</span></button>
+                         </div>
+                     </div>
+                 </div>
             </section>
             <!-- Conteúdo Principal com Carrosséis -->
             <div id="home-carousels" class="container mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12"></div>
@@ -192,7 +192,7 @@
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast-notification" class="fixed bottom-5 right-5 bg-indigo-600 text-white py-3 px-6 rounded-lg shadow-lg transform translate-x-[120%] transition-transform duration-300 z-[200]">
+    <div id="toast-notification" class="fixed bottom-28 lg:bottom-5 right-5 bg-indigo-600 text-white py-3 px-6 rounded-lg shadow-lg transform translate-x-[120%] transition-transform duration-300 z-[200]">
         <p id="toast-message"></p>
     </div>
 
@@ -207,9 +207,32 @@
             </div>
         </div>
     </div>
+
+    <!-- Navegação Inferior (Mobile) -->
+    <nav id="mobile-nav" class="lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-stone-950/80 backdrop-blur-md border-t border-stone-800 z-40 flex items-center justify-around">
+        <a href="#screen-home" data-screen="screen-home" class="mobile-nav-link">
+            <i data-lucide="home" class="w-7 h-7 mx-auto"></i>
+            <span class="text-xs font-medium">Início</span>
+        </a>
+        <a href="#screen-series" data-screen="screen-series" class="mobile-nav-link">
+            <i data-lucide="tv" class="w-7 h-7 mx-auto"></i>
+            <span class="text-xs font-medium">Séries</span>
+        </a>
+        <a href="#screen-filmes" data-screen="screen-filmes" class="mobile-nav-link">
+            <i data-lucide="film" class="w-7 h-7 mx-auto"></i>
+            <span class="text-xs font-medium">Filmes</span>
+        </a>
+        <a href="#screen-minha-lista" data-screen="screen-minha-lista" class="mobile-nav-link">
+            <i data-lucide="list" class="w-7 h-7 mx-auto"></i>
+            <span class="text-xs font-medium">Minha Lista</span>
+        </a>
+        <a href="#screen-pedidos" data-screen="screen-pedidos" class="mobile-nav-link">
+             <i data-lucide="plus-square" class="w-7 h-7 mx-auto"></i>
+            <span class="text-xs font-medium">Pedidos</span>
+        </a>
+    </nav>
     
     <!-- App Logic -->
     <script type="module" src="script.js"></script>
 </body>
 </html>
-
