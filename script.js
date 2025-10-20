@@ -1,1537 +1,1318 @@
-// Firebase SDKs
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { 
     getAuth, 
-    onAuthStateChanged,
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    signInWithPopup,
-    GoogleAuthProvider,
-    signOut
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    onAuthStateChanged, 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    signInWithPopup, 
+    GoogleAuthProvider 
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { 
-    getFirestore, 
-    collection, 
-    getDocs, 
-    onSnapshot, 
-    query, 
-    where, 
-    addDoc, 
-    serverTimestamp, 
-    updateDoc, 
-    doc, 
-    arrayUnion, 
-    getDoc, 
-    orderBy 
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    getFirestore,
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    addDoc,
+    setDoc,
+    updateDoc,
+    deleteDoc,
+    query,
+    where
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// Configuração do Firebase
-const firebaseConfig = {
-    apiKey: "AIzaSyA791i8R8Bmrn3toFxFltZ40TU7PUavev8",
-    authDomain: "starlight-max.firebaseapp.com",
-    projectId: "starlight-max",
-    storageBucket: "starlight-max.appspot.com",
-    messagingSenderId: "120477177511",
-    appId: "1:120477177511:web:5a75a2dd6d8089c829ed82"
-};
+document.addEventListener('DOMContentLoaded', function() {
+    // --- Configuração do Firebase ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyA791i8R8Bmrn3toFxFltZ40TU7PUavev8",
+      authDomain: "starlight-max.firebaseapp.com",
+      projectId: "starlight-max",
+      storageBucket: "starlight-max.appspot.com",
+      messagingSenderId: "120477177511",
+      appId: "1:120477177511:web:5a75a2dd6d8089c829ed82"
+    };
 
-// Inicialização do Firebase
-let app, db, auth;
-try {
-    app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    auth = getAuth(app);
-    
-    // Disponibiliza no escopo global para o HTML (se necessário)
-    window.db = db;
-    window.getDocs = getDocs;
-    window.collection = collection;
-    window.onSnapshot = onSnapshot;
-    window.query = query;
-    window.where = where;
-    window.addDoc = addDoc;
-    window.serverTimestamp = serverTimestamp;
-    window.updateDoc = updateDoc;
-    window.doc = doc;
-    window.arrayUnion = arrayUnion;
-    window.getDoc = getDoc;
-    window.orderBy = orderBy;
-    console.log("Firebase Initialized Successfully");
-} catch (error) {
-    console.error("Firebase Initialization Error:", error);
-}
+    // Inicializar Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const googleProvider = new GoogleAuthProvider();
 
-document.addEventListener('DOMContentLoaded', () => {
-    lucide.createIcons();
-    
-    const TMDB_API_KEY = '5954890d9e9b723ff3032f2ec429fec3';
-    const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-    const TMDB_IMG_URL = 'https://image.tmdb.org/t/p/w500';
-    const TMDB_STILL_URL = 'https://image.tmdb.org/t/p/w300';
-
-    // ESTADO DA APLICAÇÃO
-    let myList = [];
-    let currentHeroItem = null;
-    let hls;
-    let firestoreContent = [];
-    let pendingRequests = [];
     let userId = null;
-    let featuredItemIds = [];
-    let heroCarouselInterval = null;
-    let notifications = [];
-    let lastNotificationCheck = localStorage.getItem('starlight-lastNotificationCheck') || 0;
-    let dismissedNotifications = JSON.parse(localStorage.getItem('starlight-dismissedNotifications')) || [];
-    let isAppInitialized = false;
 
-    // --- LÓGICA DE AUTENTICAÇÃO (NOVA UI) ---
+    const API_KEY = '5954890d9e9b723ff3032f2ec429fec3';
+    const API_URL = 'https://api.themoviedb.org/3';
+    const IMG_URL_POSTER = 'https://image.tmdb.org/t/p/w500';
+    const IMG_URL_BACKGROUND = 'https://image.tmdb.org/t/p/original';
+    const LANGUAGE = 'pt-BR';
     
-    const authScreen = document.getElementById('auth-screen');
-    const appContent = document.getElementById('app-content');
-    const glassCard = document.querySelector('.glass-card');
-    const loginForm = document.getElementById('login-form');
-    const registerForm = document.getElementById('register-form');
-    const showRegisterLink = document.getElementById('show-register');
-    const showLoginLink = document.getElementById('show-login');
-    const googleSignInBtn = document.getElementById('google-signin-btn');
-    const loginError = document.getElementById('login-error');
-    const registerError = document.getElementById('register-error');
-    const authLoadingOverlay = document.getElementById('auth-loading-overlay');
-    const logoutBtn = document.getElementById('logout-btn');
+    let currentHeroItem = null;
+    let currentDetailsItem = null;
+    let controlsTimeout;
+    let currentPlayerContext = {};
+    let lastActiveViewId = 'home-view';
+    let lastProgressSaveTime = 0;
+    const detailsView = document.getElementById('details-view');
 
-    // UI Logic for Auth Screen
-    const setupAuthScreenUI = () => {
-        // Define a altura inicial
-        if (glassCard && loginForm) {
-            glassCard.style.height = loginForm.scrollHeight + 'px';
-        }
+    const loginView = document.getElementById('login-view');
+    const searchOverlay = document.getElementById('search-overlay');
+    const searchInput = document.getElementById('search-input');
+    const searchResultsContainer = document.getElementById('search-results');
+    const searchIconBtn = document.getElementById('search-icon-btn');
+    const closeSearchBtn = document.getElementById('close-search-btn');
+    const notificationBtn = document.getElementById('notification-btn');
+    const notificationPanel = document.getElementById('notification-panel');
+    let debounceTimer;
 
-        showRegisterLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            loginForm.style.opacity = '0';
-            loginForm.style.transform = 'translateX(-120%)';
-            loginForm.style.pointerEvents = 'none';
+    // Player elements
+    const playerView = document.getElementById('player-view');
+    const videoPlayer = document.getElementById('video-player');
+    const playerTitle = document.getElementById('player-title');
+    const playPauseBtn = document.getElementById('player-play-pause-btn');
+    const rewindBtn = document.getElementById('player-rewind-btn');
+    const forwardBtn = document.getElementById('player-forward-btn');
+    const nextEpisodeBtn = document.getElementById('player-next-episode-btn');
+    const prevEpisodeBtn = document.getElementById('player-prev-episode-btn');
+    const volumeBtn = document.getElementById('player-volume-btn');
+    const volumeSlider = document.getElementById('player-volume-slider');
+    const seekBar = document.getElementById('player-seek-bar');
+    const seekProgressBar = document.getElementById('seek-progress-bar');
+    const currentTimeEl = document.getElementById('player-current-time');
+    const durationEl = document.getElementById('player-duration');
+    const fullscreenBtn = document.getElementById('player-fullscreen-btn');
+    const settingsBtn = document.getElementById('player-settings-btn');
+    const settingsPanel = document.getElementById('player-settings-panel');
+    const playerBackBtn = document.getElementById('player-back-btn');
 
-            registerForm.style.opacity = '1';
-            registerForm.style.transform = 'translateX(0)';
-            registerForm.style.pointerEvents = 'auto';
-            
-            glassCard.style.height = registerForm.scrollHeight + 'px';
-        });
-
-        showLoginLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            registerForm.style.opacity = '0';
-            registerForm.style.transform = 'translateX(120%)';
-            registerForm.style.pointerEvents = 'none';
-
-            loginForm.style.opacity = '1';
-            loginForm.style.transform = 'translateX(0)';
-            loginForm.style.pointerEvents = 'auto';
-            
-            glassCard.style.height = loginForm.scrollHeight + 'px';
-        });
-        
-        const filterMap = document.querySelector('#glass-distortion feDisplacementMap');
-        const specular = glassCard.querySelector('.glass-specular');
-
-        function handleMouseMove(e) {
-            const rect = glassCard.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            if (filterMap) {
-                const scaleX = (x / rect.width - 0.5) * 60;
-                const scaleY = (y / rect.height - 0.5) * 60;
-                const scale = Math.sqrt(scaleX*scaleX + scaleY*scaleY);
-                filterMap.setAttribute('scale', 50 + scale);
-            }
-            
-            if (specular) {
-                specular.style.background = `radial-gradient(
-                    circle at ${x}px ${y}px,
-                    rgba(255,255,255,0.2) 0%,
-                    rgba(255,255,255,0.1) 20%,
-                    rgba(255,255,255,0) 50%
-                )`;
-            }
-        }
-        
-        function handleMouseLeave() {
-            if (filterMap) {
-                filterMap.setAttribute('scale', '77');
-            }
-            if (specular) {
-                specular.style.background = 'none';
-            }
-        }
-        
-        glassCard.addEventListener('mousemove', handleMouseMove);
-        glassCard.addEventListener('mouseleave', handleMouseLeave);
-
-        function setupPasswordToggle(inputId, toggleId) {
-            const passwordInput = document.getElementById(inputId);
-            const toggleIcon = document.getElementById(toggleId);
-            if (passwordInput && toggleIcon) {
-                toggleIcon.addEventListener('click', () => {
-                    const isPassword = passwordInput.type === 'password';
-                    passwordInput.type = isPassword ? 'text' : 'password';
-                    toggleIcon.className = isPassword 
-                        ? 'ri-eye-fill toggle-password' 
-                        : 'ri-eye-off-fill toggle-password';
-                });
-            }
-        }
-        
-        setupPasswordToggle('login-password', 'login-toggle');
-        setupPasswordToggle('register-password', 'register-toggle');
-        setupPasswordToggle('confirm-password', 'confirm-toggle');
-    };
-
-    setupAuthScreenUI();
-
-    const showAuthLoader = (show) => {
-        authLoadingOverlay.style.display = show ? 'flex' : 'none';
-    };
-
-    // Gerenciador de estado de autenticação
-    onAuthStateChanged(auth, user => {
-        document.body.classList.remove('auth-state-unknown');
-
-        if (user) {
-            userId = user.uid;
-            console.log("Usuário logado:", userId);
-
-            const userAvatar = document.getElementById('user-avatar');
-            const modalUserAvatar = document.getElementById('modal-user-avatar');
-            const modalUserEmail = document.getElementById('modal-user-email');
-            
-            if (user.photoURL) {
-                userAvatar.src = user.photoURL;
-                modalUserAvatar.src = user.photoURL;
-            } else {
-                const initial = (user.email || 'U').charAt(0).toUpperCase();
-                const placeholder = `https://placehold.co/80x80/7e22ce/FFFFFF?text=${initial}`;
-                userAvatar.src = placeholder;
-                modalUserAvatar.src = placeholder;
-            }
-            modalUserEmail.textContent = user.email;
-
-            authScreen.classList.add('hidden');
-            appContent.classList.remove('hidden');
-
-            if (!isAppInitialized) {
-                initializeAppLogic();
-                isAppInitialized = true;
-            }
-        } else {
-            userId = null;
-            console.log("Nenhum usuário logado.");
-            
-            authScreen.classList.remove('hidden');
-            appContent.classList.add('hidden');
-        }
-    });
-
-    // Login com E-mail e Senha
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        showAuthLoader(true);
-        loginError.textContent = '';
-        const email = document.getElementById('login-email').value;
-        const password = document.getElementById('login-password').value;
-
-        try {
-            await signInWithEmailAndPassword(auth, email, password);
-        } catch (error) {
-            console.error("Erro de login:", error.code);
-            loginError.textContent = getAuthErrorMessage(error.code);
-        } finally {
-            showAuthLoader(false);
-        }
-    });
-
-    // Cadastro com E-mail e Senha
-    registerForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        showAuthLoader(true);
-        registerError.textContent = '';
-        
-        const passwordInput = document.getElementById('register-password');
-        const confirmPasswordInput = document.getElementById('confirm-password');
-        passwordInput.classList.remove('error');
-        confirmPasswordInput.classList.remove('error');
-
-        if (passwordInput.value !== confirmPasswordInput.value) {
-            registerError.textContent = 'As senhas não coincidem.';
-            passwordInput.classList.add('error');
-            confirmPasswordInput.classList.add('error');
-            showAuthLoader(false);
-            return;
-        }
-
-        const email = document.getElementById('register-email').value;
-        const password = passwordInput.value;
-
-        try {
-            await createUserWithEmailAndPassword(auth, email, password);
-        } catch (error) {
-            console.error("Erro de cadastro:", error.code);
-            registerError.textContent = getAuthErrorMessage(error.code);
-        } finally {
-            showAuthLoader(false);
-        }
-    });
-
-    // Login com Google
-    googleSignInBtn.addEventListener('click', async () => {
-        showAuthLoader(true);
-        const provider = new GoogleAuthProvider();
-        try {
-            await signInWithPopup(auth, provider);
-        } catch (error) {
-            console.error("Erro de login com Google:", error.code);
-            loginError.textContent = "Falha no login com Google.";
-        } finally {
-            showAuthLoader(false);
-        }
-    });
-
-    // Logout
-    logoutBtn.addEventListener('click', async () => {
-        try {
-            await signOut(auth);
-            closeAllModals();
-        } catch (error) {
-            console.error("Erro ao sair:", error);
-            showToast("Erro ao tentar sair.", true);
-        }
-    });
-
-    // Tradução de erros do Firebase
-    function getAuthErrorMessage(errorCode) {
-        switch (errorCode) {
-            case 'auth/invalid-email':
-                return 'Formato de e-mail inválido.';
-            case 'auth/user-not-found':
-            case 'auth/wrong-password':
-                return 'E-mail ou senha incorretos.';
-            case 'auth/email-already-in-use':
-                return 'Este e-mail já está cadastrado.';
-            case 'auth/weak-password':
-                return 'A senha deve ter pelo menos 6 caracteres.';
-            case 'auth/too-many-requests':
-                return 'Muitas tentativas. Tente novamente mais tarde.';
-            default:
-                return 'Ocorreu um erro. Tente novamente.';
-        }
-    }
+    // Profile Management Elements
+    const manageProfileView = document.getElementById('manage-profile-view');
+    const manageProfilesBtn = document.getElementById('manage-profiles-btn');
+    const profilesGrid = document.getElementById('profiles-grid');
+    const profileModal = document.getElementById('profile-modal');
+    const avatarOptionsContainer = document.getElementById('avatar-options');
+    const headerProfileBtn = document.getElementById('header-profile-btn');
     
-    // --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
+    let profiles = [];
+    let currentProfile = null;
+    let isEditMode = false;
+    const AVATARS = [
+        'https://pbs.twimg.com/media/EcGdw6xXsAMkqGF?format=jpg&name=large',
+        'https://pbs.twimg.com/media/FMs8_KeWYAAtoS3.jpg',
+        'https://i.pinimg.com/736x/a8/31/b5/a831b58a3a067756a16518884967e812.jpg',
+        'https://pbs.twimg.com/media/EcGdw6uXgAEpGA-.jpg'
+    ];
 
-    // --- RATING UTILITY ---
-    const getRatingBadge = (rating) => {
-        if (!rating) return '';
-        const ratingValue = rating.replace(/\D/g, ''); 
-        let colorClass = '';
-        
-        switch (rating) {
-            case 'Livre': colorClass = 'rating-Livre'; break;
-            case '10': colorClass = 'rating-10'; break;
-            case '12': colorClass = 'rating-12'; break;
-            case '14': colorClass = 'rating-14'; break;
-            case '16': colorClass = 'rating-16'; break;
-            case '18': colorClass = 'rating-18'; break;
-            default: colorClass = 'bg-stone-500';
-        }
-
-        const displayValue = rating === 'Livre' ? 'L' : ratingValue;
-        
-        return `<div class="rating-square ${colorClass}">${displayValue}</div>`;
+    const ICONS = {
+        play: `<svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>`,
+        pause: `<svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>`,
+        skipForward: `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>`,
+        skipBackward: `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>`,
+        rewind10: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"></path></svg>`,
+        fastForward10: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 5c-4.42 0-8 3.58-8 8s3.58 8 8 8 8-3.58 8-8h-2c0 3.31-2.69 6-6 6s-6-2.69-6-6 2.69-6 6-6V1l5 5-5 5V7z"></path></svg>`,
+        volumeHigh: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"></path></svg>`,
+        volumeMute: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"></path></svg>`,
+        fullscreen: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg>`,
+        exitFullscreen: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"></path></svg>`,
+        settings: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59 1.69.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg>`,
+        back: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>`
     };
-
-    const formatDuration = (duration) => {
-        const minutes = parseInt(duration);
-        if (isNaN(minutes) || minutes === 0) return 'N/A';
-        if (minutes < 60) return `${minutes}m`;
-
-        const hours = Math.floor(minutes / 60);
-        const remainingMinutes = minutes % 60;
-        let result = `${hours}h`;
-        if (remainingMinutes > 0) result += ` ${remainingMinutes}m`;
-        return result;
-    };
-
-
-    // ELEMENTOS DOM
-    const header = document.getElementById('header');
-    const main = document.getElementById('main-content');
-    const detailsScreen = document.getElementById('screen-details');
-
-    // --- CUSTOM MODALS ---
-    const toast = document.getElementById('toast-notification');
-    const toastMessage = document.getElementById('toast-message');
-    let toastTimeout;
-
+    
+    const glassSpinnerHTML = `<div class="glass-spinner-wrapper min-h-screen"><div class="glass-spinner"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content"><div class="spinner-ring"></div><div class="spinner-core"></div></div></div></div>`;
+    
     function showToast(message, isError = false) {
-        clearTimeout(toastTimeout);
-        toastMessage.textContent = message;
-        toast.classList.toggle('bg-red-600', isError);
-        toast.classList.toggle('bg-indigo-600', !isError);
-        toast.classList.remove('translate-x-[120%]');
-        toastTimeout = setTimeout(() => {
-            toast.classList.add('translate-x-[120%]');
+        const toast = document.getElementById('notification-toast');
+        if (!toast) return;
+        toast.textContent = message;
+        toast.style.backgroundColor = isError ? 'rgba(239, 68, 68, 0.7)' : 'rgba(34, 197, 94, 0.7)';
+        toast.classList.remove('hidden', 'opacity-0');
+        toast.classList.add('opacity-100');
+        setTimeout(() => {
+            toast.classList.remove('opacity-100');
+            toast.classList.add('opacity-0');
+            setTimeout(() => toast.classList.add('hidden'), 300);
         }, 3000);
     }
 
-    const confirmModal = document.getElementById('confirm-modal');
-    const confirmTitle = document.getElementById('confirm-title');
-    const confirmMessage = document.getElementById('confirm-message');
-    const confirmOkBtn = document.getElementById('confirm-ok-btn');
-    const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+    // --- Firestore Data Functions ---
+    async function getMyList() {
+        if (!userId || !currentProfile?.id) return [];
+        const myListCol = collection(db, 'users', userId, 'profiles', currentProfile.id, 'my-list');
+        const snapshot = await getDocs(myListCol);
+        return snapshot.docs.map(doc => doc.data());
+    }
 
-    function showConfirm(title, message, onConfirm) {
-        confirmTitle.textContent = title;
-        confirmMessage.textContent = message;
-        confirmModal.classList.remove('hidden');
+    async function checkIfInList(itemId) {
+        if (!userId || !currentProfile?.id) return false;
+        const docRef = doc(db, 'users', userId, 'profiles', currentProfile.id, 'my-list', String(itemId));
+        const docSnap = await getDoc(docRef);
+        return docSnap.exists();
+    }
+    
+    async function handleListAction(item) {
+        if (!item || !userId || !currentProfile?.id) return;
+        const docRef = doc(db, 'users', userId, 'profiles', currentProfile.id, 'my-list', String(item.id));
+        const isInList = await checkIfInList(item.id);
 
-        const hideConfirm = () => {
-            confirmModal.classList.add('hidden');
-            confirmOkBtn.removeEventListener('click', handleOk);
-            confirmCancelBtn.removeEventListener('click', hideConfirm);
+        if (isInList) {
+            await deleteDoc(docRef);
+            showToast(`${item.title || item.name} removido da sua lista.`);
+        } else {
+            item.media_type = item.media_type || (item.title ? 'movie' : 'tv');
+            await setDoc(docRef, item);
+            showToast(`${item.title || item.name} adicionado à sua lista.`);
+        }
+        
+        updateListButtons(item);
+        if (document.getElementById('mylist-view').classList.contains('active')) {
+            populateMyList();
+        }
+    }
+    
+    function updateListButtons(item) {
+        if (currentHeroItem?.id === item.id) {
+             updateListButton(document.getElementById('hero-add-to-list'), currentHeroItem);
+        }
+        if (currentDetailsItem?.id === item.id) {
+            const detailsButton = document.getElementById('details-add-to-list');
+            if (detailsButton) updateListButton(detailsButton, currentDetailsItem);
+        }
+    }
+
+    async function getProgressStorage() {
+        if (!userId || !currentProfile?.id) return {};
+        const progressCol = collection(db, 'users', userId, 'profiles', currentProfile.id, 'watch-progress');
+        const snapshot = await getDocs(progressCol);
+        const progressData = {};
+        snapshot.forEach(doc => {
+            progressData[doc.id] = doc.data();
+        });
+        return progressData;
+    }
+    
+    async function savePlayerProgress() {
+        if (!videoPlayer.duration || !currentPlayerContext.key || !userId || !currentProfile?.id) return;
+        
+        const progressData = {
+            currentTime: videoPlayer.currentTime,
+            duration: videoPlayer.duration,
+            lastWatched: Date.now(),
+            item: currentPlayerContext.itemData,
+            episode: currentPlayerContext.episodes ? currentPlayerContext.episodes[currentPlayerContext.currentIndex] : null,
         };
         
-        const handleOk = () => {
-            onConfirm();
-            hideConfirm();
-        };
-
-        confirmOkBtn.addEventListener('click', handleOk, { once: true });
-        confirmCancelBtn.addEventListener('click', hideConfirm, { once: true });
+        const docRef = doc(db, 'users', userId, 'profiles', currentProfile.id, 'watch-progress', currentPlayerContext.key);
+        await setDoc(docRef, progressData, { merge: true });
     }
 
-    // --- SYNOPSIS TOGGLE ---
-    function setupReadMore(textElement, buttonElement) {
-        if (!textElement || !buttonElement) return;
-
-        setTimeout(() => {
-            const isOverflowing = textElement.scrollHeight > textElement.clientHeight;
-            if (isOverflowing) {
-                buttonElement.classList.remove('hidden');
-            } else {
-                buttonElement.classList.add('hidden');
-            }
-
-            const newButton = buttonElement.cloneNode(true);
-            buttonElement.parentNode.replaceChild(newButton, buttonElement);
-            
-            newButton.addEventListener('click', () => {
-                textElement.classList.toggle('synopsis-truncated');
-                newButton.textContent = textElement.classList.contains('synopsis-truncated') ? 'Ler mais' : 'Ler menos';
-            });
-        }, 100);
-    }
-
-
-    // --- FUNÇÕES DE UTILIDADE E UI ---
-    function shuffleArray(array) {
-        for (let i = array.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]];
-        }
-        return array;
-    }
-
-    const showLoader = (element) => {
-        element.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
-    };
-
-    const showError = (element, message) => {
-        element.innerHTML = `<p class="col-span-full text-center text-red-400">${message}</p>`;
-    };
-
-    const toggleModal = (modalId) => {
-        const modal = document.getElementById(modalId);
-        if (!modal) return;
-        const isHidden = modal.classList.contains('hidden');
-        document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
-        if (isHidden) {
-            modal.classList.remove('hidden');
-            if (modalId === 'modal-busca') {
-                const searchInput = document.getElementById('search-input');
-                searchInput.value = '';
-                document.getElementById('search-results-container').innerHTML = '';
-                searchInput.focus();
-            }
-             if (modalId === 'modal-perfil') {
-                 lucide.createIcons(); // Recria o ícone de logout se necessário
-             }
-        }
-    };
-    
-    const closeAllModals = () => {
-        document.querySelectorAll('.modal').forEach(m => {
-            if(m.id !== 'modal-video') m.classList.add('hidden');
-        });
-        const searchInput = document.getElementById('search-input');
-        if(searchInput) searchInput.value = '';
-        const searchResults = document.getElementById('search-results-container');
-        if(searchResults) searchResults.innerHTML = '';
-    }
-
-    const handleHeaderStyle = () => {
-        const isHomePage = location.hash === '#screen-home' || location.hash === '';
-        const isDetailsPage = detailsScreen && !detailsScreen.classList.contains('hidden');
-        const isScrolled = window.scrollY > 50;
-        const isPlayerOpen = !document.getElementById('modal-video').classList.contains('hidden');
-
-        if(isPlayerOpen) {
-            header.classList.add('hidden'); 
-            return;
-        }
-        header.classList.remove('hidden'); 
-
-        header.style.zIndex = 50;
-
-        if (isHomePage && !isDetailsPage) {
-            main.style.paddingTop = '0';
-            header.classList.toggle('scrolled', isScrolled);
-        } else {
-            main.style.paddingTop = `${header.offsetHeight}px`;
-            header.classList.add('scrolled');
-        }
-    };
-
-
-    // --- GERENCIAMENTO DA MINHA LISTA ---
-    const getMyListKey = () => `starlightMyList_${userId}`;
-    const saveMyList = () => localStorage.setItem(getMyListKey(), JSON.stringify(myList));
-    const loadMyList = () => {
-        if (!userId) return;
-        const storedList = localStorage.getItem(getMyListKey());
-        myList = storedList ? JSON.parse(storedList) : [];
-    };
-    const isInMyList = (id) => myList.some(item => item.docId === id);
-
-    const toggleMyListItem = (itemData) => {
-        if (!itemData || !itemData.docId) return;
-        if (isInMyList(itemData.docId)) {
-            myList = myList.filter(item => item.docId !== itemData.docId);
-        } else {
-            myList.push({ docId: itemData.docId, type: itemData.type, title: itemData.title, poster: itemData.poster });
-        }
-        saveMyList();
-        updateAllMyListButtons(itemData.docId);
-        if (location.hash === '#screen-minha-lista') renderScreenContent('screen-minha-lista', true);
-    };
-    
-    const updateAllMyListButtons = (id) => {
-        const inList = isInMyList(id);
-        document.querySelectorAll(`[data-list-btn-id="${id}"]`).forEach(btn => {
-            const text = btn.querySelector('span');
-            const existingIcon = btn.querySelector('i') || btn.querySelector('svg');
-            if (existingIcon) existingIcon.remove();
-            
-            const newIcon = document.createElement('i');
-            newIcon.dataset.lucide = inList ? 'check' : 'plus';
-            const iconSizeClass = btn.id.includes('hero') ? 'w-6 h-6' : 'w-6 h-6';
-            newIcon.classList.add(...iconSizeClass.split(' '));
-
-            if (text) {
-                btn.insertBefore(newIcon, text);
-                text.textContent = inList ? 'Na Minha Lista' : 'Minha Lista';
-            } else {
-                btn.prepend(newIcon);
-            }
-        });
-        lucide.createIcons();
-    }
-
-    // --- BUSCA E RENDERIZAÇÃO DE DADOS ---
-    async function fetchFeaturedItems() {
-        if (!window.db) return;
-        try {
-            const docSnap = await window.getDoc(window.doc(window.db, 'config', 'featured'));
-            if (docSnap.exists()) {
-                featuredItemIds = docSnap.data().items || [];
-            }
-        } catch (error) {
-            console.error("Error fetching initial featured items:", error);
-        }
-    }
-    
-    async function listenToFirestoreContent() {
-        if (!window.db) {
-            setTimeout(listenToFirestoreContent, 500);
-            return;
-        }
-        window.onSnapshot(window.collection(window.db, 'content'), (snapshot) => {
-            firestoreContent = [];
-            snapshot.forEach(doc => {
-                firestoreContent.push({ docId: doc.id, ...doc.data() });
-            });
-            console.log("Conteúdo do Firestore atualizado em tempo real!", firestoreContent.length);
-            const currentScreen = location.hash.slice(1) || 'screen-home';
-            if (currentScreen === 'screen-home' || currentScreen === 'screen-filmes' || currentScreen === 'screen-series') {
-                renderScreenContent(currentScreen, true);
-            }
-        });
-
-        window.onSnapshot(window.doc(window.db, 'config', 'featured'), (docSnap) => {
-            featuredItemIds = docSnap.exists() ? (docSnap.data().items || []) : [];
-             console.log("Destaques atualizados em tempo real!");
-            if (location.hash === '#screen-home' || location.hash === '') {
-                renderScreenContent('screen-home', true);
-            }
-        });
-    }
-    
-    async function fetchNewReleases() {
-        const url = `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&language=pt-BR&sort_by=release_date.desc&include_adult=false&include_video=false&page=1&primary_release_date.lte=${new Date().toISOString().split('T')[0]}`;
+    // --- UI Creation Functions ---
+    async function fetchFromTMDB(endpoint, params = '') {
+        const url = `${API_URL}/${endpoint}?api_key=${API_KEY}&language=${LANGUAGE}&${params}`;
         try {
             const response = await fetch(url);
-            const data = await response.json();
-            
-            if (!data || !data.results) return [];
-
-            const newReleases = data.results
-                .filter(movie => movie.release_date && movie.release_date.substring(0,4) >= (new Date().getFullYear() - 1))
-                .map(movie => firestoreContent.find(item => String(item.tmdb_id) === String(movie.id)))
-                .filter(item => item !== undefined)
-                .slice(0, 20); 
-
-            return shuffleArray(newReleases);
-
+            if (!response.ok) {
+                console.error(`HTTP error! status: ${response.status} for URL: ${url}`);
+                return null;
+            }
+            return (await response.json());
         } catch (error) {
-            console.error("Erro ao buscar lançamentos do TMDB:", error);
-            return [];
+            console.error("Erro ao buscar dados do TMDB:", error);
+            return null;
         }
     }
 
+    function createContentCard(item, isGrid = false) {
+        if (!item || !item.poster_path) return '';
+        item.media_type = item.media_type || (item.title ? 'movie' : 'tv');
+        const title = item.title || item.name;
 
-    function listenForRequests() {
-        if (!window.db) {
-            setTimeout(listenForRequests, 500);
-            return;
-        }
-        const q = window.query(window.collection(window.db, "pedidos"), window.where("status", "==", "pending"));
-        window.onSnapshot(q, (snapshot) => {
-            pendingRequests = [];
-            snapshot.forEach((doc) => {
-                pendingRequests.push({ id: doc.id, ...doc.data() });
-            });
-            if (location.hash === '#screen-pedidos') {
-                renderPendingRequests();
-            }
-        });
-    }
-
-    const createContentCard = (item) => {
-        if (!item || !item.poster) return '';
-        const posterPath = item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
-        return `<a href="#details/${item.docId}" class="carousel-item w-32 sm:w-48 cursor-pointer group block"><div class="relative aspect-[2/3] rounded-lg overflow-hidden"><img src="${posterPath}" alt="Pôster de ${item.title}" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"></div></a>`;
-    };
-    
-    const createGridCard = (item) => {
-        if (!item || !item.poster) return '';
-        const posterPath = item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
-        return `<a href="#details/${item.docId}" class="group block cursor-pointer"><div class="relative aspect-[2/3] rounded-lg overflow-hidden bg-stone-800"><img src="${posterPath}" alt="Pôster de ${item.title}" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"></div><h4 class="text-white text-sm mt-2 truncate">${item.title}</h4></a>`;
-    };
-
-    const createCarousel = (container, title, data) => {
-        if(!data || data.length === 0) return;
-        const section = document.createElement('section');
-        section.innerHTML = `
-            <h2 class="text-xl sm:text-3xl font-bold text-white mb-4">${title}</h2>
-            <div class="carousel-container -mx-4 sm:-mx-6 lg:-mx-8">
-                <div class="carousel space-x-3 sm:space-x-4 px-4 sm:px-6 lg:px-8">${data.map(item => createContentCard(item)).join('')}</div>
-                <button class="carousel-btn prev" aria-label="Anterior"><i data-lucide="chevron-left" class="w-6 h-6"></i></button>
-                <button class="carousel-btn next" aria-label="Próximo"><i data-lucide="chevron-right" class="w-6 h-6"></i></button>
-            </div>`;
-        container.appendChild(section);
-        const carousel = section.querySelector('.carousel');
-        const prevBtn = section.querySelector('.prev');
-        const nextBtn = section.querySelector('.next');
-        const updateButtons = () => {
-            const { scrollLeft, scrollWidth, clientWidth } = carousel;
-            prevBtn.disabled = scrollLeft <= 0;
-            nextBtn.disabled = scrollLeft >= scrollWidth - clientWidth - 1;
-        };
-        const scrollAmount = () => carousel.clientWidth * 0.8;
-        prevBtn.addEventListener('click', () => carousel.scrollBy({ left: -scrollAmount(), behavior: 'smooth' }));
-        nextBtn.addEventListener('click', () => carousel.scrollBy({ left: scrollAmount(), behavior: 'smooth' }));
-        carousel.addEventListener('scroll', updateButtons, { passive: true });
-        updateButtons();
-    };
-
-    async function renderScreenContent(screenId, forceReload = false) {
-        const screenElement = document.getElementById(screenId);
-        if (!screenElement) return;
+        const stringifiedData = JSON.stringify(item).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
         
-        if (screenId === 'screen-home') {
-            const carouselsContainer = document.getElementById('home-carousels');
-            showLoader(carouselsContainer);
-
-            const heroSection = document.getElementById('hero-section');
-            const heroBgImage = document.getElementById('hero-bg-image');
-            const heroTitle = document.getElementById('hero-title');
-            const heroMeta = document.getElementById('hero-meta');
-            const heroOverview = document.getElementById('hero-overview');
-            const heroListBtn = document.getElementById('hero-list-btn');
-
-            const featuredItems = featuredItemIds.map(id => firestoreContent.find(item => item.docId === id)).filter(Boolean);
-            let currentFeaturedIndex = 0;
-
-            const updateHeroUI = (item) => {
-                if (!item) return;
-                currentHeroItem = item;
-                heroBgImage.src = item.backdrop || '';
-                heroTitle.textContent = item.title;
-                
-                const durationDisplay = item.type === 'movie' ? formatDuration(item.duration.replace(/\D/g, '')) : item.duration;
-                const genresDisplay = item.genres ? item.genres.slice(0, 3).join(' • ') : '';
-                
-                const metaHtml = `
-                    <span>${item.year}</span>
-                    ${getRatingBadge(item.rating)}
-                    <span>Duração: ${durationDisplay}</span>
-                    ${genresDisplay ? `<span>${genresDisplay}</span>` : ''}
-                `;
-                heroMeta.innerHTML = metaHtml;
-
-                heroOverview.textContent = item.synopsis;
-                heroListBtn.dataset.listBtnId = item.docId;
-                updateAllMyListButtons(item.docId);
-                setupReadMore(heroOverview, document.getElementById('hero-toggle-overview-btn'));
-            };
-            
-            if (featuredItems.length > 0) {
-                updateHeroUI(featuredItems[0]);
-
-                if (featuredItems.length > 1) {
-                    clearInterval(heroCarouselInterval);
-                    heroCarouselInterval = setInterval(() => {
-                        currentFeaturedIndex = (currentFeaturedIndex + 1) % featuredItems.length;
-                        heroSection.classList.add('fading');
-                        setTimeout(() => {
-                            updateHeroUI(featuredItems[currentFeaturedIndex]);
-                            heroSection.classList.remove('fading');
-                        }, 700);
-                    }, 5000);
-                }
-            } else if (firestoreContent.length > 0) {
-                updateHeroUI(firestoreContent[Math.floor(Math.random() * firestoreContent.length)]);
-            } else {
-                heroSection.innerHTML = '<p class="text-center">Nenhum conteúdo para exibir.</p>';
-            }
-            
-            carouselsContainer.innerHTML = '';
-            
-            const recentlyAdded = [...firestoreContent]
-                .sort((a, b) => {
-                    const dateA = a.addedAt?.toMillis ? a.addedAt.toMillis() : 0;
-                    const dateB = b.addedAt?.toMillis ? b.addedAt.toMillis() : 0;
-                    return dateB - dateA;
-                })
-                .slice(0, 10);
-            createCarousel(carouselsContainer, "Adicionado Recentemente", recentlyAdded);
-
-            const newReleases = await fetchNewReleases();
-            createCarousel(carouselsContainer, "Lançamentos", newReleases);
-            
-            const allGenres = [...new Set(firestoreContent.flatMap(item => item.genres || []))].filter(g => g && g !== 'Documentário');
-            
-            for (const genre of shuffleArray(allGenres)) {
-                const filteredContent = firestoreContent.filter(item => item.genres && item.genres.includes(genre));
-                createCarousel(carouselsContainer, genre, shuffleArray(filteredContent));
-            }
-
-        } else if (screenId === 'screen-series') {
-            renderFilteredGrid('tv');
-        } else if (screenId === 'screen-filmes') {
-            renderFilteredGrid('movie');
-        } else if (screenId === 'screen-minha-lista') {
-            const grid = document.getElementById('minha-lista-grid');
-            const myListItems = myList.map(listItem => firestoreContent.find(content => content.docId === listItem.docId)).filter(Boolean);
-            if (myListItems.length > 0) grid.innerHTML = myListItems.map(item => createGridCard(item)).join('');
-            else grid.innerHTML = '<p class="col-span-full text-center text-stone-400">Sua lista está vazia.</p>';
-        } else if (screenId === 'screen-pedidos') {
-            renderPendingRequests();
-        }
-        lucide.createIcons();
-    }
-
-    function renderFilteredGrid(type) {
-        const gridId = type === 'tv' ? 'series-grid' : 'filmes-grid';
-        const grid = document.getElementById(gridId);
-        if (!grid) {
-            console.error(`Grid element with ID "${gridId}" not found.`);
-            return;
-        }
-        let content = firestoreContent.filter(item => item.type === type);
-
-        if (content.length > 0) {
-            grid.innerHTML = shuffleArray(content).map(item => createGridCard(item)).join('');
-        } else {
-            showError(grid, 'Nenhum conteúdo encontrado.');
-        }
-    }
-
-
-    function renderDetailsScreen(docId) {
-        document.body.classList.add('overflow-hidden');
-        detailsScreen.classList.remove('hidden');
-        detailsScreen.scrollTop = 0;
-        showLoader(detailsScreen);
-
-        const data = firestoreContent.find(item => item.docId === docId);
-        if (!data) {
-            showError(detailsScreen, 'Conteúdo não encontrado.');
-            setTimeout(() => history.back(), 3000);
-            return;
-        }
-        
-        const watchButtonHtml = data.type === 'movie' ?
-            `<button id="details-watch-btn" class="bg-white text-black font-bold py-3 px-8 rounded-full flex items-center space-x-2 text-lg hover:bg-stone-200" data-video-url="${data.url}"><i data-lucide="play" class="w-6 h-6 fill-current"></i><span>Assistir Filme</span></button>` :
-            `<button disabled class="bg-stone-600 text-stone-400 font-bold py-3 px-8 rounded-full flex items-center space-x-2 text-lg cursor-not-allowed"><i data-lucide="list-video" class="w-6 h-6"></i><span>Selecione um EP</span></button>`;
-
-        let seasonsHtml = '';
-        if (data.type === 'tv' && data.seasons) {
-            const seasonNumbers = Object.keys(data.seasons).sort((a,b) => a - b);
-                if (seasonNumbers.length > 0) {
-                        seasonsHtml = `
-                            <div class="mt-12">
-                                <div class="flex items-center space-x-4 mb-4">
-                                    <h3 class="text-2xl sm:text-3xl font-bold">Temporadas</h3>
-                                    <div id="custom-season-selector" class="custom-select-container">
-                                        <div class="custom-select-trigger"><span class="selected-option-text">${data.seasons[seasonNumbers[0]].title}</span></div>
-                                        <div class="custom-select-options">
-                                            ${seasonNumbers.map(num => `<div class="custom-select-option" data-value="${num}">${data.seasons[num].title}</div>`).join('')}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div id="episodes-container" class="min-h-[200px] relative"></div>
-                            </div>`;
-                }
-        }
-        
-        const genresHtml = data.genres ? data.genres.map(g => `<span class="bg-purple-600/50 text-white text-xs px-3 py-1 rounded-full">${g}</span>`).join('') : '';
-        const durationDisplay = data.type === 'movie' ? formatDuration(data.duration.replace(/\D/g, '')) : data.duration;
-
-        detailsScreen.innerHTML = `
-            <div style="background-image: url('${data.backdrop}');" class="fixed inset-0 bg-cover bg-center bg-no-repeat"><div class="absolute inset-0 details-gradient"></div></div>
-            <div class="relative z-10">
-                <button id="close-details-btn" class="fixed top-5 right-5 z-20 bg-black/50 rounded-full p-2 hover:bg-black/80"><i data-lucide="x" class="w-6 h-6"></i></button>
-                <div class="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center min-h-screen pt-20 pb-12">
-                        <div class="w-full md:flex md:space-x-8 items-center">
-                            <div class="flex-shrink-0 w-40 md:w-64 mx-auto md:mx-0"><img src="${data.poster}" alt="Pôster" class="w-full h-auto rounded-lg shadow-2xl"></div>
-                            <div class="mt-6 md:mt-0 text-center md:text-left flex-grow">
-                                <h1 class="text-3xl md:text-6xl font-bold">${data.title}</h1>
-                                <div class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300">
-                                    <span>${data.year}</span>
-                                    ${getRatingBadge(data.rating)}
-                                    <span>Duração: ${durationDisplay}</span>
-                                </div>
-                                <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genresHtml}</div>
-                                <div class="mt-4 max-w-2xl mx-auto md:mx-0">
-                                    <p id="details-synopsis" class="synopsis-truncated text-stone-300 text-sm leading-relaxed">${data.synopsis}</p>
-                                    <button id="details-toggle-synopsis" class="text-purple-400 font-semibold mt-1 hidden">Ler mais</button>
-                                </div>
-                                <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
-                                    ${watchButtonHtml}
-                                    <button data-list-btn-id="${data.docId}" id="details-list-btn" class="bg-white/20 backdrop-blur-sm text-white font-semibold py-3 px-8 rounded-full flex items-center space-x-2 text-lg hover:bg-white/30"><i data-lucide="plus" class="w-6 h-6"></i><span>Minha Lista</span></button>
-                                </div>
-                            </div>
-                        </div>
+        const cardContent = `
+            <div class="glass-card" data-item='${stringifiedData}'>
+                <img src="${IMG_URL_POSTER}${item.poster_path}" alt="${title}" loading="lazy" onerror="this.src='https://placehold.co/180x270/1a1a1a/ffffff?text=Error'">
+                <div class="glass-content">
                 </div>
-                <div class="container mx-auto px-4 sm:px-6 lg:px-8 pb-12">${seasonsHtml}</div>
             </div>`;
-        
-        document.getElementById('close-details-btn').addEventListener('click', () => history.back());
-        document.getElementById('details-list-btn').addEventListener('click', () => toggleMyListItem(data));
-        const watchBtn = document.getElementById('details-watch-btn');
-        if (watchBtn && watchBtn.dataset.videoUrl) {
-            watchBtn.addEventListener('click', () => playVideo(watchBtn.dataset.videoUrl));
-        }
-        updateAllMyListButtons(data.docId);
 
-        if (data.type === 'tv' && data.seasons) {
-            setupSeasonSelector(data);
+        if (isGrid) {
+            return `<div class="w-full" data-item-id="${item.id}">
+                        <div class="relative aspect-[2/3]">${cardContent}</div>
+                    </div>`;
+        } else {
+            return `<div class="swiper-slide">${cardContent}</div>`;
         }
-
-        setupReadMore(document.getElementById('details-synopsis'), document.getElementById('details-toggle-synopsis'));
-        
-        lucide.createIcons();
     }
     
-    function setupSeasonSelector(data) {
-        const seasonSelectorContainer = document.getElementById('custom-season-selector');
-        const episodesContainer = document.getElementById('episodes-container');
-        if(!seasonSelectorContainer || !episodesContainer) return;
+    function createContinueWatchingCard(key, data) {
+        const { item, episode, currentTime, duration } = data;
+        if (!item || !(item.backdrop_path || item.poster_path)) return '';
 
-        const renderEpisodes = (seasonNumber) => {
-            const season = data.seasons[seasonNumber];
-            if (!season || !season.episodes) {
-                showError(episodesContainer, 'Episódios não encontrados.');
-                return;
-            }
-            episodesContainer.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${season.episodes.map((ep, index) => `
-                <div class="episode-item group cursor-pointer" data-video-url="${ep.url}" style="--delay: ${index * 0.05}s;">
-                    <div class="relative flex-shrink-0">
-                        <img src="${ep.still_path ? `${TMDB_STILL_URL}${ep.still_path}` : 'https://placehold.co/120x67/1c1917/999999?text=EP'}" alt="Miniatura do Episódio" class="episode-thumbnail">
-                        <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <i data-lucide="play-circle" class="w-8 h-8 text-white"></i>
-                        </div>
-                    </div>
-                    <div class="episode-info">
-                        <h4 class="font-bold text-white text-base truncate">Ep ${index + 1}: ${ep.title}</h4>
-                        <p class="episode-synopsis">${ep.overview || 'Nenhuma sinopse disponível.'}</p>
-                    </div>
-                </div>`).join('')}</div>`;
-            lucide.createIcons();
-        };
+        const title = item.name || item.title;
+        const progressPercent = (currentTime / duration) * 100;
+        const imagePath = item.backdrop_path || item.poster_path;
 
-        const trigger = seasonSelectorContainer.querySelector('.custom-select-trigger');
-        const options = seasonSelectorContainer.querySelectorAll('.custom-select-option');
-        const selectedText = seasonSelectorContainer.querySelector('.selected-option-text');
-
-        trigger.addEventListener('click', () => seasonSelectorContainer.classList.toggle('open'));
-        options.forEach(option => {
-            option.addEventListener('click', () => {
-                if (option.classList.contains('selected')) {
-                    seasonSelectorContainer.classList.remove('open'); return;
-                }
-                options.forEach(opt => opt.classList.remove('selected'));
-                option.classList.add('selected');
-                selectedText.textContent = option.textContent;
-                seasonSelectorContainer.classList.remove('open');
-                renderEpisodes(option.dataset.value);
-            });
-        });
-        document.addEventListener('click', (e) => {
-            if (!seasonSelectorContainer.contains(e.target)) seasonSelectorContainer.classList.remove('open');
-        });
-        episodesContainer.addEventListener('click', (e) => {
-            const episodeItem = e.target.closest('[data-video-url]');
-            if(episodeItem) playVideo(episodeItem.dataset.videoUrl);
-        });
+        let subtitle = '';
+        if (item.media_type === 'tv' && episode) {
+            subtitle = `<p class="text-xs text-gray-300 mt-1">T${episode.season_number} E${episode.episode_number}: ${episode.name}</p>`;
+        }
         
-        const firstSeason = Object.keys(data.seasons).sort((a,b) => a - b)[0];
-        options[0].classList.add('selected');
-        renderEpisodes(firstSeason);
+        return `
+            <div class="swiper-slide">
+                <div class="glass-card continue-watching-card" data-key="${key}">
+                    <img src="${IMG_URL_POSTER}${imagePath}" alt="${title}" loading="lazy" onerror="this.src='https://placehold.co/300x169/1a1a1a/ffffff?text=Error'">
+                    <div class="glass-content !p-3">
+                        <h4 class="font-bold text-sm truncate">${title}</h4>
+                        ${subtitle}
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" style="width: ${progressPercent}%;"></div>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
-    // --- PLAYER DE VÍDEO ---
-    function playVideo(originalUrl) {
-        if (!originalUrl) {
-            showToast("URL do vídeo não encontrada.", true);
-            return;
-        }
-        
-        history.pushState({ playerOpen: true }, "Player");
+    function initializeSwiper(elementId) {
+        const container = document.getElementById(elementId);
+        if (!container) return;
+        if (container.swiper) container.swiper.destroy(true, true);
+        container.swiper = new Swiper(`#${elementId}`, {
+            slidesPerView: 'auto',
+            spaceBetween: 20,
+        });
+    }
 
-        let urlToLoad = originalUrl;
-        try {
-            const urlObject = new URL(originalUrl);
-            if (urlObject.hostname.includes('api.anivideo.net') && urlObject.pathname.includes('videohls.php')) {
-                const videoSrc = urlObject.searchParams.get('d');
-                if (videoSrc) {
-                    urlToLoad = videoSrc;
-                    console.log("URL de vídeo extraída:", urlToLoad);
-                }
+    // --- Data Population Functions ---
+    function populateCarousel(elementId, contentList) {
+        const container = document.getElementById(elementId);
+        if (container && contentList && contentList.length > 0) {
+            const wrapper = container.querySelector('.swiper-wrapper');
+            if (wrapper) {
+               wrapper.innerHTML = contentList.map(item => createContentCard(item, false)).join('');
+               initializeSwiper(elementId);
             }
-        } catch (e) {
-            console.warn("Não foi possível analisar a URL, usando a original:", e);
+        } else if (container) {
+            container.innerHTML = `<p class="text-gray-400">Nenhum conteúdo encontrado.</p>`;
         }
+    }
 
-        const videoModal = document.getElementById('modal-video');
-        const video = document.getElementById('player-video');
-        const loaderContainer = videoModal.querySelector('.loader-container');
-        
-        videoModal.classList.remove('hidden');
+    function populateGrid(elementId, contentLists) {
+        const container = document.getElementById(elementId);
+        if (!container) return;
 
-        const isMobile = () => window.innerWidth <= 768;
+        const combinedList = contentLists.flat().filter(Boolean);
+        const uniqueItems = Array.from(new Map(combinedList.map(item => [item.id, item])).values());
 
-        if (isMobile()) {
-            const playerContainer = document.getElementById('player-container');
-            if (playerContainer.requestFullscreen) {
-                playerContainer.requestFullscreen().catch(err => {
-                    console.warn(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-                });
-            }
-            try {
-                if (screen.orientation && screen.orientation.lock) {
-                    screen.orientation.lock('landscape').catch(err => {
-                        console.warn(`Could not lock screen orientation: ${err.message}`);
-                    });
-                }
-            } catch (e) {
-                console.warn('Screen Orientation API not available.', e);
-            }
+        if (uniqueItems.length > 0) {
+            container.innerHTML = uniqueItems.map(item => createContentCard(item, true)).join('');
+        } else {
+            container.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum conteúdo encontrado.</p>`;
         }
-        
-        handleHeaderStyle();
-        loaderContainer.innerHTML = '<div class="loader"></div>';
-        loaderContainer.style.display = 'flex';
+    }
 
-        if (hls) {
-            hls.destroy();
-            hls = null;
-        }
+    async function populateContinueWatching() {
+        const container = document.getElementById('continue-watching');
+        if (!container) return;
 
-        const isHlsStream = urlToLoad.includes('.m3u8');
+        const progressData = await getProgressStorage();
+        const items = Object.entries(progressData);
 
-        if (Hls.isSupported() && isHlsStream) {
-            const hlsConfig = { startLevel: -1, capLevelToPlayerSize: true, maxBufferSize: 120, maxBufferLength: 30 };
-            hls = new Hls(hlsConfig);
-            hls.loadSource(urlToLoad);
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                video.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo:", e));
-            });
-            hls.on(Hls.Events.ERROR, function (event, data) {
-                console.error('Erro HLS:', data);
-                if (data.fatal) {
-                    switch (data.type) {
-                        case Hls.ErrorTypes.NETWORK_ERROR:
-                            console.error("Erro de rede fatal;", data);
-                            loaderContainer.innerHTML = `<div class="text-center text-red-400 p-4">
-                                                        <i data-lucide="alert-triangle" class="w-12 h-12 mx-auto mb-2"></i>
-                                                        <p class="font-bold">Erro ao carregar o vídeo.</p>
-                                                        <p class="text-sm text-stone-400">O vídeo pode não estar disponível ou há um problema de rede.</p>
-                                                    </div>`;
-                            lucide.createIcons();
-                            hls.destroy();
-                            break;
-                        case Hls.ErrorTypes.MEDIA_ERROR:
-                            console.error("Erro de mídia fatal;", data);
-                            hls.recoverMediaError();
-                            break;
-                        default:
-                            hls.destroy();
-                            break;
+        if (items.length > 0) {
+            items.sort(([, a], [, b]) => b.lastWatched - a.lastWatched);
+
+            const wrapper = container.querySelector('.swiper-wrapper');
+            wrapper.innerHTML = items.map(([key, data]) => createContinueWatchingCard(key, data)).join('');
+            initializeSwiper('continue-watching');
+            
+            wrapper.querySelectorAll('.continue-watching-card').forEach(card => {
+                card.addEventListener('click', async (e) => {
+                    e.stopPropagation(); 
+                    const key = card.dataset.key;
+                    const progress = (await getProgressStorage())[key];
+                    if (!progress) return;
+
+                    const { item, episode } = progress;
+                    
+                    if (item.media_type === 'movie') {
+                        showPlayer({
+                            videoUrl: 'https://vods1.watchingvs.com/m/A%20Viagem%20de%20Chihiro_2003_tt0245429.mp4',
+                            title: item.title,
+                            itemData: item
+                        });
+                    } else if (item.media_type === 'tv' && episode) {
+                        const seasonDetails = await fetchFromTMDB(`tv/${item.id}/season/${episode.season_number}`);
+                        if (!seasonDetails || !seasonDetails.episodes) return;
+                        
+                        const episodeIndex = seasonDetails.episodes.findIndex(e => e.id === episode.id);
+
+                        showPlayer({
+                            videoUrl: 'https://vods1.watchingvs.com/m/A%20Viagem%20de%20Chihiro_2003_tt0245429.mp4',
+                            title: `${item.name} - T${episode.season_number} E${episode.episode_number}`,
+                            episodes: seasonDetails.episodes.map(e => ({...e, season_number: episode.season_number})),
+                            currentIndex: episodeIndex,
+                            itemData: item
+                        });
                     }
-                }
+                });
             });
+
+            container.parentElement.classList.remove('hidden');
         } else {
-            video.src = urlToLoad;
-            video.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo:", e));
+            container.parentElement.classList.add('hidden');
         }
     }
 
-    function stopVideo() {
-        const videoModal = document.getElementById('modal-video');
-        const video = document.getElementById('player-video');
-        if (!videoModal || !video) return;
+    async function displayContentRating(item, container) {
+        if (!item || !container) return;
 
-        video.pause();
-        video.removeAttribute('src'); 
-        video.load();
-        if (hls) {
-            hls.destroy();
-            hls = null;
-        }
-        if (document.fullscreenElement) {
-            document.exitFullscreen();
-        }
-        videoModal.classList.add('hidden');
-        header.classList.remove('hidden');
-        handleHeaderStyle();
-    }
+        let certification = null;
+        const mediaType = item.media_type || (item.title ? 'movie' : 'tv');
 
-    function setupPlayerEventListeners() {
-        const playerContainer = document.getElementById('player-container');
-        const video = document.getElementById('player-video');
-        const controls = document.getElementById('player-controls');
-        const loader = playerContainer.querySelector('.loader-container');
-        
-        const playPauseBtn = document.getElementById('player-play-pause-btn');
-        const centerPlayBtn = document.getElementById('player-center-play-btn');
-        const rewindBtn = document.getElementById('player-rewind-btn');
-        const forwardBtn = document.getElementById('player-forward-btn');
-        const volumeBtn = document.getElementById('player-volume-btn');
-        const volumeSlider = document.getElementById('player-volume-slider');
-        const progressBar = document.getElementById('player-progress-bar');
-        const progressBarContainer = document.getElementById('player-progress-bar-container');
-        const timeDisplay = document.getElementById('player-time-display');
-        const fullscreenBtn = document.getElementById('player-fullscreen-btn');
-        const backBtn = document.getElementById('player-back-btn');
-        
-        let controlsTimeout;
-
-        const hideControls = () => {
-            if (!video.paused) {
-                controls.classList.add('hide-controls');
-            }
-        };
-
-        const showControls = () => {
-            controls.classList.remove('hide-controls');
-            clearTimeout(controlsTimeout);
-            controlsTimeout = setTimeout(hideControls, 5000); 
-        };
-
-        playerContainer.addEventListener('mousemove', showControls);
-        playerContainer.addEventListener('touchstart', showControls, { passive: true });
-
-        backBtn.addEventListener('click', () => {
-            history.back();
-        });
-
-        const formatTime = (seconds) => {
-            if (isNaN(seconds)) return '00:00';
-            const date = new Date(seconds * 1000);
-            const hh = date.getUTCHours();
-            const mm = date.getUTCMinutes();
-            const ss = date.getUTCSeconds().toString().padStart(2, '0');
-            if (hh) return `${hh}:${mm.toString().padStart(2, '0')}:${ss}`;
-            return `${mm}:${ss}`;
-        };
-
-        const togglePlay = () => {
-            if (video.paused) {
-                video.play().catch(e => console.error("Erro ao reproduzir:", e));
-            } else {
-                video.pause();
-            }
-        };
-        
-        video.addEventListener('click', togglePlay);
-
-        video.addEventListener('play', () => {
-            playPauseBtn.innerHTML = `<i data-lucide="pause" class="w-7 h-7"></i>`;
-            playerContainer.classList.remove('paused');
-            lucide.createIcons();
-            showControls();
-        });
-        video.addEventListener('pause', () => {
-            playPauseBtn.innerHTML = `<i data-lucide="play" class="w-7 h-7"></i>`;
-            playerContainer.classList.add('paused');
-            lucide.createIcons();
-            clearTimeout(controlsTimeout);
-            controls.classList.remove('hide-controls');
-        });
-        video.addEventListener('waiting', () => { loader.style.display = 'flex'; });
-        video.addEventListener('playing', () => { loader.style.display = 'none'; });
-        video.addEventListener('canplay', () => { loader.style.display = 'none'; });
-        video.addEventListener('loadedmetadata', () => {
-            timeDisplay.textContent = `${formatTime(0)} / ${formatTime(video.duration)}`;
-        });
-        video.addEventListener('timeupdate', () => {
-            if (video.duration) {
-                const progressPercent = (video.currentTime / video.duration) * 100;
-                progressBar.style.width = `${progressPercent}%`;
-                timeDisplay.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
-            }
-        });
-        video.addEventListener('volumechange', () => {
-            volumeSlider.value = video.volume;
-            if (video.muted || video.volume === 0) volumeBtn.innerHTML = `<i data-lucide="volume-x" class="w-6 h-6"></i>`;
-            else if (video.volume < 0.5) volumeBtn.innerHTML = `<i data-lucide="volume-1" class="w-6 h-6"></i>`;
-            else volumeBtn.innerHTML = `<i data-lucide="volume-2" class="w-6 h-6"></i>`;
-            lucide.createIcons();
-        });
-
-        playPauseBtn.onclick = togglePlay;
-        centerPlayBtn.onclick = togglePlay;
-        rewindBtn.onclick = () => video.currentTime -= 10;
-        forwardBtn.onclick = () => video.currentTime += 10;
-        volumeBtn.onclick = () => video.muted = !video.muted;
-        volumeSlider.oninput = (e) => video.volume = e.target.value;
-        progressBarContainer.onclick = (e) => {
-            if(video.duration) {
-                const rect = progressBarContainer.getBoundingClientRect();
-                const pos = (e.clientX - rect.left) / rect.width;
-                video.currentTime = pos * video.duration;
-            }
-        };
-        fullscreenBtn.onclick = () => {
-            if (document.fullscreenElement) document.exitFullscreen();
-            else playerContainer.requestFullscreen().catch(err => console.warn(`Erro: ${err.message}`));
-        };
-        document.addEventListener('fullscreenchange', () => {
-            if (document.fullscreenElement) fullscreenBtn.innerHTML = `<i data-lucide="minimize" class="w-6 h-6"></i>`;
-            else fullscreenBtn.innerHTML = `<i data-lucide="maximize" class="w-6 h-6"></i>`;
-            lucide.createIcons();
-        });
-    }
-
-    // --- NOTIFICATION LOGIC ---
-    function listenForNotifications() {
-        if (!window.db) {
-            setTimeout(listenForNotifications, 500);
-            return;
-        }
-        const q = window.query(window.collection(window.db, "notifications"), window.orderBy("createdAt", "desc"));
-        window.onSnapshot(q, (snapshot) => {
-            notifications = [];
-            snapshot.forEach((doc) => {
-                notifications.push({ id: doc.id, ...doc.data() });
-            });
-            updateNotificationBell();
-        });
-    }
-
-    function updateNotificationBell() {
-        const notificationsBtn = document.getElementById('notifications-btn');
-        if (!notificationsBtn || notifications.length === 0) return;
-
-        const latestTimestamp = notifications[0].createdAt ? (notifications[0].createdAt.toMillis ? notifications[0].createdAt.toMillis() : new Date(notifications[0].createdAt).getTime()) : 0;
-        
-        const newUndismissedNotification = notifications.find(n => {
-            const notifTime = n.createdAt ? (n.createdAt.toMillis ? n.createdAt.toMillis() : new Date(n.createdAt).getTime()) : 0;
-            const isNew = notifTime > lastNotificationCheck;
-            const isDismissed = n.type === 'Novidade' && dismissedNotifications.includes(n.id);
-            return isNew && !isDismissed;
-        });
-        
-        if (newUndismissedNotification) {
-            notificationsBtn.classList.add('has-new');
-        } else {
-            notificationsBtn.classList.remove('has-new');
-        }
-    }
-    
-    function renderNotifications() {
-        const avisosContainer = document.getElementById('notifications-avisos');
-        const novidadesContainer = document.getElementById('notifications-novidades');
-
-        const avisos = notifications.filter(n => n.type === 'Aviso');
-        const novidades = notifications.filter(n => n.type === 'Novidade' && !dismissedNotifications.includes(n.id));
-
-        const createNotifHTML = (notif, isDismissable) => {
-            const dismissBtn = isDismissable ? `<button class="remove-notification-btn text-stone-500 hover:text-white flex-shrink-0 ml-2" data-notif-id="${notif.id}"><i data-lucide="x" class="w-4 h-4"></i></button>` : '';
-            
-            let contentHTML = `
-                <div class="flex-grow">
-                    <p class="font-bold text-white">${notif.title}</p>
-                    <p class="text-stone-300 text-sm">${notif.message}</p>
-                </div>
-            `;
-            
-            const classes = "notification-item flex items-start gap-2 p-2 rounded-md transition-colors w-full";
-            
-            if (notif.link) {
-                const linkUrl = notif.link.type === 'internal' ? `#details/${notif.link.docId}` : notif.link.url;
-                const target = notif.link.type === 'external' ? '_blank' : '_self';
-                return `
-                    <a href="${linkUrl}" target="${target}" class="${classes} hover:bg-white/10 cursor-pointer">
-                        ${contentHTML}
-                        <i data-lucide="${notif.link.type === 'external' ? 'external-link' : 'chevron-right'}" class="w-5 h-5 text-purple-400 flex-shrink-0 mt-1"></i>
-                        ${dismissBtn}
-                    </a>`;
-            }
-            
-            return `<div class="${classes}">${contentHTML} ${dismissBtn}</div>`;
-        };
-
-        avisosContainer.innerHTML = avisos.length > 0 ? avisos.map(n => createNotifHTML(n, false)).join('<hr class="border-white/10 my-1">') : '<p class="text-stone-400 text-center p-4">Nenhum aviso.</p>';
-        novidadesContainer.innerHTML = novidades.length > 0 ? novidades.map(n => createNotifHTML(n, true)).join('<hr class="border-white/10 my-1">') : '<p class="text-stone-400 text-center p-4">Nenhuma novidade.</p>';
-        
-        lucide.createIcons();
-        
-        if (novidades.length > 0) {
-            document.querySelectorAll('.notification-tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.notification-content').forEach(content => content.classList.remove('active'));
-            document.querySelector('[data-tab="novidades"]').classList.add('active');
-            document.getElementById('notifications-novidades').classList.add('active');
-        } else {
-            document.querySelector('[data-tab="avisos"]').classList.add('active');
-            document.getElementById('notifications-avisos').classList.add('active');
-        }
-    }
-
-    document.getElementById('modal-notificacoes').addEventListener('click', (e) => {
-        if (e.target.matches('.notification-tab')) {
-            document.querySelectorAll('.notification-tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.notification-content').forEach(content => content.classList.remove('active'));
-            e.target.classList.add('active');
-            document.getElementById(`notifications-${e.target.dataset.tab}`).classList.add('active');
-        }
-
-        const removeBtn = e.target.closest('.remove-notification-btn');
-        if (removeBtn) {
-            const notifId = removeBtn.dataset.notifId;
-            if (!dismissedNotifications.includes(notifId)) {
-                dismissedNotifications.push(notifId);
-                localStorage.setItem('starlight-dismissedNotifications', JSON.stringify(dismissedNotifications));
-                updateNotificationBell(); 
-            }
-            const notifItem = removeBtn.closest('.notification-item');
-            if (notifItem) {
-                notifItem.style.transition = 'opacity 0.3s, height 0.3s';
-                notifItem.style.opacity = '0';
-                notifItem.style.height = '0';
-                setTimeout(() => {
-                    let hr = notifItem.nextElementSibling;
-                    if (hr && hr.tagName === 'HR') hr.remove();
-                    notifItem.remove();
-                    if (document.getElementById('notifications-novidades').children.length === 0) renderNotifications();
-                }, 300);
-            }
-        }
-    });
-
-
-    // --- NAVEGAÇÃO E ROTEAMENTO ---
-    const handleLocationChange = () => {
-        clearInterval(heroCarouselInterval);
-        
-        closeAllModals();
-
-        const hash = location.hash;
-        if (hash.startsWith('#details/')) {
-            const docId = hash.split('/')[1];
-            if (docId) renderDetailsScreen(docId);
-        } else {
-            detailsScreen.classList.add('hidden');
-            document.body.classList.remove('overflow-hidden');
-            const screenId = hash.slice(1) || 'screen-home';
-            document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-            const activeScreen = document.getElementById(screenId);
-            if (activeScreen) {
-                activeScreen.classList.remove('hidden');
-                renderScreenContent(screenId, true);
-            } else {
-                document.getElementById('screen-home').classList.remove('hidden');
-                renderScreenContent('screen-home', true);
-            }
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.toggle('active-nav', link.dataset.screen === screenId);
-            });
-            document.querySelectorAll('.mobile-nav-link').forEach(link => {
-                link.classList.toggle('active-nav-mobile', link.dataset.screen === screenId);
-            });
-        }
-        handleHeaderStyle();
-        window.scrollTo(0, 0);
-    };
-
-    // --- LÓGICA DE PEDIDOS ---
-    
-    let tmdbSearchTimeout;
-    const tmdbSearchInput = document.getElementById('tmdb-search-input');
-    const tmdbSearchResultsContainer = document.getElementById('tmdb-search-results');
-    const pendingRequestsContainer = document.getElementById('pending-requests-container');
-
-    tmdbSearchInput.addEventListener('input', (e) => {
-        clearTimeout(tmdbSearchTimeout);
-        const query = e.target.value;
-        if (query.length > 2) {
-            tmdbSearchTimeout = setTimeout(() => searchTMDBForRequest(query), 500);
-        } else {
-            tmdbSearchResultsContainer.innerHTML = '';
-        }
-    });
-
-    async function searchTMDBForRequest(query) {
-        const url = `${TMDB_BASE_URL}/search/multi?api_key=${TMDB_API_KEY}&language=pt-BR&query=${encodeURIComponent(query)}`;
         try {
-            const response = await fetch(url);
-            const data = await response.json();
-            const validResults = data.results.filter(r => (r.media_type === 'movie' || r.media_type === 'tv') && r.poster_path);
-            
-            if (validResults.length === 0) {
-                tmdbSearchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum resultado encontrado.</p>`;
-                return;
+            if (mediaType === 'movie') {
+                const data = await fetchFromTMDB(`movie/${item.id}/release_dates`);
+                if (!data || !data.results) return;
+                const brRelease = data.results.find(r => r.iso_3166_1 === 'BR');
+                if (brRelease && brRelease.release_dates) {
+                    const cert = brRelease.release_dates.find(rd => rd.certification && rd.certification !== '');
+                    if (cert) certification = cert.certification;
+                }
+            } else { // tv
+                const data = await fetchFromTMDB(`tv/${item.id}/content_ratings`);
+                if (!data || !data.results) return;
+                const brRating = data.results.find(r => r.iso_3166_1 === 'BR');
+                if (brRating && brRating.rating) certification = brRating.rating;
             }
+        } catch (error) {
+            console.error("Could not fetch content rating:", error);
+        }
 
-            tmdbSearchResultsContainer.innerHTML = validResults.map(item => {
-                const title = item.title || item.name;
-                const year = (item.release_date || item.first_air_date || '').split('-')[0];
-                const posterUrl = `${TMDB_IMG_URL}${item.poster_path}`;
-                return `
-                    <div class="group cursor-pointer" onclick='handleRequestSelection(${JSON.stringify(item)})'>
-                        <div class="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 transition-all duration-300 group-hover:ring-2 group-hover:ring-indigo-500">
-                            <img src="${posterUrl}" alt="${title}" class="w-full h-full object-cover">
+        if (!certification) return;
+
+        const ratingClassMap = {
+            'L': 'rating-L', '10': 'rating-10', '12': 'rating-12',
+            '14': 'rating-14', '16': 'rating-16', '18': 'rating-18',
+        };
+        
+        const ratingClass = ratingClassMap[certification] || '';
+        if (!ratingClass) return;
+
+        const ratingElement = document.createElement('div');
+        ratingElement.className = 'glass-container rating-box ' + ratingClass;
+        ratingElement.innerHTML = `
+            <div class="glass-filter"></div>
+            <div class="glass-overlay"></div>
+            <div class="glass-specular"></div>
+            <div class="glass-content">${certification}</div>
+        `;
+        container.prepend(ratingElement);
+    }
+    
+    async function updateHero(item) {
+        if (!item) return;
+        currentHeroItem = item;
+        const backgroundUrl = item.backdrop_path || item.poster_path;
+        document.getElementById('main-background').style.backgroundImage = `url('${IMG_URL_BACKGROUND}${backgroundUrl}')`;
+        document.getElementById('hero-category').textContent = 'EM DESTAQUE';
+        document.getElementById('hero-title').textContent = item.title || item.name;
+        document.getElementById('hero-overview').textContent = item.overview.length > 200 ? item.overview.substring(0, 200) + '...' : item.overview;
+        const releaseYear = (item.release_date || item.first_air_date || '').substring(0, 4);
+        
+        const metaContainer = document.getElementById('hero-meta');
+        metaContainer.innerHTML = ``; // Clear it first
+        await displayContentRating(item, metaContainer);
+        metaContainer.innerHTML += `<span class="border border-gray-400 px-2 py-0.5 rounded text-xs">${item.vote_average.toFixed(1)}</span><span>${releaseYear}</span>`;
+        
+        await updateListButton(document.getElementById('hero-add-to-list'), item);
+    }
+    
+    async function updateListButton(button, item) {
+        if (!button || !item) return;
+        const isInList = await checkIfInList(item.id);
+        const contentDiv = button.querySelector('.glass-content');
+        contentDiv.innerHTML = isInList ? `<svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Na Lista</span>` : `<svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg><span>Minha Lista</span>`;
+        if (button.clickHandler) {
+            button.removeEventListener('click', button.clickHandler);
+        }
+        button.clickHandler = () => handleListAction(item);
+        button.addEventListener('click', button.clickHandler);
+    }
+    
+    async function populateMyList() {
+        const list = await getMyList();
+        const container = document.getElementById('my-list-grid');
+        if (!container) return;
+        container.innerHTML = list.length === 0 ? '<p class="col-span-full text-center text-gray-400">Sua lista está vazia.</p>' : list.map(item => createContentCard(item, true)).join('');
+    }
+    
+    async function populateAllViews() {
+        // First, fetch user-specific data from Firestore
+        await populateContinueWatching();
+
+        // Then, fetch general content from TMDB
+        const [trending, popularTV, topRatedMovies, upcomingMovies, popularMovies, topRatedTV] = await Promise.all([ 
+            fetchFromTMDB('trending/all/week'), fetchFromTMDB('tv/popular'), fetchFromTMDB('movie/top_rated'),
+            fetchFromTMDB('movie/upcoming'), fetchFromTMDB('movie/popular'), fetchFromTMDB('tv/top_rated')
+        ]);
+
+        if (trending && trending.results.length > 0) {
+            await updateHero(trending.results[0]);
+        }
+        
+        populateCarousel('popular-tv', popularTV ? popularTV.results : []);
+        populateCarousel('top-rated-movies-home', topRatedMovies ? topRatedMovies.results : []);
+        populateCarousel('upcoming-movies-home', upcomingMovies ? upcomingMovies.results : []);
+        
+        populateGrid('series-grid', [popularTV ? popularTV.results : [], topRatedTV ? topRatedTV.results : []]);
+        populateGrid('movies-grid', [popularMovies ? popularMovies.results : [], topRatedMovies ? topRatedMovies.results : []]);
+    }
+    
+    // --- Navigation and View Management ---
+    const views = document.querySelectorAll('.content-view');
+    const navLinks = document.querySelectorAll('.nav-item, .mobile-nav-item');
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = link.getAttribute('data-target');
+            if (!targetId) return;
+            
+            lastActiveViewId = targetId;
+
+            document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(l => l.classList.remove('active'));
+            views.forEach(view => view.classList.add('hidden'));
+            const targetView = document.getElementById(targetId);
+            if(targetView) {
+               targetView.classList.remove('hidden');
+               targetView.classList.add('active');
+            }
+            
+            document.querySelectorAll(`[data-target="${targetId}"]`).forEach(l => l.classList.add('active'));
+            updateMobileNavIndicator();
+            document.getElementById('main-background').style.opacity = (targetId === 'home-view' && currentHeroItem) ? 1 : 0;
+            if(targetId === 'mylist-view') populateMyList();
+            window.scrollTo(0, 0);
+        });
+    });
+    
+    document.body.addEventListener('click', (e) => {
+        const card = e.target.closest('.glass-card:not(.continue-watching-card)');
+        if (card && card.closest('.swiper-slide, [data-item-id]')) {
+            try {
+                const itemDataString = card.getAttribute('data-item').replace(/&apos;/g, "'").replace(/"/g, '"');
+                const itemData = JSON.parse(itemDataString);
+                if (!searchOverlay.classList.contains('hidden')) {
+                    toggleSearchOverlay(false);
+                }
+                showDetailsView(itemData);
+            } catch (err) { console.error("Erro ao abrir detalhes:", err); }
+        }
+    });
+
+    function hideDetailsView() {
+        history.back();
+    }
+    
+    async function displaySeasonDetails(tvId, seasonNumber) {
+        const container = document.getElementById('episode-list-container');
+        if (!container) return;
+        container.innerHTML = `<div class="glass-spinner-wrapper pt-10">${glassSpinnerHTML.replace('min-h-screen', '')}</div>`;
+
+        const seasonDetails = await fetchFromTMDB(`tv/${tvId}/season/${seasonNumber}`);
+        const progressData = await getProgressStorage();
+
+        if (seasonDetails && seasonDetails.episodes && seasonDetails.episodes.length > 0) {
+            const episodeItemsHTML = seasonDetails.episodes.map((episode, index) => {
+                const episodeData = {
+                    videoUrl: 'https://vods1.watchingvs.com/m/A%20Viagem%20de%20Chihiro_2003_tt0245429.mp4', // Placeholder
+                    title: `${currentDetailsItem.name} - T${seasonNumber} E${episode.episode_number}`,
+                    episodes: seasonDetails.episodes.map(e => ({...e, season_number: seasonNumber})),
+                    currentIndex: index,
+                    itemData: currentDetailsItem
+                };
+                const episodeDataString = JSON.stringify(episodeData).replace(/'/g, "&apos;");
+
+                const episodeKey = `tv-${tvId}-s${seasonNumber}-e${episode.episode_number}`;
+                const savedProgress = progressData[episodeKey];
+                let progressBarHTML = '';
+                if (savedProgress && savedProgress.duration > 0) {
+                    const progressPercent = (savedProgress.currentTime / savedProgress.duration) * 100;
+                    progressBarHTML = `
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" style="width: ${progressPercent}%;"></div>
                         </div>
-                        <h4 class="font-bold mt-2 truncate">${title}</h4>
-                        <p class="text-sm text-gray-400">${year}</p>
+                    `;
+                }
+
+                return `
+                <div class="episode-item flex gap-4 items-start w-full p-2 rounded-lg hover:bg-white/10 transition-colors duration-200 cursor-pointer opacity-0 animate-fade-in" style="animation-delay: ${index * 50}ms;" data-episode-data='${episodeDataString}'>
+                    <div class="w-24 md:w-32 flex-shrink-0 relative overflow-hidden rounded-md">
+                        <img src="${episode.still_path ? IMG_URL_POSTER + episode.still_path : 'https://placehold.co/1280x720/1a1a1a/ffffff?text=Starlight'}" class="w-full aspect-video object-cover" onerror="this.src='https://placehold.co/1280x720/1a1a1a/ffffff?text=Starlight'">
+                        ${progressBarHTML}
                     </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-white">${episode.episode_number}. ${episode.name}</h4>
+                        <p class="text-xs text-gray-300 mt-1 line-clamp-2 sm:line-clamp-3">${episode.overview || 'Sinopse não disponível.'}</p>
+                    </div>
+                </div>
                 `;
             }).join('');
 
-        } catch (error) {
-            console.error("Erro ao pesquisar no TMDB:", error);
-            tmdbSearchResultsContainer.innerHTML = `<p class="col-span-full text-center text-red-400">Erro ao buscar.</p>`;
+            container.innerHTML = `
+                <div class="glass-container episode-list-glass-card rounded-2xl opacity-0 animate-fade-in">
+                   <div class="glass-filter"></div>
+                   <div class="glass-distortion-overlay"></div>
+                   <div class="glass-overlay"></div>
+                   <div class="glass-specular"></div>
+                   <div class="glass-content p-2 sm:p-4">
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+                      ${episodeItemsHTML}
+                      </div>
+                   </div>
+                </div>`;
+            
+            container.querySelectorAll('.episode-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const data = JSON.parse(item.dataset.episodeData.replace(/&apos;/g, "'"));
+                    showPlayer(data);
+                });
+            });
+
+        } else {
+            container.innerHTML = `<p class="text-gray-400">Não foi possível carregar os episódios.</p>`;
         }
     }
 
-    window.handleRequestSelection = async (item) => {
-        const existingItem = firestoreContent.find(c => String(c.tmdb_id) === String(item.id));
-        if (existingItem) {
-            showToast("Este item já está disponível no catálogo!");
-            location.hash = `#details/${existingItem.docId}`;
-            return;
+    async function showDetailsView(item) {
+        document.querySelector('header').classList.add('hidden');
+        document.querySelector('footer').classList.add('hidden');
+        document.querySelectorAll('.content-view').forEach(v => v.classList.add('hidden'));
+
+        detailsView.classList.remove('hidden');
+        detailsView.innerHTML = glassSpinnerHTML;
+        window.scrollTo(0, 0);
+        history.pushState({view: 'details'}, '', '#details');
+        
+        const mediaType = item.media_type || (item.title ? 'movie' : 'tv');
+        const details = await fetchFromTMDB(`${mediaType}/${item.id}`);
+        if (!details) { 
+            hideDetailsView(); 
+            return; 
         }
 
-        const existingRequest = pendingRequests.find(r => String(r.tmdbId) === String(item.id));
-        if (existingRequest) {
-            showToast("Este item já foi solicitado. Você pode votar nele na lista abaixo.");
-            return;
+        currentDetailsItem = details;
+        const title = details.title || details.name;
+        const releaseYear = (details.release_date || details.first_air_date || '').substring(0, 4);
+        const rating = details.vote_average ? details.vote_average.toFixed(1) : 'N/A';
+        const genres = details.genres ? details.genres.map(g => `<span class="bg-white/10 text-xs font-semibold px-2 py-1 rounded-full text-white">${g.name}</span>`).join('') : '';
+        let duration = '';
+        if (mediaType === 'movie' && details.runtime) {
+            duration = `${Math.floor(details.runtime / 60)}h ${details.runtime % 60}m`;
+        } else if (mediaType === 'tv' && details.number_of_seasons) {
+            duration = `${details.number_of_seasons} Temporada(s)`;
         }
         
-        showConfirm('Confirmar Pedido', `Tem a certeza que quer pedir "${item.title || item.name}"?`, async () => {
-            try {
-                const newRequest = {
-                    tmdbId: item.id,
-                    mediaType: item.media_type,
-                    title: item.title || item.name,
-                    posterUrl: `${TMDB_IMG_URL}${item.poster_path}`,
-                    year: (item.release_date || item.first_air_date || '').split('-')[0],
-                    status: "pending",
-                    requesters: [userId],
-                    createdAt: window.serverTimestamp()
-                };
-                await window.addDoc(window.collection(window.db, "pedidos"), newRequest);
-                showToast("Pedido enviado com sucesso!");
-                tmdbSearchResultsContainer.innerHTML = '';
-                tmdbSearchInput.value = '';
-            } catch(error) {
-                console.error("Erro ao criar pedido:", error);
-                showToast("Não foi possível criar o pedido.", true);
-            }
-        });
-    }
-
-    function renderPendingRequests() {
-        if (!pendingRequestsContainer) return;
-
-        if (pendingRequests.length === 0) {
-            pendingRequestsContainer.innerHTML = '<p class="text-gray-500 col-span-full">Ainda não há pedidos em aberto.</p>';
-            return;
+        let backgroundUrl;
+        if (window.innerWidth < 768) { 
+            backgroundUrl = details.poster_path || details.backdrop_path;
+        } else {
+            backgroundUrl = details.backdrop_path || details.poster_path;
         }
-
-        pendingRequestsContainer.innerHTML = pendingRequests.map(req => {
-            const voteCount = req.requesters?.length || 0;
-            const hasVoted = req.requesters?.includes(userId);
+        const finalImageUrl = backgroundUrl ? `${IMG_URL_BACKGROUND}${backgroundUrl}` : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
+        
+        detailsView.innerHTML = `
+            <div class="fixed inset-0 z-[-1] bg-cover bg-center bg-no-repeat" style="background-image: url('${finalImageUrl}');">
+                 <div class="absolute inset-0 details-gradient-overlay"></div>
+            </div>
             
-            const actionButtonHTML = hasVoted 
-                ? `<button disabled class="bg-gray-500 text-white font-bold py-2 px-4 rounded-lg text-sm cursor-not-allowed">Já Votou</button>`
-                : `<button onclick="voteForRequest('${req.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition">Votar</button>`;
-
-            return `
-                <div class="bg-gray-800/50 p-4 rounded-lg flex gap-4">
-                    <img src="${req.posterUrl}" alt="${req.title}" class="w-24 h-36 object-cover rounded-md flex-shrink-0">
-                    <div class="flex flex-col justify-between w-full">
-                        <div>
-                            <h4 class="font-bold text-lg">${req.title}</h4>
-                            <p class="text-sm text-gray-400">${req.year}</p>
+            <div class="relative">
+                <button id="back-from-details" class="fixed top-6 left-6 z-20 bg-black/20 backdrop-blur-sm rounded-full p-2 hover:bg-black/40 transition-colors" aria-label="Voltar">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                </button>
+                
+                <div class="container mx-auto px-4 sm:px-6 lg:px-8 min-h-screen pt-24 pb-12">
+                    <div class="md:grid md:grid-cols-[256px_1fr] md:gap-8 lg:gap-12 items-start">
+                        <div class="flex-shrink-0 w-40 sm:w-52 md:w-64 mx-auto md:mx-0">
+                            <img src="${details.poster_path ? IMG_URL_POSTER + details.poster_path : 'https://placehold.co/500x750/1a1a1a/ffffff?text=Capa'}" alt="${title}" class="rounded-lg shadow-2xl aspect-[2/3] object-cover">
                         </div>
-                        <div class="flex items-center justify-between mt-2">
-                            <p class="text-sm font-semibold">${voteCount} ${voteCount === 1 ? 'voto' : 'votos'}</p>
-                            ${actionButtonHTML}
+                        <div class="mt-6 md:mt-0 text-center md:text-left">
+                            <h1 class="text-3xl md:text-6xl font-black text-white" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.7);">${title}</h1>
+                            <div id="details-meta" class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300">
+                                
+                            </div>
+                            <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genres}</div>
+                            <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
+                                <button id="details-watch-btn" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"><svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>Assistir</div></button>
+                                <button id="details-add-to-list" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"></div></button>
+                            </div>
+                            <h3 class="mt-8 text-lg sm:text-xl font-semibold text-white">Sinopse</h3>
+                            <p class="mt-2 text-gray-300 max-w-2xl text-sm leading-relaxed">${details.overview || 'Sinopse não disponível.'}</p>
+                            <div id="tv-content-details" class="mt-10"></div>
                         </div>
                     </div>
                 </div>
+            </div>
+        `;
+        
+        const detailsMetaContainer = detailsView.querySelector('#details-meta');
+        if (detailsMetaContainer) {
+            await displayContentRating(details, detailsMetaContainer);
+            detailsMetaContainer.innerHTML += `
+                <span>⭐ ${rating}</span>
+                ${releaseYear ? `<span>•</span><span>${releaseYear}</span>` : ''}
+                ${duration ? `<span>•</span><span>${duration}</span>` : ''}
             `;
-        }).join('');
+        }
+
+        document.getElementById('back-from-details').addEventListener('click', () => history.back());
+        document.getElementById('details-watch-btn').addEventListener('click', () => {
+            showPlayer({ videoUrl: 'https://vods1.watchingvs.com/m/A%20Viagem%20de%20Chihiro_2003_tt0245429.mp4', title: title, itemData: currentDetailsItem });
+        });
+        await updateListButton(document.getElementById('details-add-to-list'), details);
+        
+        if (mediaType === 'tv' && details.seasons && details.seasons.length > 0) {
+            const hasRegularSeasons = details.seasons.some(s => s.season_number > 0);
+            const filteredSeasons = hasRegularSeasons ? details.seasons.filter(s => s.season_number > 0) : details.seasons;
+            
+            if(filteredSeasons.length > 0) {
+                const container = document.getElementById('tv-content-details');
+                const firstSeason = filteredSeasons[0];
+                const seasonsOptionsHTML = filteredSeasons.map(season =>
+                    `<div class="custom-select-option text-white px-4 py-3 cursor-pointer rounded-lg transition-colors duration-200" data-season-number="${season.season_number}">${season.name}</div>`
+                ).join('');
+
+                container.innerHTML = `
+                    <div id="season-selector-container" class="custom-select-container max-w-xs mb-6">
+                        <button id="season-selector-button" class="glass-container glass-button rounded-full w-full">
+                            <div class="glass-filter"></div><div class="glass-overlay" style="--glass-bg-color: rgba(255,255,255,0.1)"></div><div class="glass-specular"></div>
+                            <div class="glass-content w-full flex items-center justify-between px-4 py-3 text-white">
+                                <span id="selected-season-name">${firstSeason.name}</span>
+                                <svg id="season-chevron" class="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                        </button>
+                        <div id="season-options" class="custom-select-options hidden origin-top">
+                            <div class="glass-container rounded-2xl w-full">
+                                <div class="glass-filter"></div><div class="glass-overlay" style="--glass-bg-color: rgba(20, 20, 20, 0.7)"></div><div class="glass-specular"></div>
+                                <div class="glass-content p-2 space-y-1 hide-scrollbar">
+                                    ${seasonsOptionsHTML}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="episode-list-container"></div>`;
+
+                const tvId = details.id;
+                const button = document.getElementById('season-selector-button');
+                const optionsPanel = document.getElementById('season-options');
+                const selectedName = document.getElementById('selected-season-name');
+                const chevron = document.getElementById('season-chevron');
+
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isHidden = optionsPanel.classList.contains('hidden');
+                    if (isHidden) {
+                        optionsPanel.classList.remove('hidden', 'animate-fade-out-up');
+                        optionsPanel.classList.add('animate-fade-in-down');
+                        chevron.style.transform = 'rotate(180deg)';
+                    } else {
+                        optionsPanel.classList.remove('animate-fade-in-down');
+                        optionsPanel.classList.add('animate-fade-out-up');
+                        chevron.style.transform = 'rotate(0deg)';
+                        setTimeout(() => optionsPanel.classList.add('hidden'), 250);
+                    }
+                });
+
+                optionsPanel.querySelectorAll('.custom-select-option').forEach(option => {
+                    option.addEventListener('click', () => {
+                        const seasonNumber = option.getAttribute('data-season-number');
+                        selectedName.textContent = option.textContent;
+                        displaySeasonDetails(tvId, seasonNumber);
+                        button.click();
+                    });
+                });
+                
+                displaySeasonDetails(tvId, firstSeason.season_number);
+                attachGlassButtonListeners();
+            }
+        }
+        attachGlassButtonListeners(); 
     }
 
-    window.voteForRequest = async (requestId) => {
-        if (!userId) {
-            showToast("Você precisa estar logado para votar.", true);
+    function handleMouseMove(e) { const rect = this.getBoundingClientRect(); const x = e.clientX - rect.left; const y = e.clientY - rect.top; const specular = this.querySelector('.glass-specular'); if (specular) specular.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 30%, rgba(255,255,255,0) 60%)`; }
+    function handleMouseLeave() { const specular = this.querySelector('.glass-specular'); if (specular) specular.style.background = 'none'; }
+    function attachGlassButtonListeners() { document.querySelectorAll('.glass-button, .glass-card, .liquid-glass-card, .episode-list-glass-card, .player-control-btn, .glass-container[style*="--bg-color"], .glass-form').forEach(element => { if (!element.hasGlassListener) { element.addEventListener('mousemove', handleMouseMove); element.addEventListener('mouseleave', handleMouseLeave); element.hasGlassListener = true; }}); }
+    function updateMobileNavIndicator() { const indicator = document.getElementById('mobile-nav-indicator'); const activeItem = document.querySelector('#mobile-nav .mobile-nav-item.active'); if (indicator && activeItem) { const left = activeItem.offsetLeft; const width = activeItem.offsetWidth; indicator.style.width = `${width}px`; indicator.style.transform = `translateX(${left}px)`; }}
+    function toggleSearchOverlay(show) { if (show) { searchOverlay.classList.remove('hidden'); searchInput.focus(); document.body.style.overflow = 'hidden'; } else { searchOverlay.classList.add('hidden'); searchInput.value = ''; searchResultsContainer.innerHTML = ''; document.body.style.overflow = 'auto'; }}
+    async function performSearch(query) { if(query.length < 2) { searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Digite pelo menos 2 caracteres.</p>`; return; } searchResultsContainer.innerHTML = `<div class="col-span-full">${glassSpinnerHTML.replace('min-h-screen', '')}</div>`; const data = await fetchFromTMDB('search/multi', `query=${encodeURIComponent(query)}`); if(data && data.results) { const filteredResults = data.results.filter(item => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path); if(filteredResults.length > 0) { searchResultsContainer.innerHTML = filteredResults.map(item => createContentCard(item, true)).join(''); } else { searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum resultado para "${query}".</p>`; }} else { searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Ocorreu um erro na busca.</p>`; }}
+    
+    // --- Player Functions ---
+    window.showPlayer = function(context) {
+        videoPlayer.pause();
+        videoPlayer.src = "";
+
+        let key;
+        let itemData = context.itemData;
+        if (!itemData) {
+            console.error("showPlayer called without itemData in context.");
             return;
         }
-        try {
-            const requestRef = window.doc(window.db, "pedidos", requestId);
-            await window.updateDoc(requestRef, {
-                requesters: window.arrayUnion(userId)
+
+        if (context.episodes) {
+            const episode = context.episodes[context.currentIndex];
+            key = `tv-${itemData.id}-s${episode.season_number}-e${episode.episode_number}`;
+        } else {
+            key = `movie-${itemData.id}`;
+        }
+        
+        currentPlayerContext = { ...context, key, id: itemData.id, itemData };
+
+        history.pushState({view: 'player'}, '', '#player');
+        playerView.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        playerTitle.textContent = context.title;
+        videoPlayer.src = context.videoUrl;
+
+        getProgressStorage().then(progressData => {
+            const savedProgress = progressData[key];
+            if (savedProgress && savedProgress.currentTime > 5) {
+                videoPlayer.currentTime = savedProgress.currentTime;
+            }
+        });
+        
+        const playPromise = videoPlayer.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(error => {
+                if (error.name !== 'AbortError') { console.error("Video play error:", error); }
             });
-            showToast("Voto computado!");
-        } catch(error) {
-            console.error("Erro ao votar:", error);
-            showToast("Não foi possível registrar o seu voto.", true);
+        }
+
+        if (window.innerWidth < 768) {
+            playerView.requestFullscreen().catch(err => {
+                console.error(`Fullscreen request failed: ${err.message}`);
+            });
+        }
+
+        if(context.episodes && context.episodes.length > 1) {
+            nextEpisodeBtn.classList.remove('hidden');
+            prevEpisodeBtn.classList.remove('hidden');
+        } else {
+            nextEpisodeBtn.classList.add('hidden');
+            prevEpisodeBtn.classList.add('hidden');
+        }
+        
+        attachGlassButtonListeners();
+    }
+
+    async function hidePlayer() {
+        playerView.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+        
+        await savePlayerProgress();
+        
+        videoPlayer.pause();
+        videoPlayer.src = ""; 
+        
+        currentPlayerContext = {};
+        await populateContinueWatching();
+    }
+
+    function formatTime(timeInSeconds) {
+        if (isNaN(timeInSeconds) || timeInSeconds < 0) { return "00:00"; }
+        const hours = Math.floor(timeInSeconds / 3600);
+        const minutes = Math.floor((timeInSeconds % 3600) / 60);
+        const seconds = Math.floor(timeInSeconds % 60);
+        const formattedMinutes = String(minutes).padStart(2, '0');
+        const formattedSeconds = String(seconds).padStart(2, '0');
+        return hours > 0 ? `${hours}:${formattedMinutes}:${formattedSeconds}` : `${formattedMinutes}:${formattedSeconds}`;
+    }
+
+    function togglePlay() {
+        if (videoPlayer.paused) {
+            videoPlayer.play().catch(error => {
+                if (error.name !== 'AbortError') { console.error("Video play error:", error); }
+            });
+        } else {
+            videoPlayer.pause();
         }
     }
 
-
-    // --- INICIALIZAÇÃO E EVENT LISTENERS ---
-    function initEventListeners() {
-        document.querySelectorAll('.nav-link, #logo-link, .mobile-nav-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const targetHash = e.currentTarget.getAttribute('href');
-                if (location.hash !== targetHash) {
-                    history.pushState(null, '', targetHash);
-                    handleLocationChange();
-                }
-            });
-        });
-
-        document.getElementById('search-btn').addEventListener('click', () => toggleModal('modal-busca'));
+    function handlePlayerClick() {
+        if (playerView.classList.contains('controls-active')) {
+            togglePlay();
+        } else {
+            playerView.classList.add('controls-active');
+        }
         
-        document.getElementById('notifications-btn').addEventListener('click', () => {
-            renderNotifications();
-            toggleModal('modal-notificacoes');
-            if (notifications.length > 0 && notifications[0].createdAt) {
-                const latestTimestamp = notifications[0].createdAt.toMillis ? notifications[0].createdAt.toMillis() : new Date(notifications[0].createdAt).getTime();
-                lastNotificationCheck = latestTimestamp;
-                localStorage.setItem('starlight-lastNotificationCheck', latestTimestamp);
-                updateNotificationBell();
-            }
-        });
-
-        document.getElementById('profile-btn').addEventListener('click', () => toggleModal('modal-perfil'));
-        
-        document.getElementById('search-input').addEventListener('keyup', (e) => {
-            const query = e.target.value.toLowerCase();
-            const resultsContainer = document.getElementById('search-results-container');
-            if(query.length < 2) { resultsContainer.innerHTML = ''; return; }
-            const results = firestoreContent.filter(item => 
-                item.title.toLowerCase().includes(query) || 
-                (item.genres && item.genres.some(g => g.toLowerCase().includes(query)))
-            );
-            if(results.length > 0) {
-                resultsContainer.innerHTML = `<div class="grid grid-cols-2 md:grid-cols-3 gap-2">${results.map(createGridCard).join('')}</div>`;
-                 lucide.createIcons();
-            } else {
-                resultsContainer.innerHTML = '<p class="text-center text-stone-400">Nenhum resultado encontrado.</p>';
-            }
-        });
-
-        window.addEventListener('click', (e) => { if (e.target.classList.contains('modal')) closeAllModals(); });
-        window.addEventListener('keydown', (e) => { if (e.key === 'Escape') {
-            const videoModal = document.getElementById('modal-video');
-            if (videoModal && !videoModal.classList.contains('hidden')) {
-                history.back();
-            } else {
-                closeAllModals();
-            }
-        }});
-        
-        document.getElementById('hero-watch-btn').addEventListener('click', () => { if(currentHeroItem) location.hash = `#details/${currentHeroItem.docId}`; });
-        document.getElementById('hero-list-btn').addEventListener('click', () => { if(currentHeroItem) toggleMyListItem(currentHeroItem); });
-        
-        setupPlayerEventListeners();
-
-        window.addEventListener('popstate', (event) => {
-            const videoModal = document.getElementById('modal-video');
-            const isPlayerOpen = videoModal && !videoModal.classList.contains('hidden');
-            
-            if (isPlayerOpen && event.state?.playerOpen) {
-                 stopVideo();
-            } else if (isPlayerOpen && !event.state?.playerOpen) {
-                 stopVideo();
-                 handleLocationChange();
-            } else {
-                 handleLocationChange();
-            }
-        });
-
-        window.addEventListener('scroll', handleHeaderStyle, { passive: true });
+        clearTimeout(controlsTimeout);
+        if (!videoPlayer.paused) {
+            controlsTimeout = setTimeout(() => {
+                playerView.classList.remove('controls-active');
+            }, 3000);
+        }
     }
     
-    // Esta função agora é chamada somente após o login bem-sucedido
-    async function initializeAppLogic() {
-        console.log("Inicializando a lógica principal do app...");
-        listenToFirestoreContent(); 
-        listenForRequests();
-        listenForNotifications();
+    videoPlayer.addEventListener('play', () => { playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.pause; });
+    videoPlayer.addEventListener('pause', () => { playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play; });
+    
+    videoPlayer.addEventListener('ended', () => {
+        if (currentPlayerContext.episodes && currentPlayerContext.currentIndex < currentPlayerContext.episodes.length - 1) {
+            changeEpisode(1);
+        } else {
+            playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
+        }
+    });
+
+    videoPlayer.addEventListener('timeupdate', () => {
+        if(isNaN(videoPlayer.currentTime)) return;
+        seekBar.value = videoPlayer.currentTime;
+        if (videoPlayer.duration) {
+            const progressPercent = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+            seekProgressBar.style.width = `${progressPercent}%`;
+        }
+        currentTimeEl.textContent = formatTime(videoPlayer.currentTime);
         
-        await fetchFeaturedItems(); 
-        loadMyList();
-        initEventListeners();
-        handleLocationChange();
+        const now = Date.now();
+        if (now - lastProgressSaveTime > 5000) {
+            savePlayerProgress();
+            lastProgressSaveTime = now;
+        }
+    });
+
+    videoPlayer.addEventListener('loadedmetadata', () => {
+        if(isNaN(videoPlayer.duration)) return;
+        seekBar.max = videoPlayer.duration;
+        durationEl.textContent = formatTime(videoPlayer.duration);
+    });
+    
+    videoPlayer.addEventListener('volumechange', () => {
+        volumeSlider.value = videoPlayer.volume;
+        volumeBtn.querySelector('.glass-content').innerHTML = (videoPlayer.muted || videoPlayer.volume === 0) ? ICONS.volumeMute : ICONS.volumeHigh;
+    });
+
+    seekBar.addEventListener('input', () => { videoPlayer.currentTime = seekBar.value; });
+    volumeSlider.addEventListener('input', (e) => { videoPlayer.volume = e.target.value; videoPlayer.muted = e.target.value == 0; });
+    volumeBtn.addEventListener('click', () => { videoPlayer.muted = !videoPlayer.muted; });
+    rewindBtn.addEventListener('click', () => { videoPlayer.currentTime -= 10; });
+    forwardBtn.addEventListener('click', () => { videoPlayer.currentTime += 10; });
+    nextEpisodeBtn.addEventListener('click', () => changeEpisode(1));
+    prevEpisodeBtn.addEventListener('click', () => changeEpisode(-1));
+
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            playerView.requestFullscreen().catch(err => console.error(`Fullscreen error: ${err.message}`));
+        } else {
+            document.exitFullscreen();
+        }
+    });
+    
+    document.addEventListener('fullscreenchange', () => {
+        const isFullscreen = !!document.fullscreenElement;
+        fullscreenBtn.querySelector('.glass-content').innerHTML = isFullscreen ? ICONS.exitFullscreen : ICONS.fullscreen;
+
+        if (!isFullscreen && !playerView.classList.contains('hidden') && location.hash === '#player') {
+            history.back(); 
+        }
+    });
+
+    playPauseBtn.addEventListener('click', togglePlay);
+    videoPlayer.addEventListener('click', handlePlayerClick);
+    playerBackBtn.addEventListener('click', () => history.back());
+
+    playerView.addEventListener('mousemove', () => {
+        playerView.classList.add('controls-active');
+        clearTimeout(controlsTimeout);
+        if (!videoPlayer.paused) {
+            controlsTimeout = setTimeout(() => {
+                playerView.classList.remove('controls-active');
+            }, 3000);
+        }
+    });
+    
+    settingsBtn.addEventListener('click', (e) => { e.stopPropagation(); settingsPanel.classList.toggle('hidden'); });
+    
+    document.addEventListener('click', (e) => {
+         if (!settingsPanel.classList.contains('hidden') && !settingsBtn.contains(e.target) && !settingsPanel.contains(e.target)) { settingsPanel.classList.add('hidden'); }
+         if (!notificationPanel.classList.contains('hidden') && !notificationPanel.contains(e.target) && !notificationBtn.contains(e.target)) { 
+            notificationPanel.classList.remove('animate-fade-in-down');
+            notificationPanel.classList.add('animate-fade-out-up');
+            setTimeout(() => notificationPanel.classList.add('hidden'), 250);
+        }
+        const openSelectPanel = document.querySelector('#season-options:not(.hidden)');
+        if (openSelectPanel && !openSelectPanel.closest('.custom-select-container').contains(e.target)) {
+            document.getElementById('season-selector-button')?.click();
+        }
+    });
+
+    function createSettingsOptions() {
+        const speedContainer = document.getElementById('settings-speed-options');
+        const qualityContainer = document.getElementById('settings-quality-options');
+        if(speedContainer.childElementCount > 1) return; 
+
+        const speeds = [0.5, 1, 1.5, 2];
+        speeds.forEach(speed => {
+            const button = document.createElement('button');
+            button.className = 'settings-option-btn';
+            button.textContent = `${speed}x`;
+            if (speed === 1) button.classList.add('active');
+            button.onclick = () => {
+                videoPlayer.playbackRate = speed;
+                speedContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+            };
+            speedContainer.appendChild(button);
+        });
+
+        const qualities = ["Auto", "1080p", "720p", "480p"];
+        qualities.forEach(quality => {
+             const button = document.createElement('button');
+            button.className = 'settings-option-btn';
+            button.textContent = quality;
+            if (quality === "Auto") button.classList.add('active');
+            button.onclick = () => {
+                qualityContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                console.log(`Quality set to ${quality}. (Placeholder)`);
+            };
+            qualityContainer.appendChild(button);
+        });
     }
+
+    document.getElementById('hero-watch-btn').addEventListener('click', () => {
+        if (!currentHeroItem) return;
+        showPlayer({ 
+            videoUrl: 'https://vods1.watchingvs.com/m/A%20Viagem%20de%20Chihiro_2003_tt0245429.mp4', 
+            title: currentHeroItem.title || currentHeroItem.name,
+            itemData: currentHeroItem
+        });
+    });
+    
+    function initializeUI() {
+        playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
+        rewindBtn.querySelector('.glass-content').innerHTML = ICONS.rewind10;
+        forwardBtn.querySelector('.glass-content').innerHTML = ICONS.fastForward10;
+        nextEpisodeBtn.querySelector('.glass-content').innerHTML = ICONS.skipForward;
+        prevEpisodeBtn.querySelector('.glass-content').innerHTML = ICONS.skipBackward;
+        volumeBtn.querySelector('.glass-content').innerHTML = ICONS.volumeHigh;
+        fullscreenBtn.querySelector('.glass-content').innerHTML = ICONS.fullscreen;
+        settingsBtn.querySelector('.glass-content').innerHTML = ICONS.settings;
+        playerBackBtn.querySelector('.glass-content').innerHTML = ICONS.back;
+        createSettingsOptions();
+    }
+    
+    searchIconBtn.addEventListener('click', () => toggleSearchOverlay(true));
+    closeSearchBtn.addEventListener('click', () => toggleSearchOverlay(false));
+    document.getElementById('search-overlay-bg').addEventListener('click', () => toggleSearchOverlay(false));
+    searchInput.addEventListener('input', () => { clearTimeout(debounceTimer); debounceTimer = setTimeout(() => { performSearch(searchInput.value); }, 400); });
+    
+    const mobileSearchBtn = document.getElementById('mobile-search-btn');
+    if (mobileSearchBtn) {
+        mobileSearchBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.querySelectorAll('.mobile-nav-item').forEach(item => item.classList.remove('active'));
+            mobileSearchBtn.classList.add('active');
+            updateMobileNavIndicator();
+            toggleSearchOverlay(true);
+        });
+    }
+
+    notificationBtn.addEventListener('click', (e) => { 
+        e.stopPropagation(); 
+        const isHidden = notificationPanel.classList.contains('hidden');
+        if (isHidden) {
+            notificationPanel.classList.remove('hidden', 'animate-fade-out-up');
+            notificationPanel.classList.add('animate-fade-in-down');
+        } else {
+            notificationPanel.classList.remove('animate-fade-in-down');
+            notificationPanel.classList.add('animate-fade-out-up');
+            setTimeout(() => notificationPanel.classList.add('hidden'), 250);
+        }
+    });
+
+    window.addEventListener('popstate', (event) => {
+        if (!playerView.classList.contains('hidden')) {
+            hidePlayer();
+        } else if (!detailsView.classList.contains('hidden')) {
+            detailsView.classList.add('hidden');
+            detailsView.innerHTML = '';
+            const lastView = document.getElementById(lastActiveViewId);
+            if (lastView) lastView.classList.remove('hidden');
+
+            if (document.getElementById('manage-profile-view').classList.contains('hidden')) {
+                document.querySelector('header').classList.remove('hidden');
+                document.querySelector('footer').classList.remove('hidden');
+            }
+        }
+    });
+
+    // --- Profile Management Logic ---
+    async function loadProfiles() {
+        if (!userId) return;
+        const profilesCol = collection(db, 'users', userId, 'profiles');
+        const snapshot = await getDocs(profilesCol);
+        profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderProfiles();
+    }
+
+    function renderProfiles() {
+        profilesGrid.innerHTML = '';
+        profiles.forEach((profile) => {
+            const profileCard = document.createElement('div');
+            profileCard.className = 'cursor-pointer group';
+            profileCard.dataset.id = profile.id;
+            profileCard.innerHTML = `
+                <div class="relative w-full aspect-square liquid-glass-card">
+                     <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
+                     <div class="glass-content p-0">
+                        <img src="${profile.avatar}" alt="${profile.name}" class="w-full h-full object-cover rounded-[inherit]">
+                        <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${isEditMode ? '!opacity-100' : ''}">
+                            <svg class="w-12 h-12 text-white ${isEditMode ? '' : 'hidden'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z"></path></svg>
+                        </div>
+                     </div>
+                </div>
+                <p class="text-center text-lg text-gray-300 group-hover:text-white mt-3 transition-colors">${profile.name}</p>
+            `;
+            profileCard.addEventListener('click', () => {
+                if (isEditMode) {
+                    showProfileModal(profile.id);
+                } else {
+                    selectAndEnterProfile(profile);
+                }
+            });
+            profilesGrid.appendChild(profileCard);
+        });
+
+        if (profiles.length < 4) {
+            const addProfileCard = document.createElement('div');
+            addProfileCard.className = 'cursor-pointer group';
+            addProfileCard.innerHTML = `
+                <div class="relative w-full aspect-square liquid-glass-card flex items-center justify-center">
+                    <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
+                    <div class="glass-content flex items-center justify-center">
+                        <svg class="w-16 h-16 text-gray-400 group-hover:text-white transition-colors" style="transform: translateY(2px);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v12M6 12h12"></path></svg>
+                    </div>
+                </div>
+                <p class="text-center text-lg text-gray-300 group-hover:text-white mt-3 transition-colors">Adicionar Perfil</p>
+            `;
+            addProfileCard.addEventListener('click', () => showProfileModal());
+            profilesGrid.appendChild(addProfileCard);
+        }
+         attachGlassButtonListeners();
+    }
+    
+    async function selectAndEnterProfile(profile) {
+        currentProfile = profile;
+        
+        // Update header
+        const avatarImg = new Image();
+        avatarImg.src = currentProfile.avatar;
+        avatarImg.className = 'w-full h-full object-cover rounded-full';
+        headerProfileBtn.innerHTML = '';
+        headerProfileBtn.appendChild(avatarImg);
+
+        // Show main app
+        loginView.classList.add('hidden');
+        document.querySelector('header').classList.remove('hidden');
+        document.querySelector('footer').classList.remove('hidden');
+        manageProfileView.classList.add('hidden');
+        document.getElementById('home-view').classList.remove('hidden');
+        
+        // Load all content
+        await populateAllViews();
+    }
+
+    function showProfileModal(profileId = null) {
+        const modalTitle = document.getElementById('modal-title');
+        const nameInput = document.getElementById('profile-name-input');
+        const idInput = document.getElementById('profile-id-input');
+        const deleteBtn = document.getElementById('delete-profile-btn');
+
+        avatarOptionsContainer.innerHTML = AVATARS.map(avatar => `
+            <img src="${avatar}" class="w-16 h-16 rounded-full cursor-pointer border-2 border-transparent hover:border-white transition-all" data-avatar="${avatar}">
+        `).join('');
+
+        if (profileId) { // Editing existing profile
+            modalTitle.textContent = 'Editar Perfil';
+            const profile = profiles.find(p => p.id === profileId);
+            nameInput.value = profile.name;
+            idInput.value = profile.id;
+            deleteBtn.classList.remove('hidden');
+            const currentAvatar = avatarOptionsContainer.querySelector(`img[data-avatar="${profile.avatar}"]`);
+            if(currentAvatar) currentAvatar.classList.add('!border-purple-500', 'scale-110');
+        } else { // Adding new profile
+            modalTitle.textContent = 'Adicionar Perfil';
+            nameInput.value = '';
+            idInput.value = '';
+            deleteBtn.classList.add('hidden');
+        }
+
+        profileModal.classList.remove('hidden');
+    }
+
+    avatarOptionsContainer.addEventListener('click', e => {
+        if(e.target.tagName === 'IMG') {
+            avatarOptionsContainer.querySelectorAll('img').forEach(img => img.classList.remove('!border-purple-500', 'scale-110'));
+            e.target.classList.add('!border-purple-500', 'scale-110');
+        }
+    });
+
+    document.getElementById('save-profile-btn').addEventListener('click', async () => {
+        const name = document.getElementById('profile-name-input').value.trim();
+        const selectedAvatar = document.querySelector('#avatar-options .scale-110')?.dataset.avatar;
+        const profileId = document.getElementById('profile-id-input').value;
+
+        if (!name || !selectedAvatar) {
+            showToast('Por favor, preencha o nome e selecione um avatar.', true);
+            return;
+        }
+        if (!userId) {
+            showToast('Erro de autenticação. Por favor, recarregue a página.', true);
+            return;
+        }
+        
+        const profileData = { name, avatar: selectedAvatar };
+
+        try {
+            if (profileId) { // Update
+                const docRef = doc(db, 'users', userId, 'profiles', profileId);
+                await updateDoc(docRef, profileData);
+                showToast('Perfil atualizado com sucesso!');
+            } else { // Add
+                const colRef = collection(db, 'users', userId, 'profiles');
+                await addDoc(colRef, profileData);
+                showToast('Perfil criado com sucesso!');
+            }
+            await loadProfiles();
+            profileModal.classList.add('hidden');
+        } catch (error) {
+            console.error("Erro ao salvar perfil: ", error);
+            showToast('Não foi possível salvar o perfil.', true);
+        }
+    });
+
+    document.getElementById('cancel-profile-btn').addEventListener('click', () => profileModal.classList.add('hidden'));
+    
+    document.getElementById('delete-profile-btn').addEventListener('click', async () => {
+        const profileId = document.getElementById('profile-id-input').value;
+         if (profileId && profiles.length > 1) {
+            if (confirm('Tem certeza que deseja excluir este perfil? Esta ação não pode ser desfeita.')) {
+                try {
+                    const docRef = doc(db, 'users', userId, 'profiles', profileId);
+                    await deleteDoc(docRef);
+                    showToast('Perfil excluído.');
+                    await loadProfiles();
+                    profileModal.classList.add('hidden');
+                } catch (error) {
+                    console.error("Erro ao excluir perfil: ", error);
+                    showToast('Não foi possível excluir o perfil.', true);
+                }
+            }
+         } else {
+             showToast('Não é possível excluir o único perfil.', true);
+         }
+    });
+
+    manageProfilesBtn.addEventListener('click', () => {
+        isEditMode = !isEditMode;
+        manageProfilesBtn.querySelector('.glass-content').textContent = isEditMode ? 'Concluído' : 'Gerenciar Perfis';
+        document.getElementById('profile-main-title').textContent = isEditMode ? 'Gerenciar Perfis' : 'Quem está assistindo?';
+        renderProfiles();
+    });
+
+    headerProfileBtn.addEventListener('click', () => {
+         views.forEach(view => view.classList.add('hidden'));
+         document.querySelector('header').classList.add('hidden');
+         document.querySelector('footer').classList.add('hidden');
+         manageProfileView.classList.remove('hidden');
+         document.getElementById('main-background').style.opacity = 0;
+         isEditMode = false;
+         manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
+         document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
+         renderProfiles();
+    });
+
+    // --- Form Switching & Firebase Auth Logic ---
+    const switchToRegister = document.querySelector('.switch-to-register');
+    const switchToLogin = document.querySelector('.switch-to-login');
+    const loginFormContainer = document.querySelector('.form-container.login');
+    const registerFormContainer = document.querySelector('.form-container.register');
+    
+    switchToRegister.addEventListener('click', (e) => {
+        e.preventDefault();
+        loginFormContainer.classList.remove('active');
+        registerFormContainer.classList.add('active');
+    });
+
+    switchToLogin.addEventListener('click', (e) => {
+        e.preventDefault();
+        registerFormContainer.classList.remove('active');
+        loginFormContainer.classList.add('active');
+    });
+
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        signInWithEmailAndPassword(auth, email, password)
+            .catch((error) => {
+                console.error("Erro de login:", error);
+                showToast(`Erro: ${error.message}`, true);
+            });
+    });
+
+    document.getElementById('register-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const email = document.getElementById('register-email').value;
+        const password = document.getElementById('register-password').value;
+        createUserWithEmailAndPassword(auth, email, password)
+            .catch((error) => {
+                console.error("Erro de registro:", error);
+                showToast(`Erro: ${error.message}`, true);
+            });
+    });
+
+    document.getElementById('google-signin-btn').addEventListener('click', () => {
+        signInWithPopup(auth, googleProvider)
+            .catch((error) => {
+                console.error("Erro de login com Google:", error);
+                showToast(`Erro: ${error.message}`, true);
+            });
+    });
+    
+    // --- Initial Load and Auth State Change ---
+    function showLoginScreen() {
+        userId = null;
+        currentProfile = null;
+        views.forEach(view => view.classList.add('hidden'));
+        loginView.classList.remove('hidden');
+        document.querySelector('header').classList.add('hidden');
+        document.querySelector('footer').classList.add('hidden');
+    }
+
+    async function showProfileScreen() {
+         views.forEach(view => view.classList.add('hidden'));
+         loginView.classList.add('hidden');
+         manageProfileView.classList.remove('hidden');
+         document.getElementById('main-background').style.opacity = 0;
+         isEditMode = false;
+         manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
+         document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
+         await loadProfiles();
+    }
+
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            userId = user.uid;
+            showProfileScreen();
+            initializeUI();
+        } else {
+            showLoginScreen();
+        }
+    });
+
+    if (location.hash === '#player' || location.hash === '#details') {
+        history.replaceState(null, document.title, window.location.pathname + window.location.search);
+    }
+    
+    attachGlassButtonListeners();
+    window.addEventListener('resize', updateMobileNavIndicator);
 
 });
