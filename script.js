@@ -119,20 +119,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const glassSpinnerHTML = `<div class="glass-spinner-wrapper min-h-screen"><div class="glass-spinner"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content"><div class="spinner-ring"></div><div class="spinner-core"></div></div></div></div>`;
     
-    function showToast(message, isError = false) {
-        const toast = document.getElementById('notification-toast');
-        if (!toast) return;
-        toast.textContent = message;
-        toast.style.backgroundColor = isError ? 'rgba(239, 68, 68, 0.7)' : 'rgba(34, 197, 94, 0.7)';
-        toast.classList.remove('hidden', 'opacity-0');
-        toast.classList.add('opacity-100');
-        setTimeout(() => {
-            toast.classList.remove('opacity-100');
-            toast.classList.add('opacity-0');
-            setTimeout(() => toast.classList.add('hidden'), 300);
-        }, 3000);
-    }
-
     // --- Firestore Data Functions ---
     async function getMyList() {
         if (!userId || !currentProfile?.id) return [];
@@ -155,11 +141,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (isInList) {
             await deleteDoc(docRef);
-            showToast(`${item.title || item.name} removido da sua lista.`);
         } else {
             item.media_type = item.media_type || (item.title ? 'movie' : 'tv');
             await setDoc(docRef, item);
-            showToast(`${item.title || item.name} adicionado à sua lista.`);
         }
         
         updateListButtons(item);
@@ -1014,35 +998,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    notificationBtn.addEventListener('click', (e) => { 
-        e.stopPropagation(); 
-        const isHidden = notificationPanel.classList.contains('hidden');
-        if (isHidden) {
-            notificationPanel.classList.remove('hidden', 'animate-fade-out-up');
-            notificationPanel.classList.add('animate-fade-in-down');
-        } else {
-            notificationPanel.classList.remove('animate-fade-in-down');
-            notificationPanel.classList.add('animate-fade-out-up');
-            setTimeout(() => notificationPanel.classList.add('hidden'), 250);
-        }
-    });
-
-    window.addEventListener('popstate', (event) => {
-        if (!playerView.classList.contains('hidden')) {
-            hidePlayer();
-        } else if (!detailsView.classList.contains('hidden')) {
-            detailsView.classList.add('hidden');
-            detailsView.innerHTML = '';
-            const lastView = document.getElementById(lastActiveViewId);
-            if (lastView) lastView.classList.remove('hidden');
-
-            if (document.getElementById('manage-profile-view').classList.contains('hidden')) {
-                document.querySelector('header').classList.remove('hidden');
-                document.querySelector('footer').classList.remove('hidden');
-            }
-        }
-    });
-
     // --- Profile Management Logic ---
     async function loadProfiles() {
         if (!userId) return;
@@ -1117,6 +1072,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Load all content
         await populateAllViews();
+        await loadNotifications();
     }
 
     function showProfileModal(profileId = null) {
@@ -1160,11 +1116,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const profileId = document.getElementById('profile-id-input').value;
 
         if (!name || !selectedAvatar) {
-            showToast('Por favor, preencha o nome e selecione um avatar.', true);
+            console.error('Por favor, preencha o nome e selecione um avatar.');
             return;
         }
         if (!userId) {
-            showToast('Erro de autenticação. Por favor, recarregue a página.', true);
+            console.error('Erro de autenticação. Por favor, recarregue a página.');
             return;
         }
         
@@ -1174,17 +1130,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (profileId) { // Update
                 const docRef = doc(db, 'users', userId, 'profiles', profileId);
                 await updateDoc(docRef, profileData);
-                showToast('Perfil atualizado com sucesso!');
             } else { // Add
                 const colRef = collection(db, 'users', userId, 'profiles');
                 await addDoc(colRef, profileData);
-                showToast('Perfil criado com sucesso!');
             }
             await loadProfiles();
             profileModal.classList.add('hidden');
         } catch (error) {
             console.error("Erro ao salvar perfil: ", error);
-            showToast('Não foi possível salvar o perfil.', true);
         }
     });
 
@@ -1197,16 +1150,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 try {
                     const docRef = doc(db, 'users', userId, 'profiles', profileId);
                     await deleteDoc(docRef);
-                    showToast('Perfil excluído.');
                     await loadProfiles();
                     profileModal.classList.add('hidden');
                 } catch (error) {
                     console.error("Erro ao excluir perfil: ", error);
-                    showToast('Não foi possível excluir o perfil.', true);
                 }
             }
          } else {
-             showToast('Não é possível excluir o único perfil.', true);
+             alert('Não é possível excluir o único perfil.');
          }
     });
 
@@ -1253,8 +1204,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const password = document.getElementById('login-password').value;
         signInWithEmailAndPassword(auth, email, password)
             .catch((error) => {
-                console.error("Erro de login:", error);
-                showToast(`Erro: ${error.message}`, true);
+                console.error("Erro de login:", error.message);
             });
     });
 
@@ -1264,16 +1214,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const password = document.getElementById('register-password').value;
         createUserWithEmailAndPassword(auth, email, password)
             .catch((error) => {
-                console.error("Erro de registro:", error);
-                showToast(`Erro: ${error.message}`, true);
+                console.error("Erro de registro:", error.message);
             });
     });
 
     document.getElementById('google-signin-btn').addEventListener('click', () => {
         signInWithPopup(auth, googleProvider)
             .catch((error) => {
-                console.error("Erro de login com Google:", error);
-                showToast(`Erro: ${error.message}`, true);
+                console.error("Erro de login com Google:", error.message);
             });
     });
     
@@ -1315,4 +1263,82 @@ document.addEventListener('DOMContentLoaded', function() {
     attachGlassButtonListeners();
     window.addEventListener('resize', updateMobileNavIndicator);
 
+    // --- Notification Logic ---
+    function createNotificationItemHTML(item) {
+        const date = item.timestamp && item.timestamp.seconds ? new Date(item.timestamp.seconds * 1000).toLocaleDateString('pt-BR') : '';
+        return `
+            <div class="text-sm text-gray-300 p-2 rounded-lg hover:bg-white/10 cursor-pointer">
+                <p class="font-semibold text-white">${item.title || ''}</p>
+                <p class="text-xs text-gray-400 mt-1">${item.body || ''}</p>
+                ${date ? `<p class="text-xs text-gray-500 text-right mt-1">${date}</p>` : ''}
+            </div>
+        `;
+    }
+
+    async function loadNotifications() {
+        try {
+            const avisosCol = collection(db, "notifications", "avisos", "items");
+            const novidadesCol = collection(db, "notifications", "novidades", "items");
+
+            const [avisosSnapshot, novidadesSnapshot] = await Promise.all([
+                getDocs(avisosCol),
+                getDocs(novidadesCol)
+            ]);
+
+            const avisos = avisosSnapshot.docs.map(doc => doc.data());
+            const novidades = novidadesSnapshot.docs.map(doc => doc.data());
+            
+            const sortByTimestamp = (a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0);
+            avisos.sort(sortByTimestamp);
+            novidades.sort(sortByTimestamp);
+
+            const avisosContainer = document.getElementById('notification-avisos-content');
+            if (avisosContainer) {
+               avisosContainer.innerHTML = avisos.length > 0 ? avisos.map(createNotificationItemHTML).join('') : '<p class="text-xs text-gray-400 p-2">Nenhum aviso no momento.</p>';
+            }
+
+            const novidadesContainer = document.getElementById('notification-novidades-content');
+            if (novidadesContainer) {
+                novidadesContainer.innerHTML = novidades.length > 0 ? novidades.map(createNotificationItemHTML).join('') : '<p class="text-xs text-gray-400 p-2">Nenhuma novidade no momento.</p>';
+            }
+
+        } catch (error) {
+            console.error("Erro ao carregar notificações:", error);
+            const avisosContainer = document.getElementById('notification-avisos-content');
+            if(avisosContainer) avisosContainer.innerHTML = '<p class="text-xs text-red-400 p-2">Erro ao carregar avisos.</p>';
+            const novidadesContainer = document.getElementById('notification-novidades-content');
+            if(novidadesContainer) novidadesContainer.innerHTML = '<p class="text-xs text-red-400 p-2">Erro ao carregar novidades.</p>';
+        }
+    }
+    
+    notificationBtn.addEventListener('click', (e) => { 
+        e.stopPropagation(); 
+        const isHidden = notificationPanel.classList.contains('hidden');
+        if (isHidden) {
+            loadNotifications(); // Refresh notifications on open
+            notificationPanel.classList.remove('hidden', 'animate-fade-out-up');
+            notificationPanel.classList.add('animate-fade-in-down');
+        } else {
+            notificationPanel.classList.remove('animate-fade-in-down');
+            notificationPanel.classList.add('animate-fade-out-up');
+            setTimeout(() => notificationPanel.classList.add('hidden'), 250);
+        }
+    });
+
+    const notificationTabs = document.querySelectorAll('.notification-tab');
+    const notificationContents = document.querySelectorAll('.notification-content');
+
+    notificationTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            notificationTabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            notificationContents.forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tab.dataset.target).classList.add('active');
+        });
+    });
+
 });
+
