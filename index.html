@@ -1,380 +1,327 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Starlight - Streaming de Filmes e Séries</title>
+    <title>Starlight Play - Filmes e Séries</title>
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/128/705/705062.png">
+    
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- HLS.js for Video Streaming -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Google Fonts: Poppins -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"/>
-    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <!-- Remix Icons for new Auth Screen -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet"/>
 
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="w-full min-h-screen pb-28 lg-pb-0">
-    <svg style="display: none">
-      <filter id="glass-distortion">
-        <feTurbulence type="turbulence" baseFrequency="0.008" numOctaves="2" result="noise" />
-        <feDisplacementMap in="SourceGraphic" in2="noise" scale="77" />
-      </filter>
-    </svg>
-    
-    <div id="main-background" class="main-background"></div>
+<body class="text-stone-200 pb-24 lg:pb-0 auth-state-unknown">
 
-    <!-- Search Overlay -->
-    <div id="search-overlay" class="hidden fixed inset-0 z-[150]">
-        <div class="absolute inset-0 bg-black/50 backdrop-blur-lg" id="search-overlay-bg"></div>
-        <div class="relative z-10 max-w-7xl mx-auto p-4 md:p-8">
-            <div class="glass-container rounded-3xl w-full mb-6">
-                 <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                 <div class="glass-content flex items-center gap-4 px-4">
-                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-gray-300"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                   <input type="text" id="search-input" class="w-full bg-transparent text-white text-lg py-4 outline-none" placeholder="Buscar filmes, séries...">
-                   <button id="close-search-btn" class="text-gray-400 hover:text-white" aria-label="Fechar busca">
-                       <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                   </button>
-                 </div>
-            </div>
-            <div id="search-results" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 h-[calc(100vh-150px)] overflow-y-auto hide-scrollbar"></div>
-        </div>
-    </div>
-
-    <header class="fixed top-0 left-0 right-0 z-50 p-4 md:p-6 hidden">
-        <div class="glass-container max-w-7xl mx-auto rounded-full">
-            <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-            <nav id="desktop-nav" class="glass-content flex items-center justify-between px-4 sm:px-6 py-3">
-                <div class="flex items-center gap-8">
-                    <h1 class="text-2xl font-black tracking-wider bg-gradient-to-r from-purple-500 to-pink-500 text-transparent bg-clip-text">STARLIGHT</h1>
-                    <ul class="hidden lg:flex items-center gap-6">
-                        <li><a href="#" class="nav-item active" data-target="home-view">Início</a></li>
-                        <li><a href="#" class="nav-item" data-target="series-view">Séries</a></li>
-                        <li><a href="#" class="nav-item" data-target="movies-view">Filmes</a></li>
-                        <li><a href="#" class="nav-item" data-target="mylist-view">Minha Lista</a></li>
-                        <li><a href="#" class="nav-item" data-target="news-view">Novidades</a></li>
-                        <li><a href="#" class="nav-item" data-target="requests-view">Pedidos</a></li>
-                    </ul>
-                </div>
-                <div class="flex items-center gap-2 sm:gap-4">
-                     <button id="search-icon-btn" class="glass-container glass-button rounded-full w-10 h-10 p-0 hidden lg:inline-flex items-center justify-center" aria-label="Buscar">
-                         <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                         <div class="glass-content w-full h-full flex items-center justify-center">
-                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 text-white"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                         </div>
-                     </button>
-                     <div class="relative">
-                         <button id="notification-btn" class="glass-container glass-button rounded-full w-10 h-10 p-0" aria-label="Notificações">
-                             <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                             <div class="glass-content w-full h-full flex items-center justify-center">
-                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                             </div>
-                         </button>
-                         <div id="notification-panel" class="hidden absolute top-14 right-0 origin-top-right">
-                            <div class="liquid-glass-card w-80 md:w-96">
-                                <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                                <div class="glass-content p-4">
-                                    <div class="flex border-b border-white/10 mb-2">
-                                        <button class="notification-tab active" data-target="notification-avisos-content">Avisos</button>
-                                        <button class="notification-tab" data-target="notification-novidades-content">Novidades</button>
-                                    </div>
-                                    <div id="notification-content-container" class="max-h-80 overflow-y-auto hide-scrollbar">
-                                        <div id="notification-avisos-content" class="notification-content active space-y-2">
-                                            <!-- Avisos content from Firebase -->
-                                        </div>
-                                        <div id="notification-novidades-content" class="notification-content space-y-2">
-                                            <!-- Novidades content from Firebase -->
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                         </div>
-                     </div>
-                    <button id="header-profile-btn" class="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center font-bold text-white cursor-pointer ml-2 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50" aria-label="Ver perfil">
-                        J
-                    </button>
-                </div>
-            </nav>
-        </div>
-    </header>
-
-    <div id="view-container">
-        <section id="login-view" class="content-view flex items-center justify-center p-4 bg-cover bg-center" style="padding-top: 0;">
-             <div class="glass-form">
-               <div class="glass-filter"></div>
-               <div class="glass-overlay"></div>
-               <div class="glass-specular"></div>
-               <div class="glass-content">
-                 <div class="form-container login active">
-                   <h3>Login</h3>
-                   <form id="login-form">
-                     <div class="form-group">
-                       <i class="fas fa-envelope"></i>
-                       <input type="email" id="login-email" placeholder="Email" required>
-                     </div>
-                     <div class="form-group">
-                       <i class="fas fa-lock"></i>
-                       <input type="password" id="login-password" placeholder="Password" required>
-                     </div>
-                     <button type="submit" class="submit-btn">Entrar</button>
-                   </form>
-                   <div class="divider">OU</div>
-                   <button id="google-signin-btn" class="submit-btn google-btn">
-                     <i class="fab fa-google"></i>
-                     <span>Entrar com Google</span>
-                   </button>
-                   <p class="form-switch">Não tem uma conta? <a href="#" class="switch-to-register">Registre-se</a></p>
-                 </div>
-                 
-                 <div class="form-container register">
-                   <h3>Registrar</h3>
-                   <form id="register-form">
-                     <div class="form-group">
-                       <i class="fas fa-envelope"></i>
-                       <input type="email" id="register-email" placeholder="Email" required>
-                     </div>
-                     <div class="form-group">
-                       <i class="fas fa-lock"></i>
-                       <input type="password" id="register-password" placeholder="Password" required>
-                     </div>
-                     <button type="submit" class="submit-btn">Criar Conta</button>
-                   </form>
-                   <p class="form-switch">Já tem uma conta? <a href="#" class="switch-to-login">Login</a></p>
-                 </div>
-               </div>
-             </div>
-        </section>
-
-        <section id="home-view" class="content-view hidden">
-            <main class="relative flex items-center h-screen">
-                <div class="w-full max-w-7xl px-8 sm:px-12 md:px-16 lg:px-24">
-                    <div class="max-w-xl text-white">
-                        <div class="glass-container rounded-full inline-block mb-2">
-                            <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                            <span id="hero-category" class="glass-content text-white text-xs font-bold px-4 py-2 block"></span>
-                        </div>
-                        <h2 id="hero-title" class="text-4xl sm:text-5xl md:text-6xl font-black my-4 drop-shadow-lg"></h2>
-                        <div id="hero-meta" class="flex flex-wrap items-center gap-x-3 gap-y-2 text-gray-300 text-sm"></div>
-                        <p id="hero-overview" class="mt-4 text-sm sm:text-base leading-relaxed text-gray-200 drop-shadow-md max-w-prose"></p>
-                        <div class="mt-8 flex items-center gap-2 sm:gap-4">
-                            <button id="hero-watch-btn" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3">
-                                <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                                <div class="glass-content flex items-center justify-center gap-2">
-                                    <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
-                                    Assistir
-                                </div>
-                            </button>
-                            <button id="hero-add-to-list" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3">
-                                <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                                <div class="glass-content flex items-center justify-center gap-2"></div>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </main>
-            <div class="relative z-10 py-16 w-full overflow-hidden bg-stone-950">
-                <div class="w-full space-y-16 md:space-y-20 pl-6 pr-0">
-                    <div class="hidden">
-                        <h3 class="text-xl sm:text-2xl font-bold mb-4">Continuar Assistindo</h3>
-                        <div id="continue-watching" class="swiper-container">
-                            <div class="swiper-wrapper"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="text-xl sm:text-2xl font-bold mb-4">Séries em Alta</h3>
-                        <div id="popular-tv" class="swiper-container">
-                            <div class="swiper-wrapper"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="text-xl sm:text-2xl font-bold mb-4">Filmes Aclamados</h3>
-                        <div id="top-rated-movies-home" class="swiper-container">
-                            <div class="swiper-wrapper"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="text-xl sm:text-2xl font-bold mb-4">Próximas Estreias</h3>
-                        <div id="upcoming-movies-home" class="swiper-container">
-                            <div class="swiper-wrapper"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="series-view" class="content-view hidden">
-            <div class="max-w-7xl mx-auto pb-16 w-full px-4 md:px-6">
-                <h2 class="text-3xl sm:text-4xl font-bold text-white mb-8">Séries</h2>
-                <div id="series-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                </div>
-            </div>
-        </section>
+    <!-- TELA DE AUTENTICAÇÃO (NOVO DESIGN) -->
+    <section id="auth-screen" class="fixed inset-0 z-[200] flex items-center justify-center p-4 transition-opacity duration-500">
+        <!-- O fundo animado será controlado pelo CSS no elemento #auth-screen -->
         
-        <section id="movies-view" class="content-view hidden">
-            <div class="max-w-7xl mx-auto pb-16 w-full px-4 md:px-6">
-                <h2 class="text-3xl sm:text-4xl font-bold text-white mb-8">Filmes</h2>
-                <div id="movies-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                </div>
-            </div>
-        </section>
-        
-        <section id="mylist-view" class="content-view hidden"><div class="max-w-7xl mx-auto px-4 md:px-6 space-y-8 pb-16"><h2 class="text-3xl sm:text-4xl font-bold text-white">Minha Lista</h2><div id="my-list-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6"></div></div></section>
-        <section id="news-view" class="content-view hidden"><div class="flex items-center justify-center text-center px-4"><h2 class="text-3xl sm:text-4xl font-bold text-white">Novidades (Em construção)</h2></div></section>
-        <section id="requests-view" class="content-view hidden"><div class="flex items-center justify-center text-center px-4"><h2 class="text-3xl sm:text-4xl font-bold text-white">Pedidos (Em construção)</h2></div></section>
-        
-        <section id="manage-profile-view" class="content-view hidden flex items-center justify-center min-h-screen p-4" style="padding-top: 0;">
-            <div class="w-full max-w-4xl text-center">
-                <h1 id="profile-main-title" class="text-4xl md:text-5xl font-bold text-white mb-12">Quem está assistindo?</h1>
-                <div id="profiles-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-8 mb-12">
-                    <!-- Profile cards will be injected here -->
-                </div>
-                <button id="manage-profiles-btn" class="glass-container glass-button rounded-full text-base px-8 py-3" style="--glass-bg-color: rgba(255,255,255,0.1)">
-                    <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                    <div class="glass-content">Gerenciar Perfis</div>
-                </button>
-            </div>
-        </section>
+        <!-- SVG Filter para a Distorção do Vidro -->
+        <svg style="display: none">
+            <filter id="glass-distortion">
+                <feTurbulence type="turbulence" baseFrequency="0.008" numOctaves="2" result="noise" />
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="77" />
+            </filter>
+        </svg>
 
-        <section id="details-view" class="content-view hidden"></section>
-    </div>
+        <div class="glass-card">
+            <div class="glass-filter"></div>
+            <div class="glass-overlay"></div>
+            <div class="glass-specular"></div>
+            <div class="glass-distortion-overlay"></div>
 
-    <section id="player-view" class="hidden fixed inset-0 z-[200]">
-        <video id="video-player" class="w-full h-full" preload="metadata"></video>
-        <div class="player-controls-wrapper absolute inset-0 p-4 sm:p-6 md:p-8 flex flex-col justify-between">
-            <!-- Top Controls -->
-            <div class="flex justify-between items-start">
-                <button id="player-back-btn" class="glass-container glass-button player-control-btn rounded-full" aria-label="Voltar">
-                    <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                    <div class="glass-content"></div>
-                </button>
-                <div class="glass-container rounded-full max-w-lg" style="--glass-bg-color: rgba(30, 30, 30, 0.3); --glass-highlight: rgba(255, 255, 255, 0.1);">
-                    <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                    <div class="glass-content px-4 py-2">
-                         <h3 id="player-title" class="text-white font-bold truncate"></h3>
-                    </div>
-                </div>
-                 <div></div> <!-- Placeholder for spacing -->
+            <div id="auth-loading-overlay" class="absolute inset-0 bg-stone-900/80 z-20 hidden items-center justify-center rounded-[20px]">
+                 <div class="loader"></div>
             </div>
 
-            <!-- Bottom Controls -->
-            <div class="flex flex-col items-center gap-2">
-                 <div class="w-full max-w-4xl">
-                     <div class="player-seek-bar-container">
-                         <input id="player-seek-bar" type="range" value="0" step="1" class="player-seek-bar">
-                         <div class="seek-track"><div id="seek-progress-bar" class="seek-progress"></div></div>
-                     </div>
-                     <div class="flex justify-between">
-                         <span id="player-current-time" class="text-xs text-gray-300">00:00</span>
-                         <span id="player-duration" class="text-xs text-gray-300">00:00</span>
-                     </div>
-                 </div>
-
-                <div class="w-full max-w-4xl flex justify-between items-center">
-                    <div class="flex items-center gap-2">
-                        <div class="volume-btn-container">
-                             <button id="player-volume-btn" class="glass-container glass-button player-control-btn rounded-full" aria-label="Controlar volume">
-                                 <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                                 <div class="glass-content"></div>
-                             </button>
-                        </div>
-                        <div id="player-volume-container" class="flex items-center">
-                            <input id="player-volume-slider" type="range" min="0" max="1" step="0.01" value="1" class="player-volume-slider w-28">
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button id="player-prev-episode-btn" class="glass-container glass-button player-control-btn rounded-full hidden" aria-label="Episódio anterior">
-                           <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                           <div class="glass-content"></div>
-                        </button>
-                        <button id="player-rewind-btn" class="glass-container glass-button player-control-btn rounded-full" aria-label="Voltar 10 segundos">
-                           <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                           <div class="glass-content"></div>
-                        </button>
-                        <button id="player-play-pause-btn" class="glass-container glass-button player-control-btn rounded-full w-16 h-16" aria-label="Reproduzir/Pausar">
-                           <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                           <div class="glass-content"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"></svg></div>
-                        </button>
-                         <button id="player-forward-btn" class="glass-container glass-button player-control-btn rounded-full" aria-label="Avançar 10 segundos">
-                           <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                           <div class="glass-content"></div>
-                        </button>
-                        <button id="player-next-episode-btn" class="glass-container glass-button player-control-btn rounded-full hidden" aria-label="Próximo episódio">
-                           <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                           <div class="glass-content"></div>
-                        </button>
-                    </div>
-                    <div class="flex items-center gap-2 relative">
-                         <button id="player-settings-btn" class="glass-container glass-button player-control-btn rounded-full" aria-label="Configurações">
-                           <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                           <div class="glass-content"></div>
-                        </button>
-                         <button id="player-fullscreen-btn" class="glass-container glass-button player-control-btn rounded-full" aria-label="Tela cheia">
-                           <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                           <div class="glass-content"></div>
-                        </button>
-                        <div id="player-settings-panel" class="hidden glass-container rounded-lg animate-fade-in-down">
-                            <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                            <div class="glass-content p-2">
-                                <div id="settings-speed-options">
-                                     <h4 class="text-xs text-gray-300 px-3 pt-1 pb-2">Velocidade</h4>
-                                </div>
-                                <div id="settings-quality-options" class="mt-2">
-                                     <h4 class="text-xs text-gray-300 px-3 pt-1 pb-2">Qualidade</h4>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <!-- FORMULÁRIO DE LOGIN -->
+            <form action="#" id="login-form">
+                <h2>Entrar</h2>
+                <div class="input-box">
+                    <input type="email" id="login-email" required placeholder=" " autocomplete="email">
+                    <label for="login-email">Email</label>
+                    <i class="ri-mail-fill"></i>
                 </div>
-            </div>
+                <div class="input-box">
+                    <input type="password" id="login-password" required placeholder=" " autocomplete="current-password">
+                    <label for="login-password">Senha</label>
+                    <i class="ri-eye-off-fill toggle-password" id="login-toggle"></i>
+                </div>
+                <div class="options">
+                    <label><input type="checkbox"> Lembrar de mim</label>
+                    <a href="#">Esqueceu a senha?</a>
+                </div>
+                <p id="login-error" class="text-red-400 text-sm text-center h-5 -mt-3 mb-3"></p>
+                <button type="submit" class="btn">Entrar</button>
+                <div class="social-login">
+                    <button type="button" id="google-signin-btn" class="social-btn"><i class="ri-google-fill"></i> Google</button>
+                </div>
+                <div class="switch-form">
+                    <p>Não tem uma conta? <a id="show-register">Crie uma</a></p>
+                </div>
+            </form>
+
+            <!-- FORMULÁRIO DE CADASTRO -->
+            <form action="#" id="register-form">
+                <h2>Criar Conta</h2>
+                <div class="input-box">
+                    <input type="email" id="register-email" required placeholder=" " autocomplete="email">
+                    <label for="register-email">Email</label>
+                    <i class="ri-mail-fill"></i>
+                </div>
+                <div class="input-box">
+                    <input type="password" id="register-password" required placeholder=" " autocomplete="new-password">
+                    <label for="register-password">Senha</label>
+                    <i class="ri-eye-off-fill toggle-password" id="register-toggle"></i>
+                </div>
+                <div class="input-box">
+                    <input type="password" id="confirm-password" required placeholder=" " autocomplete="new-password">
+                    <label for="confirm-password">Confirmar Senha</label>
+                    <i class="ri-eye-off-fill toggle-password" id="confirm-toggle"></i>
+                </div>
+                <p id="register-error" class="text-red-400 text-sm text-center h-5 -mt-3 mb-3"></p>
+                <button type="submit" class="btn">Registrar</button>
+                <div class="switch-form">
+                    <p>Já tem uma conta? <a id="show-login">Entrar</a></p>
+                </div>
+            </form>
         </div>
     </section>
 
-    <!-- Profile Edit Modal -->
-    <div id="profile-modal" class="hidden fixed inset-0 z-[200] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-        <div class="liquid-glass-card w-full max-w-md">
-            <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-            <div class="glass-content p-8">
-                <h2 id="modal-title" class="text-2xl font-bold mb-6">Editar Perfil</h2>
-                <input type="hidden" id="profile-id-input">
-                <input id="profile-name-input" type="text" class="w-full bg-black/30 text-white text-center text-lg py-3 px-4 rounded-lg outline-none border-2 border-transparent focus:border-purple-500 mb-6" placeholder="Nome do Perfil">
-                <div class="mb-6">
-                    <h3 class="text-lg font-semibold mb-3">Escolha um avatar</h3>
-                    <div id="avatar-options" class="flex justify-center gap-4">
-                        <!-- Avatars will be injected here -->
+    <!-- Conteúdo Principal do App (Inicialmente Oculto) -->
+    <div id="app-content" class="hidden">
+        <!-- Cabeçalho e Navegação (Desktop) -->
+        <header id="header" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-20">
+                    <div class="flex items-center space-x-8">
+                        <a href="#screen-home" id="logo-link" class="text-3xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500">
+                            STARLIGHT
+                        </a>
+                        <nav id="main-nav" class="hidden lg:flex items-center space-x-10 text-lg">
+                            <a href="#screen-home" data-screen="screen-home" class="nav-link">Início</a>
+                            <a href="#screen-series" data-screen="screen-series" class="nav-link">Séries</a>
+                            <a href="#screen-filmes" data-screen="screen-filmes" class="nav-link">Filmes</a>
+                            <a href="#screen-minha-lista" data-screen="screen-minha-lista" class="nav-link">Minha Lista</a>
+                            <a href="#screen-pedidos" data-screen="screen-pedidos" class="nav-link">Pedidos</a>
+                            <a href="#screen-em-breve" data-screen="screen-em-breve" class="nav-link">Em Breve</a>
+                        </nav>
+                    </div>
+                    <div class="flex items-center space-x-5">
+                        <button id="search-btn" aria-label="Buscar" class="text-stone-300 hover:text-white"><i data-lucide="search" class="w-6 h-6"></i></button>
+                        <button id="notifications-btn" aria-label="Notificações" class="relative text-stone-300 hover:text-white">
+                            <i data-lucide="bell" class="w-6 h-6"></i>
+                            <span class="notification-dot absolute -top-1 -right-1 w-3 h-3 bg-pink-500 rounded-full border-2 border-stone-900"></span>
+                        </button>
+                        <div id="profile-btn" aria-label="Abrir perfil" class="cursor-pointer">
+                           <img id="user-avatar" src="https://placehold.co/40x40/7e22ce/FFFFFF?text=A" alt="Avatar do usuário" class="w-10 h-10 rounded-lg">
+                        </div>
                     </div>
                 </div>
-                <div class="flex gap-4">
-                    <button id="save-profile-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-full transition-colors">Salvar</button>
-                    <button id="cancel-profile-btn" class="bg-gray-600/50 hover:bg-gray-500/50 text-white font-bold py-2 px-6 rounded-full transition-colors">Cancelar</button>
-                     <button id="delete-profile-btn" class="bg-red-600/80 hover:bg-red-700/80 text-white font-bold py-2 px-6 rounded-full transition-colors hidden ml-auto">Excluir</button>
+            </div>
+        </header>
+
+        <main id="main-content">
+            <!-- TELA: Início -->
+            <div id="screen-home" class="screen">
+                <!-- Seção Herói -->
+                <section id="hero-section" class="relative h-screen flex items-end text-white px-4 sm:px-8 lg:px-12 pb-32">
+                      <div class="absolute inset-0 overflow-hidden">
+                          <img id="hero-bg-image" src="" alt="Filme em destaque" class="absolute inset-0 w-full h-full object-cover">
+                          <div class="absolute inset-0 hero-gradient"></div>
+                      </div>
+                      <div class="relative z-10 container mx-auto hero-content">
+                          <div class="max-w-2xl">
+                              <span class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase">Em Destaque</span>
+                              <h1 id="hero-title" class="text-3xl md:text-5xl font-bold mt-4" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.7);"></h1>
+                              <div id="hero-meta" class="flex items-center flex-wrap gap-x-4 gap-y-2 mt-6 text-base md:text-lg text-stone-300"></div>
+                              <div class="mt-6 max-w-xl">
+                                  <p id="hero-overview" class="text-stone-200 synopsis-truncated text-base md:text-lg leading-relaxed"></p>
+                                  <button id="hero-toggle-overview-btn" class="text-purple-400 font-semibold mt-1 hidden">Ler mais</button>
+                              </div>
+                              <div class="mt-8 flex flex-wrap gap-4">
+                                  <button id="hero-watch-btn" class="bg-white text-black font-bold py-3 px-8 rounded-full flex items-center space-x-2 text-lg hover:bg-stone-200 transition-all duration-300 transform hover:scale-105"><i data-lucide="play" class="w-6 h-6 fill-current"></i><span>Assistir</span></button>
+                                  <button id="hero-list-btn" class="bg-white/20 backdrop-blur-sm text-white font-semibold py-3 px-8 rounded-full flex items-center space-x-2 text-lg hover:bg-white/30 transition-all duration-300 transform hover:scale-105"><i data-lucide="plus" class="w-6 h-6"></i><span>Minha Lista</span></button>
+                              </div>
+                          </div>
+                      </div>
+                </section>
+                <!-- Conteúdo Principal com Carrosséis -->
+                <div id="home-carousels" class="container mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12"></div>
+            </div>
+            
+            <!-- Outras Telas -->
+            <div id="screen-series" class="screen hidden container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                <h1 class="text-4xl sm:text-5xl font-bold mb-8 pt-20">Nossas Séries</h1>
+                <div id="series-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
+            </div>
+            <div id="screen-filmes" class="screen hidden container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                <h1 class="text-4xl sm:text-5xl font-bold mb-8 pt-20">Nossos Filmes</h1>
+                <div id="filmes-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
+            </div>
+            <div id="screen-minha-lista" class="screen hidden container mx-auto px-4 sm:px-6 lg:px-8 py-12"> 
+                <h1 class="text-4xl sm:text-5xl font-bold mb-8 pt-20">Minha Lista</h1> 
+                <div id="minha-lista-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
+            </div>
+            <div id="screen-pedidos" class="screen hidden container mx-auto px-4 sm:px-6 lg:px-8 py-12"> 
+                <div class="pt-20">
+                    <h1 class="text-4xl sm:text-5xl font-bold mb-4">Pedidos de Conteúdo</h1>
+                    <p class="text-gray-400 mb-8">Não encontrou o que procurava? Pesquise e solicite um novo filme ou série.</p>
+                    
+                    <div class="relative mb-8 max-w-2xl mx-auto">
+                        <input type="text" id="tmdb-search-input" placeholder="Pesquisar por filme ou série..." class="w-full p-4 pl-12 bg-gray-800/50 rounded-lg text-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <i data-lucide="search" class="w-6 h-6 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2"></i>
+                    </div>
+
+                    <div id="tmdb-search-results" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-12"></div>
+                    
+                    <div class="border-t border-gray-700 pt-8">
+                        <h3 class="text-2xl font-bold mb-6">Pedidos em Aberto</h3>
+                        <div id="pending-requests-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="screen-em-breve" class="screen hidden container mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
+                <h1 class="text-4xl sm:text-5xl font-bold mb-8 pt-20">Em Breve</h1>
+                <p>Funcionalidade em desenvolvimento.</p>
+            </div>
+        </main>
+
+        <!-- TELA: Detalhes -->
+        <div id="screen-details" class="hidden fixed inset-0 z-[100] bg-stone-900 overflow-y-auto">
+            <!-- Conteúdo preenchido por JS -->
+        </div>
+
+        <!-- MODAIS -->
+        <div id="modal-busca" class="modal hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col items-center p-4 pt-20">
+            <div class="w-full max-w-2xl">
+                <input id="search-input" type="text" placeholder="Busque por títulos ou gêneros..." class="w-full bg-stone-800 border-2 border-stone-700 rounded-full px-6 py-4 text-white text-lg focus:outline-none focus:border-purple-500">
+            </div>
+            <div id="search-results-container" class="w-full max-w-3xl mt-6 overflow-y-auto" style="max-height: calc(100vh - 150px);">
+                <!-- Os resultados da busca aparecerão aqui -->
+            </div>
+        </div>
+        <div id="modal-notificacoes" class="modal liquid-glass hidden fixed top-20 right-4 sm:right-6 lg:right-8 rounded-lg shadow-xl w-80 sm:w-96 z-[60] flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-white/10">
+                <div id="notification-tabs" class="flex items-center border-b border-white/10">
+                    <button class="notification-tab flex-1 py-2 text-stone-400 border-b-2 border-transparent active" data-tab="avisos">Avisos</button>
+                    <button class="notification-tab flex-1 py-2 text-stone-400 border-b-2 border-transparent" data-tab="novidades">Novidades</button>
+                </div>
+            </div>
+            <div class="flex-grow overflow-y-auto max-h-80 notification-content-container">
+                <div id="notifications-avisos" class="notification-content p-4 active"></div>
+                <div id="notifications-novidades" class="notification-content p-4"></div>
+            </div>
+        </div>
+        <div id="modal-perfil" class="modal hidden fixed top-20 right-4 sm:right-6 lg:right-8 z-[60] liquid-glass p-4 rounded-lg shadow-xl w-64">
+             <div class="text-center">
+                 <img id="modal-user-avatar" src="https://placehold.co/80x80/7e22ce/FFFFFF?text=A" alt="Avatar" class="w-16 h-16 rounded-lg mx-auto mb-3">
+                 <h2 id="modal-user-email" class="text-sm font-bold truncate">email@example.com</h2>
+                 <button id="logout-btn" class="mt-4 w-full text-stone-300 p-2 rounded-lg hover:bg-white/10 flex items-center justify-center space-x-2">
+                     <i data-lucide="log-out" class="w-4 h-4"></i>
+                     <span>Sair</span>
+                 </button>
+             </div>
+        </div>
+        
+        <!-- MODAL DO LEITOR DE VÍDEO -->
+        <div id="modal-video" class="modal hidden fixed inset-0 bg-black z-[110] flex items-center justify-center">
+            <div id="player-container" class="paused">
+                <div class="loader-container"><div class="loader"></div></div>
+                <video id="player-video" preload="metadata"></video>
+        
+                <button id="player-back-btn" class="player-button absolute top-5 left-5 z-30 bg-black/50 rounded-full p-2 hover:bg-black/80"><i data-lucide="arrow-left" class="w-6 h-6"></i></button>
+        
+                <button id="player-center-play-btn" class="player-center-button player-button"><i data-lucide="play" class="w-12 h-12 ml-1"></i></button>
+                
+                <div id="player-controls" class="player-controls">
+                    <div id="player-progress-bar-container" class="progress-bar-container">
+                        <div class="progress-bar-background">
+                            <div id="player-progress-bar" class="progress-bar-filled"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between mt-1">
+                        <div class="flex items-center gap-2">
+                            <button id="player-play-pause-btn" class="player-button" aria-label="Play/Pause"><i data-lucide="pause" class="w-7 h-7"></i></button>
+                            <button id="player-rewind-btn" class="player-button" aria-label="Voltar 10s"><i data-lucide="rotate-ccw" class="w-6 h-6"></i></button>
+                            <button id="player-forward-btn" class="player-button" aria-label="Avançar 10s"><i data-lucide="rotate-cw" class="w-6 h-6"></i></button>
+                            <div class="volume-container">
+                                <button id="player-volume-btn" class="player-button" aria-label="Volume"><i data-lucide="volume-2" class="w-6 h-6"></i></button>
+                                <input type="range" id="player-volume-slider" class="volume-slider" min="0" max="1" step="0.1" value="1">
+                            </div>
+                            <div id="player-time-display" class="text-sm ml-2">00:00 / 00:00</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="player-fullscreen-btn" class="player-button" aria-label="Tela Cheia"><i data-lucide="maximize" class="w-6 h-6"></i></button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-
-    <footer class="fixed bottom-0 left-0 right-0 z-50 p-4 lg:hidden hidden">
-        <div id="mobile-nav-container" class="glass-container max-w-sm mx-auto rounded-full">
-            <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-            <nav class="glass-content overflow-x-auto hide-scrollbar px-2 relative">
-                 <div id="mobile-nav-indicator" class="absolute h-[70%] top-[15%] bg-white/10 rounded-full transition-all duration-300 ease-in-out"></div>
-                 <ul id="mobile-nav" class="relative z-10 flex flex-nowrap justify-start items-center gap-2 py-3">
-                  <li><a href="#" class="mobile-nav-item active text-sm px-4 py-2" data-target="home-view">Início</a></li>
-                  <li><a href="#" id="mobile-search-btn" class="mobile-nav-item text-sm px-4 py-2">Buscar</a></li>
-                  <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="series-view">Séries</a></li>
-                  <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="movies-view">Filmes</a></li>
-                  <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="mylist-view">Lista</a></li>
-                  <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="news-view">Novidades</a></li>
-                  <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="requests-view">Pedidos</a></li>
-                 </ul>
-            </nav>
+        <!-- Toast Notification -->
+        <div id="toast-notification" class="fixed bottom-28 lg:bottom-5 right-5 bg-indigo-600 text-white py-3 px-6 rounded-lg shadow-lg transform translate-x-[120%] transition-transform duration-300 z-[200]">
+            <p id="toast-message"></p>
         </div>
-    </footer>
 
+        <!-- Confirmation Modal -->
+        <div id="confirm-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[250] flex items-center justify-center p-4">
+            <div class="liquid-glass rounded-2xl shadow-2xl w-full max-w-md text-center p-8">
+                <h2 id="confirm-title" class="text-3xl font-bold text-white mb-4">Confirmar Ação</h2>
+                <p id="confirm-message" class="text-gray-300 mb-8">Tem a certeza?</p>
+                <div class="flex justify-center gap-4">
+                    <button id="confirm-cancel-btn" class="bg-white/10 hover:bg-white/20 text-white font-bold py-3 px-8 rounded-lg transition">Cancelar</button>
+                    <button id="confirm-ok-btn" class="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 px-10 rounded-lg transition">Confirmar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navegação Inferior (Mobile) -->
+        <nav id="mobile-nav" class="lg:hidden fixed bottom-0 left-0 right-0 h-20 z-40 flex items-center justify-around">
+            <a href="#screen-home" data-screen="screen-home" class="mobile-nav-link">
+                <i data-lucide="home" class="w-6 h-6 mx-auto"></i>
+                <span class="text-xs font-medium">Início</span>
+            </a>
+            <a href="#screen-series" data-screen="screen-series" class="mobile-nav-link">
+                <i data-lucide="tv" class="w-6 h-6 mx-auto"></i>
+                <span class="text-xs font-medium">Séries</span>
+            </a>
+            <a href="#screen-filmes" data-screen="screen-filmes" class="mobile-nav-link">
+                <i data-lucide="film" class="w-6 h-6 mx-auto"></i>
+                <span class="text-xs font-medium">Filmes</span>
+            </a>
+            <a href="#screen-minha-lista" data-screen="screen-minha-lista" class="mobile-nav-link">
+                <i data-lucide="list" class="w-6 h-6 mx-auto"></i>
+                <span class="text-xs font-medium">Minha Lista</span>
+            </a>
+            <a href="#screen-pedidos" data-screen="screen-pedidos" class="mobile-nav-link">
+                 <i data-lucide="plus-square" class="w-6 h-6 mx-auto"></i>
+                <span class="text-xs font-medium">Pedidos</span>
+            </a>
+            <a href="#screen-em-breve" data-screen="screen-em-breve" class="mobile-nav-link">
+                 <i data-lucide="clock" class="w-6 h-6 mx-auto"></i>
+                <span class="text-xs font-medium">Em Breve</span>
+            </a>
+        </nav>
+    </div>
+    
+    <!-- App Logic -->
     <script type="module" src="script.js"></script>
 </body>
 </html>
-
