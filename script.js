@@ -30,23 +30,17 @@ import {
 document.addEventListener('DOMContentLoaded', function() {
     lucide.createIcons();
 
-    // Restore last session's location
-    const savedHash = localStorage.getItem('starlight-last-location');
-    if (savedHash && savedHash !== '#player' && savedHash !== window.location.hash) {
-        window.location.hash = savedHash;
-    } else if (!window.location.hash) {
-        window.location.hash = '#home-view';
-    }
-
     // Save location on change/close
     window.addEventListener('hashchange', () => {
-        if(window.location.hash !== '#player') { // Don't save player state
-            localStorage.setItem('starlight-last-location', window.location.hash);
+        const hash = window.location.hash;
+        if(hash !== '#player' && !hash.startsWith('#details/')) { // Don't save player or details state
+            localStorage.setItem('starlight-last-location', hash);
         }
     });
     window.addEventListener('beforeunload', () => {
-        if(window.location.hash !== '#player') {
-            localStorage.setItem('starlight-last-location', window.location.hash);
+        const hash = window.location.hash;
+        if(hash !== '#player' && !hash.startsWith('#details/')) {
+            localStorage.setItem('starlight-last-location', hash);
         }
     });
 
@@ -165,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function() {
         back: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>`
     };
     
-    const glassSpinnerHTML = `<div class="glass-spinner-wrapper min-h-screen"><div class="glass-spinner"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content"><div class="spinner-ring"></div><div class="spinner-core"></div></div></div></div>`;
+    const glassSpinnerHTML = `<div class="glass-spinner-wrapper min-h-screen"><div class="glass-spinner"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content"><div class="spinner-ring"></div><div class="spinner-core"></div></div></div>`;
     
     function showToast(message, isError = false) {
         const toast = document.getElementById('notification-toast');
@@ -319,7 +313,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <img src="${posterPath}" alt="Pôster de ${item.title}" loading="lazy" class="w-full h-full object-cover rounded-[inherit]">
                  </div>
             </div>
-            <h4 class="text-white text-sm mt-2 truncate">${item.title}</h4>
+            <h4 class="text-white text-sm mt-2 truncate">${item.title || item.name}</h4>
         </a>`;
     };
 
@@ -415,17 +409,19 @@ document.addEventListener('DOMContentLoaded', function() {
         attachGlassButtonListeners();
     }
     
-    async function listenToFirestoreContent() {
-        onSnapshot(collection(db, 'content'), (snapshot) => {
-            firestoreContent = [];
-            snapshot.forEach(doc => {
-                firestoreContent.push({ docId: doc.id, ...doc.data() });
-            });
-            
-            onSnapshot(doc(db, 'config', 'featured'), (docSnap) => {
-                featuredItemIds = docSnap.exists() ? (docSnap.data().items || []) : [];
-                const currentActiveView = document.querySelector('.content-view:not(.hidden)')?.id || 'home-view';
-                renderScreenContent(currentActiveView, true);
+    function listenToFirestoreContent() {
+        return new Promise((resolve) => {
+            const unsubscribe = onSnapshot(collection(db, 'content'), (snapshot) => {
+                firestoreContent = [];
+                snapshot.forEach(doc => {
+                    firestoreContent.push({ docId: doc.id, ...doc.data() });
+                });
+                
+                onSnapshot(doc(db, 'config', 'featured'), (docSnap) => {
+                    featuredItemIds = docSnap.exists() ? (docSnap.data().items || []) : [];
+                    resolve(); 
+                    // Don't re-render here, let the navigation logic handle it
+                });
             });
         });
     }
@@ -449,31 +445,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // --- Navigation and View Management ---
     const views = document.querySelectorAll('.content-view');
-    const navLinks = document.querySelectorAll('.nav-item, .mobile-nav-item');
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const targetId = link.getAttribute('data-target');
-            if (!targetId) return;
-            
-            lastActiveViewId = targetId;
-
-            if (targetId !== 'home-view' && heroCarouselInterval) {
-                clearInterval(heroCarouselInterval);
-                heroCarouselInterval = null;
-            } 
-
-            document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(l => l.classList.remove('active'));
-            views.forEach(view => view.classList.add('hidden'));
-            const targetView = document.getElementById(targetId);
-            if(targetView) {
-               targetView.classList.remove('hidden');
-               renderScreenContent(targetId);
+            if (targetId) {
+                window.location.hash = targetId;
             }
-            
-            document.querySelectorAll(`[data-target="${targetId}"]`).forEach(l => l.classList.add('active'));
-            updateMobileNavIndicator();
-            document.getElementById('main-background').style.opacity = (targetId === 'home-view' && currentHeroItem) ? 1 : 0;
         });
     });
     
@@ -483,7 +461,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (screenId === 'home-view') {
             const featuredItems = featuredItemIds.map(id => firestoreContent.find(item => item.docId === id)).filter(Boolean);
-            if(featuredItems.length > 0) {
+            if(featuredItems.length > 0 && (!currentHeroItem || forceReload)) {
                 updateHero(featuredItems[0]);
                 startHeroRotation();
             }
@@ -504,35 +482,21 @@ document.addEventListener('DOMContentLoaded', function() {
         lucide.createIcons();
         attachGlassButtonListeners();
     }
-
-    document.body.addEventListener('click', (e) => {
-        const anchor = e.target.closest('a');
-        if (anchor && anchor.hash.startsWith('#details/')) {
-            e.preventDefault();
-            const docId = anchor.hash.split('/')[1];
-            showDetailsView({ docId });
-        }
-    });
-
-    function hideDetailsView() {
-        history.back();
-    }
     
     async function showDetailsView(item) {
+        // Hide main UI
         document.querySelector('header').classList.add('hidden');
         document.querySelector('footer').classList.add('hidden');
         document.querySelectorAll('.content-view').forEach(v => v.classList.add('hidden'));
 
+        // Show details view and loading spinner
         detailsView.classList.remove('hidden');
         detailsView.innerHTML = '<div class="spinner mx-auto mt-20"></div>';
         window.scrollTo(0, 0);
-        if (window.location.hash !== `#details/${item.docId}`) {
-            history.pushState({view: 'details'}, '', `#details/${item.docId}`);
-        }
         
         const data = firestoreContent.find(i => i.docId === item.docId);
         if (!data) {
-            detailsView.innerHTML = '<p class="text-center text-red-400">Conteúdo não encontrado.</p>';
+            detailsView.innerHTML = '<p class="text-center text-red-400 p-8">Conteúdo não encontrado ou removido.</p>';
             return;
         }
 
@@ -548,8 +512,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         let backgroundUrl = data.backdrop;
-        const finalImageUrl = backgroundUrl.startsWith('http') ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
-        const posterUrl = data.poster.startsWith('http') ? data.poster : 'https://placehold.co/500x750/1a1a1a/ffffff?text=Capa';
+        const finalImageUrl = backgroundUrl && backgroundUrl.startsWith('http') ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
+        const posterUrl = data.poster && data.poster.startsWith('http') ? data.poster : 'https://placehold.co/500x750/1a1a1a/ffffff?text=Capa';
 
         detailsView.innerHTML = `
             <div class="fixed inset-0 z-[-1] bg-cover bg-center bg-no-repeat" style="background-image: url('${finalImageUrl}');">
@@ -682,16 +646,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.3);"></div>
                         <div class="glass-specular"></div>
                         <div class="glass-content flex items-start p-3 gap-4">
-                             <div class="relative flex-shrink-0">
+                            <div class="relative flex-shrink-0">
                                 <img src="${stillPath}" alt="Cena do episódio" class="w-32 sm:w-40 rounded-md aspect-video object-cover">
                                 <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                     <i data-lucide="play-circle" class="w-8 h-8 text-white"></i>
                                 </div>
-                             </div>
-                            <div class="flex-1">
-                                <h4 class="font-semibold text-white">${index + 1}. ${epTitle}</h4>
-                                <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden">${epOverview}</p>
                             </div>
+                           <div class="flex-1">
+                               <h4 class="font-semibold text-white">${index + 1}. ${epTitle}</h4>
+                               <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden">${epOverview}</p>
+                           </div>
                         </div>
                     </div>
                 `;
@@ -724,19 +688,19 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('episode-list-container').addEventListener('click', (e) => {
             const episodeItem = e.target.closest('.episode-item');
             if(episodeItem){
-                 const seasonKey = episodeItem.dataset.season;
-                 const episodeIndex = parseInt(episodeItem.dataset.index, 10);
-                 const allEpisodesOfSeason = data.seasons[seasonKey].episodes;
-                 const episode = allEpisodesOfSeason[episodeIndex];
+                const seasonKey = episodeItem.dataset.season;
+                const episodeIndex = parseInt(episodeItem.dataset.index, 10);
+                const allEpisodesOfSeason = data.seasons[seasonKey].episodes;
+                const episode = allEpisodesOfSeason[episodeIndex];
 
-                 const context = {
+                const context = {
                     videoUrl: episode.url,
                     title: `${data.name} - T${seasonKey} E${episode.episode_number || episodeIndex + 1}`,
                     itemData: data,
                     episodes: allEpisodesOfSeason,
                     currentIndex: episodeIndex
-                 };
-                 showPlayer(context);
+                };
+                showPlayer(context);
             }
         });
     }
@@ -746,7 +710,24 @@ document.addEventListener('DOMContentLoaded', function() {
     function attachGlassButtonListeners() { document.querySelectorAll('.glass-button, .liquid-glass-card, .player-control-btn, .glass-container[style*="--bg-color"], .glass-form').forEach(element => { if (!element.hasGlassListener) { element.addEventListener('mousemove', handleMouseMove); element.addEventListener('mouseleave', handleMouseLeave); element.hasGlassListener = true; }}); }
     function updateMobileNavIndicator() { const indicator = document.getElementById('mobile-nav-indicator'); const activeItem = document.querySelector('#mobile-nav .mobile-nav-item.active'); if (indicator && activeItem) { const left = activeItem.offsetLeft; const width = activeItem.offsetWidth; indicator.style.width = `${width}px`; indicator.style.transform = `translateX(${left}px)`; }}
     function toggleSearchOverlay(show) { if (show) { searchOverlay.classList.remove('hidden'); searchInput.focus(); document.body.style.overflow = 'hidden'; } else { searchOverlay.classList.add('hidden'); searchInput.value = ''; searchResultsContainer.innerHTML = ''; document.body.style.overflow = 'auto'; }}
-    async function performSearch(query) { if(query.length < 2) { searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Digite pelo menos 2 caracteres.</p>`; return; } searchResultsContainer.innerHTML = `<div class="col-span-full">${glassSpinnerHTML.replace('min-h-screen', '')}</div>`; const data = await fetchFromTMDB('search/multi', `query=${encodeURIComponent(query)}`); if(data && data.results) { const filteredResults = data.results.filter(item => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path); if(filteredResults.length > 0) { searchResultsContainer.innerHTML = filteredResults.map(item => createContentCard(item, true)).join(''); } else { searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum resultado para "${query}".</p>`; }} else { searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Ocorreu um erro na busca.</p>`; }}
+    
+    async function performSearch(query) {
+        if (query.length < 2) {
+            searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Digite pelo menos 2 caracteres.</p>`;
+            return;
+        }
+        const lowerCaseQuery = query.toLowerCase();
+        const results = firestoreContent.filter(item => {
+            const title = (item.title || item.name || '').toLowerCase();
+            return title.includes(lowerCaseQuery);
+        });
+    
+        if (results.length > 0) {
+            searchResultsContainer.innerHTML = results.map(item => createGridCard(item)).join('');
+        } else {
+            searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum resultado para "${query}".</p>`;
+        }
+    }
     
     // --- Player Functions ---
     async function showPlayer(context) {
@@ -1066,7 +1047,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('hero-watch-btn').addEventListener('click', () => {
         if (!currentHeroItem) return;
         showPlayer({ 
-            videoUrl: 'https://api.anivideo.net/videohls.php?d=https://cdn-s01.mywallpaper-4k-image.net/stream/o/one-piece-dublado-v2/78.mp4/index.m3u8&nocache1757330957', 
+            videoUrl: currentHeroItem.url, 
             title: currentHeroItem.title || currentHeroItem.name,
             itemData: currentHeroItem
         });
@@ -1123,50 +1104,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    window.addEventListener('popstate', (event) => {
-        const wasPlayerOpen = !playerView.classList.contains('hidden');
-        
-        if (wasPlayerOpen) {
-            hidePlayer(false); // Just close the player UI
-        }
-
-        // After ANY popstate, re-evaluate what to show based on the URL.
-        const hash = window.location.hash;
-
-        if (hash.startsWith('#details/')) {
-            const docId = hash.split('/')[1];
-            showDetailsView({ docId });
-        } else {
-             // This is a main screen. Make sure overlays are hidden.
-            if (!detailsView.classList.contains('hidden')) {
-                detailsView.classList.add('hidden');
-                 document.body.classList.remove('overflow-hidden');
-            }
-             if (!playerView.classList.contains('hidden')) {
-                hidePlayer(false);
-            }
-            
-            const targetId = hash.substring(1) || 'home-view';
-            const targetView = document.getElementById(targetId);
-
-            document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
-            if(targetView) {
-                targetView.classList.remove('hidden');
-                renderScreenContent(targetId);
-            }
-
-            const nonAppScreens = ['login-view', 'manage-profile-view'];
-            const isAppScreen = !nonAppScreens.includes(targetId);
-
-             if (isAppScreen) {
-                 document.querySelector('header').classList.remove('hidden');
-                 document.querySelector('footer').classList.remove('hidden');
-             } else {
-                 document.querySelector('header').classList.add('hidden');
-                 document.querySelector('footer').classList.add('hidden');
-             }
-        }
-    });
+    window.addEventListener('popstate', handleNavigation);
+    window.addEventListener('hashchange', handleNavigation);
 
     // --- Notification Logic ---
     function listenForNotifications() {
@@ -1293,7 +1232,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.error("Erro ao processar voto:", error);
-            showToast("Ocorreu um erro ao processar seu voto.", true);
+            showToast('Ocorreu um erro ao processar seu voto.', true);
         } finally {
              if (voteButton) voteButton.disabled = false;
         }
@@ -1409,16 +1348,17 @@ document.addEventListener('DOMContentLoaded', function() {
         headerProfileBtn.innerHTML = '';
         headerProfileBtn.appendChild(avatarImg);
 
-        // Show main app
-        loginView.classList.add('hidden');
-        document.querySelector('header').classList.remove('hidden');
-        document.querySelector('footer').classList.remove('hidden');
-        manageProfileView.classList.add('hidden');
-        document.getElementById('home-view').classList.remove('hidden');
-        document.getElementById('main-background').style.opacity = 1;
+        // Load content and navigate to the correct view
+        await listenToFirestoreContent();
+
+        const savedHash = localStorage.getItem('starlight-last-location');
+        if (savedHash && savedHash !== '#player' && savedHash.substring(1)) {
+            window.location.hash = savedHash;
+        } else {
+            window.location.hash = '#home-view';
+        }
         
-        // Load all content
-        listenToFirestoreContent();
+        handleNavigation();
     }
 
     function showProfileModal(profileId = null) {
@@ -1495,19 +1435,22 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('delete-profile-btn').addEventListener('click', async () => {
         const profileId = document.getElementById('profile-id-input').value;
          if (profileId && profiles.length > 1) {
-            // NOTE: Using a simple confirm for now, a custom modal would be better.
-            if (confirm('Tem certeza que deseja excluir este perfil? Esta ação não pode ser desfeita.')) {
-                try {
-                    const docRef = doc(db, 'users', userId, 'profiles', profileId);
-                    await deleteDoc(docRef);
-                    showToast('Perfil excluído.');
-                    await loadProfiles();
-                    profileModal.classList.add('hidden');
-                } catch (error) {
-                    console.error("Erro ao excluir perfil: ", error);
-                    showToast('Não foi possível excluir o perfil.', true);
+            showConfirmationModal(
+                'Excluir Perfil',
+                'Tem certeza que deseja excluir este perfil? Esta ação não pode ser desfeita.',
+                async () => {
+                    try {
+                        const docRef = doc(db, 'users', userId, 'profiles', profileId);
+                        await deleteDoc(docRef);
+                        showToast('Perfil excluído.');
+                        await loadProfiles();
+                        profileModal.classList.add('hidden');
+                    } catch (error) {
+                        console.error("Erro ao excluir perfil: ", error);
+                        showToast('Não foi possível excluir o perfil.', true);
+                    }
                 }
-            }
+            );
          } else {
              showToast('Não é possível excluir o único perfil.', true);
          }
@@ -1737,21 +1680,29 @@ document.addEventListener('DOMContentLoaded', function() {
     function showLoginScreen() {
         userId = null;
         currentProfile = null;
+        // Hide all app-specific elements
         views.forEach(view => view.classList.add('hidden'));
-        loginView.classList.remove('hidden');
         document.querySelector('header').classList.add('hidden');
         document.querySelector('footer').classList.add('hidden');
+        
+        window.location.hash = '#login-view';
+        handleNavigation();
     }
 
     async function showProfileScreen() {
-         views.forEach(view => view.classList.add('hidden'));
-         loginView.classList.add('hidden');
-         manageProfileView.classList.remove('hidden');
-         document.getElementById('main-background').style.opacity = 0;
-         isEditMode = false;
-         manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
-         document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
-         await loadProfiles();
+        // Hide all app-specific elements
+        views.forEach(view => view.classList.add('hidden'));
+        document.querySelector('header').classList.add('hidden');
+        document.querySelector('footer').classList.add('hidden');
+        loginView.classList.add('hidden');
+        
+        window.location.hash = '#manage-profile-view';
+        handleNavigation();
+
+        isEditMode = false;
+        manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
+        document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
+        await loadProfiles();
     }
 
     onAuthStateChanged(auth, (user) => {
@@ -1767,38 +1718,91 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Remove player hash from URL on initial load if present
     if (location.hash === '#player') {
         history.replaceState(null, document.title, window.location.pathname + window.location.search);
-        window.location.hash = localStorage.getItem('starlight-last-location') || '#home-view';
     }
-    handleLocationChange(); // Initial route handling
     
     attachGlassButtonListeners();
     window.addEventListener('resize', updateMobileNavIndicator);
 
-    function handleLocationChange() {
+    function handleNavigation() {
         const hash = window.location.hash;
+
+        // Hide overlays first
+        if (!playerView.classList.contains('hidden')) {
+            hidePlayer(false);
+        }
+        document.body.style.overflow = 'auto';
+
+        // Determine which view to show
         if (hash.startsWith('#details/')) {
             const docId = hash.split('/')[1];
-            showDetailsView({ docId });
-        } else {
-            const targetId = hash.substring(1) || 'home-view';
-            document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
-            const targetView = document.getElementById(targetId);
-            if(targetView) {
-                targetView.classList.remove('hidden');
-                renderScreenContent(targetId);
+            if (firestoreContent.length > 0) {
+                 showDetailsView({ docId });
+            } else if (auth.currentUser) {
+                // If content isn't loaded yet but user is logged in, wait for it
+                // This can happen on a direct URL load.
+                const unsubscribe = onSnapshot(collection(db, 'content'), (snapshot) => {
+                    firestoreContent = [];
+                    snapshot.forEach(doc => firestoreContent.push({ docId: doc.id, ...doc.data() }));
+                    // Content is now loaded, try showing details again.
+                    showDetailsView({ docId });
+                    unsubscribe(); // Stop listening after we get the data.
+                });
             }
-             const nonAppScreens = ['login-view', 'manage-profile-view'];
+        } else {
+            // This handles main views like #home-view, #series-view, etc.
+            if (!detailsView.classList.contains('hidden')) {
+                detailsView.classList.add('hidden');
+            }
+
+            const targetId = hash.substring(1) || (auth.currentUser ? 'home-view' : 'login-view');
+            const targetView = document.getElementById(targetId);
+
+            document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
+            
+            const nonAppScreens = ['login-view']; // manage-profile is now handled inside app state
             const isAppScreen = !nonAppScreens.includes(targetId);
-            if (isAppScreen) {
-                 document.querySelector('header').classList.remove('hidden');
-                 document.querySelector('footer').classList.remove('hidden');
-             } else {
-                 document.querySelector('header').classList.add('hidden');
-                 document.querySelector('footer').classList.add('hidden');
-             }
+
+            if (targetView && !isAppScreen && auth.currentUser) {
+                 // Logged in user trying to access login page, redirect to home
+                window.location.hash = '#home-view';
+                return; // The hashchange will trigger handleNavigation again
+            }
+            
+            if (targetView && isAppScreen && !auth.currentUser) {
+                // Not logged in, trying to access app screen, redirect to login
+                window.location.hash = '#login-view';
+                return;
+            }
+
+            if (targetView) {
+                targetView.classList.remove('hidden');
+                
+                // Show/hide main UI elements
+                const showMainUI = isAppScreen && targetId !== 'manage-profile-view';
+                document.querySelector('header').classList.toggle('hidden', !showMainUI);
+                document.querySelector('footer').classList.toggle('hidden', !showMainUI);
+
+                // Update nav items state
+                document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(l => l.classList.remove('active'));
+                document.querySelectorAll(`a[href="#${targetId}"]`).forEach(l => l.classList.add('active'));
+                updateMobileNavIndicator();
+                
+                // Set background for home
+                document.getElementById('main-background').style.opacity = (targetId === 'home-view' && currentHeroItem) ? 1 : 0;
+
+                // Render content for the view if needed
+                if(isAppScreen) {
+                    renderScreenContent(targetId);
+                }
+            } else {
+                // Fallback to home view or login if hash is invalid
+                window.location.hash = auth.currentUser ? '#home-view' : '#login-view';
+            }
         }
     }
+    handleNavigation(); // Initial call
 });
 

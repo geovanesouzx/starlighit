@@ -53,12 +53,12 @@
                 <div class="flex items-center gap-8">
                     <h1 class="text-2xl font-black tracking-wider bg-gradient-to-r from-purple-500 to-pink-500 text-transparent bg-clip-text">STARLIGHT</h1>
                     <ul class="hidden lg:flex items-center gap-6">
-                        <li><a href="#" class="nav-item active" data-target="home-view">Início</a></li>
-                        <li><a href="#" class="nav-item" data-target="series-view">Séries</a></li>
-                        <li><a href="#" class="nav-item" data-target="movies-view">Filmes</a></li>
-                        <li><a href="#" class="nav-item" data-target="mylist-view">Minha Lista</a></li>
-                        <li><a href="#" class="nav-item" data-target="news-view">Novidades</a></li>
-                        <li><a href="#" class="nav-item" data-target="requests-view">Pedidos</a></li>
+                        <li><a href="#home-view" class="nav-item active" data-target="home-view">Início</a></li>
+                        <li><a href="#series-view" class="nav-item" data-target="series-view">Séries</a></li>
+                        <li><a href="#movies-view" class="nav-item" data-target="movies-view">Filmes</a></li>
+                        <li><a href="#mylist-view" class="nav-item" data-target="mylist-view">Minha Lista</a></li>
+                        <li><a href="#news-view" class="nav-item" data-target="news-view">Novidades</a></li>
+                        <li><a href="#requests-view" class="nav-item" data-target="requests-view">Pedidos</a></li>
                     </ul>
                 </div>
                 <div class="flex items-center gap-2 sm:gap-4">
@@ -91,44 +91,44 @@
                  <div class="glass-overlay"></div>
                  <div class="glass-specular"></div>
                  <div class="glass-content">
-                   <div class="form-container login active">
-                       <h3>Login</h3>
-                       <form id="login-form">
-                         <div class="form-group">
-                             <i class="fas fa-envelope"></i>
-                             <input type="email" id="login-email" placeholder="Email" required>
-                         </div>
-                         <div class="form-group">
-                             <i class="fas fa-lock"></i>
-                             <input type="password" id="login-password" placeholder="Password" required>
-                         </div>
-                         <button type="submit" class="submit-btn">Entrar</button>
-                       </form>
-                       <div class="divider">OU</div>
-                       <button id="google-signin-btn" class="submit-btn google-btn">
-                         <i class="fab fa-google"></i>
-                         <span>Entrar com Google</span>
-                       </button>
-                       <p class="form-switch">Não tem uma conta? <a href="#" class="switch-to-register">Registre-se</a></p>
-                    </div>
-                   
-                   <div class="form-container register">
-                       <h3>Registrar</h3>
-                       <form id="register-form">
-                         <div class="form-group">
-                             <i class="fas fa-envelope"></i>
-                             <input type="email" id="register-email" placeholder="Email" required>
-                         </div>
-                         <div class="form-group">
-                             <i class="fas fa-lock"></i>
-                             <input type="password" id="register-password" placeholder="Password" required>
-                         </div>
-                         <button type="submit" class="submit-btn">Criar Conta</button>
-                       </form>
-                       <p class="form-switch">Já tem uma conta? <a href="#" class="switch-to-login">Login</a></p>
+                    <div class="form-container login active">
+                         <h3>Login</h3>
+                         <form id="login-form">
+                           <div class="form-group">
+                               <i class="fas fa-envelope"></i>
+                               <input type="email" id="login-email" placeholder="Email" required>
+                           </div>
+                           <div class="form-group">
+                               <i class="fas fa-lock"></i>
+                               <input type="password" id="login-password" placeholder="Password" required>
+                           </div>
+                           <button type="submit" class="submit-btn">Entrar</button>
+                         </form>
+                         <div class="divider">OU</div>
+                         <button id="google-signin-btn" class="submit-btn google-btn">
+                           <i class="fab fa-google"></i>
+                           <span>Entrar com Google</span>
+                         </button>
+                         <p class="form-switch">Não tem uma conta? <a href="#" class="switch-to-register">Registre-se</a></p>
+                     </div>
+                    
+                    <div class="form-container register">
+                         <h3>Registrar</h3>
+                         <form id="register-form">
+                             <div class="form-group">
+                                 <i class="fas fa-envelope"></i>
+                                 <input type="email" id="register-email" placeholder="Email" required>
+                             </div>
+                             <div class="form-group">
+                                 <i class="fas fa-lock"></i>
+                                 <input type="password" id="register-password" placeholder="Password" required>
+                             </div>
+                             <button type="submit" class="submit-btn">Criar Conta</button>
+                         </form>
+                         <p class="form-switch">Já tem uma conta? <a href="#" class="switch-to-login">Login</a></p>
                     </div>
                  </div>
-           </div>
+            </div>
         </section>
 
         <section id="home-view" class="content-view hidden">
@@ -371,13 +371,13 @@
             <nav class="glass-content overflow-x-auto hide-scrollbar px-2 relative">
                  <div id="mobile-nav-indicator" class="absolute h-[70%] top-[15%] bg-white/10 rounded-full transition-all duration-300 ease-in-out"></div>
                  <ul id="mobile-nav" class="relative z-10 flex flex-nowrap justify-start items-center gap-2 py-3">
-                 <li><a href="#" class="mobile-nav-item active text-sm px-4 py-2" data-target="home-view">Início</a></li>
+                 <li><a href="#home-view" class="mobile-nav-item active text-sm px-4 py-2" data-target="home-view">Início</a></li>
                  <li><a href="#" id="mobile-search-btn" class="mobile-nav-item text-sm px-4 py-2">Buscar</a></li>
-                 <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="series-view">Séries</a></li>
-                 <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="movies-view">Filmes</a></li>
-                 <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="mylist-view">Lista</a></li>
-                 <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="news-view">Novidades</a></li>
-                 <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="requests-view">Pedidos</a></li>
+                 <li><a href="#series-view" class="mobile-nav-item text-sm px-4 py-2" data-target="series-view">Séries</a></li>
+                 <li><a href="#movies-view" class="mobile-nav-item text-sm px-4 py-2" data-target="movies-view">Filmes</a></li>
+                 <li><a href="#mylist-view" class="mobile-nav-item text-sm px-4 py-2" data-target="mylist-view">Lista</a></li>
+                 <li><a href="#news-view" class="mobile-nav-item text-sm px-4 py-2" data-target="news-view">Novidades</a></li>
+                 <li><a href="#requests-view" class="mobile-nav-item text-sm px-4 py-2" data-target="requests-view">Pedidos</a></li>
                  </ul>
             </nav>
         </div>
