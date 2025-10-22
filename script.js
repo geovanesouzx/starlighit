@@ -30,6 +30,26 @@ import {
 document.addEventListener('DOMContentLoaded', function() {
     lucide.createIcons();
 
+    // Restore last session's location
+    const savedHash = localStorage.getItem('starlight-last-location');
+    if (savedHash && savedHash !== '#player' && savedHash !== window.location.hash) {
+        window.location.hash = savedHash;
+    } else if (!window.location.hash) {
+        window.location.hash = '#home-view';
+    }
+
+    // Save location on change/close
+    window.addEventListener('hashchange', () => {
+        if(window.location.hash !== '#player') { // Don't save player state
+            localStorage.setItem('starlight-last-location', window.location.hash);
+        }
+    });
+    window.addEventListener('beforeunload', () => {
+        if(window.location.hash !== '#player') {
+            localStorage.setItem('starlight-last-location', window.location.hash);
+        }
+    });
+
     // --- Configuração do Firebase ---
     const firebaseConfig = {
         apiKey: "AIzaSyA791i8R8Bmrn3toFxFltZ40TU7PUavev8",
@@ -64,7 +84,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let heroCarouselInterval;
     let featuredItemIds = [];
-    let isInitialLoad = true;
 
     let hls = null;
     let notifications = [];
@@ -1083,26 +1102,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function performSearch(query) {
-        const searchTerm = query.toLowerCase().trim();
-        if (searchTerm.length < 2) {
-            searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Digite pelo menos 2 caracteres.</p>`;
-            return;
-        }
-    
-        const results = firestoreContent.filter(item => 
-            item.title?.toLowerCase().includes(searchTerm) ||
-            (item.genres && item.genres.some(g => g.toLowerCase().includes(searchTerm)))
-        );
-    
-        if (results.length > 0) {
-            searchResultsContainer.innerHTML = results.map(item => createGridCard(item)).join('');
-        } else {
-            searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum resultado para "${query}".</p>`;
-        }
-        attachGlassButtonListeners();
-    }
-
     notificationBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         renderNotifications();
@@ -1124,7 +1123,50 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('popstate', (event) => {
+        const wasPlayerOpen = !playerView.classList.contains('hidden');
+        
+        if (wasPlayerOpen) {
+            hidePlayer(false); // Just close the player UI
+        }
+
+        // After ANY popstate, re-evaluate what to show based on the URL.
+        const hash = window.location.hash;
+
+        if (hash.startsWith('#details/')) {
+            const docId = hash.split('/')[1];
+            showDetailsView({ docId });
+        } else {
+             // This is a main screen. Make sure overlays are hidden.
+            if (!detailsView.classList.contains('hidden')) {
+                detailsView.classList.add('hidden');
+                 document.body.classList.remove('overflow-hidden');
+            }
+             if (!playerView.classList.contains('hidden')) {
+                hidePlayer(false);
+            }
+            
+            const targetId = hash.substring(1) || 'home-view';
+            const targetView = document.getElementById(targetId);
+
+            document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
+            if(targetView) {
+                targetView.classList.remove('hidden');
+                renderScreenContent(targetId);
+            }
+
+            const nonAppScreens = ['login-view', 'manage-profile-view'];
+            const isAppScreen = !nonAppScreens.includes(targetId);
+
+             if (isAppScreen) {
+                 document.querySelector('header').classList.remove('hidden');
+                 document.querySelector('footer').classList.remove('hidden');
+             } else {
+                 document.querySelector('header').classList.add('hidden');
+                 document.querySelector('footer').classList.add('hidden');
+             }
+        }
+    });
 
     // --- Notification Logic ---
     function listenForNotifications() {
@@ -1712,19 +1754,14 @@ document.addEventListener('DOMContentLoaded', function() {
          await loadProfiles();
     }
 
-    function initializeAppLogic() {
-        listenToFirestoreContent();
-        listenToRequests();
-        listenForNotifications();
-        initEventListeners();
-    }
-
     onAuthStateChanged(auth, (user) => {
         document.body.classList.remove('auth-loading');
         if (user) {
             userId = user.uid;
-            initializeAppLogic();
+            listenForNotifications();
+            listenToRequests();
             showProfileScreen();
+            initializeUI();
         } else {
             showLoginScreen();
         }
@@ -1732,62 +1769,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (location.hash === '#player') {
         history.replaceState(null, document.title, window.location.pathname + window.location.search);
-        const lastLocation = localStorage.getItem('starlight-last-location') || '#home-view';
-        if (window.location.hash !== lastLocation) {
-            window.location.hash = lastLocation;
-        }
+        window.location.hash = localStorage.getItem('starlight-last-location') || '#home-view';
     }
+    handleLocationChange(); // Initial route handling
     
     attachGlassButtonListeners();
     window.addEventListener('resize', updateMobileNavIndicator);
 
     function handleLocationChange() {
         const hash = window.location.hash;
-        if(hash && hash !== '#player') {
-            localStorage.setItem('starlight-last-location', hash);
-        }
-
         if (hash.startsWith('#details/')) {
             const docId = hash.split('/')[1];
             showDetailsView({ docId });
         } else {
-            // This is a main screen. Make sure overlays are hidden.
-            if (!detailsView.classList.contains('hidden')) {
-                detailsView.classList.add('hidden');
-                document.body.classList.remove('overflow-hidden');
-            }
-            if (!playerView.classList.contains('hidden')) {
-                hidePlayer(false);
-            }
-            
             const targetId = hash.substring(1) || 'home-view';
-            const targetView = document.getElementById(targetId);
-
             document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
+            const targetView = document.getElementById(targetId);
             if(targetView) {
                 targetView.classList.remove('hidden');
                 renderScreenContent(targetId);
             }
-
-            document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(l => l.classList.remove('active'));
-            document.querySelectorAll(`[data-target="${targetId}"]`).forEach(l => l.classList.add('active'));
-            updateMobileNavIndicator();
-
-            const nonAppScreens = ['login-view', 'manage-profile-view'];
+             const nonAppScreens = ['login-view', 'manage-profile-view'];
             const isAppScreen = !nonAppScreens.includes(targetId);
-
-            if (isAppScreen && auth.currentUser) {
+            if (isAppScreen) {
                  document.querySelector('header').classList.remove('hidden');
                  document.querySelector('footer').classList.remove('hidden');
-            } else {
+             } else {
                  document.querySelector('header').classList.add('hidden');
                  document.querySelector('footer').classList.add('hidden');
-            }
+             }
         }
-    }
-
-    function initEventListeners() {
-        window.addEventListener('hashchange', handleLocationChange);
     }
 });
 
