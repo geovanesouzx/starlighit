@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
         volumeMute: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"></path></svg>`,
         fullscreen: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg>`,
         exitFullscreen: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"></path></svg>`,
-        settings: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59 1.69.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg>`,
+        settings: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59 1.69.98l2.49 1c.23.09.49 0 .61.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg>`,
         back: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>`
     };
     
@@ -576,13 +576,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 showPlayer({ videoUrl: data.url, title: title, itemData: data });
             } else if (data.type === 'tv' && data.seasons) {
                 // For TV shows, play the first available episode
-                const firstSeasonKey = Object.keys(data.seasons).sort((a,b) => a - b)[0];
-                const firstEpisode = data.seasons[firstSeasonKey][0];
+                const firstSeasonKey = Object.keys(data.seasons).sort((a,b) => parseInt(a) - parseInt(b))[0];
+                const firstEpisode = data.seasons[firstSeasonKey]?.episodes?.[0];
+
                 if (firstEpisode) {
-                    const allEpisodesOfSeason = data.seasons[firstSeasonKey];
+                    const allEpisodesOfSeason = data.seasons[firstSeasonKey].episodes;
                     const context = {
                         videoUrl: firstEpisode.url,
-                        title: `${title} - T${firstEpisode.season_number} E${firstEpisode.episode_number}`,
+                        title: `${title} - T${firstSeasonKey} E${firstEpisode.episode_number || 1}`,
                         itemData: data,
                         episodes: allEpisodesOfSeason,
                         currentIndex: 0
@@ -606,6 +607,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!container) return;
 
         const seasonKeys = Object.keys(data.seasons).sort((a, b) => parseInt(a) - parseInt(b));
+        if (seasonKeys.length === 0) {
+            container.innerHTML = '<p class="text-stone-400">Nenhuma temporada encontrada.</p>';
+            return;
+        }
         const firstSeasonKey = seasonKeys[0];
 
         container.innerHTML = `
@@ -615,7 +620,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.5);"></div>
                     <div class="glass-specular"></div>
                     <div class="glass-content flex justify-between items-center p-3">
-                        <span id="selected-season-text">Temporada ${firstSeasonKey}</span>
+                        <span id="selected-season-text">${data.seasons[firstSeasonKey]?.title || `Temporada ${firstSeasonKey}`}</span>
                         <i data-lucide="chevron-down" class="w-5 h-5 transition-transform"></i>
                     </div>
                 </button>
@@ -624,7 +629,7 @@ document.addEventListener('DOMContentLoaded', function() {
                      <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.7);"></div>
                      <div class="glass-specular"></div>
                      <div id="season-options-content" class="glass-content p-2">
-                        ${seasonKeys.map(key => `<div class="custom-select-option p-3 rounded-md cursor-pointer" data-season="${key}">Temporada ${key}</div>`).join('')}
+                         ${seasonKeys.map(key => `<div class="custom-select-option p-3 rounded-md cursor-pointer" data-season="${key}">${data.seasons[key]?.title || `Temporada ${key}`}</div>`).join('')}
                      </div>
                 </div>
             </div>
@@ -633,26 +638,39 @@ document.addEventListener('DOMContentLoaded', function() {
         lucide.createIcons();
         
         const renderEpisodes = (seasonKey) => {
-            const episodes = data.seasons[seasonKey];
+            const season = data.seasons[seasonKey];
+            const episodes = season?.episodes;
             const episodeContainer = document.getElementById('episode-list-container');
+            if (!episodes || episodes.length === 0) {
+                episodeContainer.innerHTML = '<p class="text-stone-400">Nenhum episódio encontrado para esta temporada.</p>';
+                return;
+            }
             episodeContainer.innerHTML = episodes.map((ep, index) => {
-                const epTitle = ep.name || `Episódio ${ep.episode_number}`;
+                const epTitle = ep.title || `Episódio ${ep.episode_number || index + 1}`;
                 const epOverview = ep.overview || 'Sem descrição.';
+                const stillPath = ep.still_path ? (ep.still_path.startsWith('/') ? `https://image.tmdb.org/t/p/w300${ep.still_path}`: ep.still_path) : 'https://placehold.co/300x168/1c1917/FFFFFF?text=Starlight';
+                
                 return `
                     <div class="episode-item glass-container glass-button rounded-lg overflow-hidden cursor-pointer" data-index="${index}" data-season="${seasonKey}">
                         <div class="glass-filter"></div>
                         <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.3);"></div>
                         <div class="glass-specular"></div>
-                        <div class="glass-content flex items-center p-3 gap-4">
-                            <div class="font-bold text-lg text-stone-400 w-8 text-center">${ep.episode_number}</div>
+                        <div class="glass-content flex items-start p-3 gap-4">
+                             <div class="relative flex-shrink-0">
+                                <img src="${stillPath}" alt="Cena do episódio" class="w-32 sm:w-40 rounded-md aspect-video object-cover">
+                                <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <i data-lucide="play-circle" class="w-8 h-8 text-white"></i>
+                                </div>
+                             </div>
                             <div class="flex-1">
-                                <h4 class="font-semibold text-white">${epTitle}</h4>
-                                <p class="text-xs text-stone-300 mt-1">${epOverview.substring(0, 100)}${epOverview.length > 100 ? '...' : ''}</p>
+                                <h4 class="font-semibold text-white">${index + 1}. ${epTitle}</h4>
+                                <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden">${epOverview}</p>
                             </div>
                         </div>
                     </div>
                 `;
             }).join('');
+            lucide.createIcons();
         };
 
         renderEpisodes(firstSeasonKey);
@@ -669,7 +687,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const option = e.target.closest('.custom-select-option');
             if (option) {
                 const seasonKey = option.dataset.season;
-                document.getElementById('selected-season-text').textContent = `Temporada ${seasonKey}`;
+                document.getElementById('selected-season-text').textContent = data.seasons[seasonKey]?.title || `Temporada ${seasonKey}`;
                 renderEpisodes(seasonKey);
                 seasonSelectorBtn.click(); // close dropdown
                 attachGlassButtonListeners();
@@ -681,12 +699,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if(episodeItem){
                  const seasonKey = episodeItem.dataset.season;
                  const episodeIndex = parseInt(episodeItem.dataset.index, 10);
-                 const allEpisodesOfSeason = data.seasons[seasonKey];
+                 const allEpisodesOfSeason = data.seasons[seasonKey].episodes;
                  const episode = allEpisodesOfSeason[episodeIndex];
 
                  const context = {
                     videoUrl: episode.url,
-                    title: `${data.name} - T${episode.season_number} E${episode.episode_number}`,
+                    title: `${data.name} - T${seasonKey} E${episode.episode_number || episodeIndex + 1}`,
                     itemData: data,
                     episodes: allEpisodesOfSeason,
                     currentIndex: episodeIndex
@@ -766,13 +784,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // 2. Lógica de orientação e tela cheia para mobile
         if (window.innerWidth < 768) {
              try {
-                await playerView.requestFullscreen();
-                if (screen.orientation && typeof screen.orientation.lock === 'function') {
-                    await screen.orientation.lock('landscape');
-                }
-            } catch (err) {
-                console.error("Não foi possível ativar tela cheia ou bloquear orientação:", err);
-            }
+                 await playerView.requestFullscreen();
+                 if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                     await screen.orientation.lock('landscape');
+                 }
+             } catch (err) {
+                 console.error("Não foi possível ativar tela cheia ou bloquear orientação:", err);
+             }
         }
 
         if(context.episodes && context.episodes.length > 1) {
@@ -787,23 +805,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function hidePlayer(updateHistory = true) {
-        if(updateHistory){
+        if(updateHistory && currentPlayerContext.key){
             await savePlayerProgress();
         }
         
         videoPlayer.pause();
-        videoPlayer.src = ""; 
+        
         if (hls) {
             hls.destroy();
             hls = null;
         }
-
-        // Resetar o conteúdo e listeners
-        const newPlayer = videoPlayer.cloneNode(true);
-        videoPlayer.parentNode.replaceChild(newPlayer, videoPlayer);
-        videoPlayer = newPlayer; // Atualiza a referência global
-        addPlayerEventListeners(); // Re-adiciona os listeners ao novo elemento
-
+        // Limpa a fonte do vídeo para parar o download
+        videoPlayer.removeAttribute('src');
+        videoPlayer.load();
 
         playerView.classList.add('hidden');
         document.body.style.overflow = 'auto';
@@ -811,7 +825,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 3. Desbloquear orientação e sair da tela cheia
         if (document.fullscreenElement) {
-            document.exitFullscreen();
+            document.exitFullscreen().catch(err => console.error(err));
         }
         if (screen.orientation && typeof screen.orientation.unlock === 'function') {
             screen.orientation.unlock();
@@ -1233,16 +1247,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
                      <button class="vote-btn glass-container glass-button rounded-lg w-full mt-2 ${userHasVoted ? 'voted' : ''}" data-request-id="${request.id}">
-                        <div class="glass-filter"></div>
-                        <div class="glass-overlay"></div>
-                        <div class="glass-specular"></div>
-                        <div class="glass-content flex justify-center items-center gap-2 p-2 text-sm">
+                         <div class="glass-filter"></div>
+                         <div class="glass-overlay"></div>
+                         <div class="glass-specular"></div>
+                         <div class="glass-content flex justify-center items-center gap-2 p-2 text-sm">
                            ${userHasVoted 
                              ? '<i data-lucide="minus-circle" class="w-4 h-4"></i> Remover Voto' 
                              : '<i data-lucide="plus-circle" class="w-4 h-4"></i> Apoiar Pedido'
                            }
-                        </div>
-                    </button>
+                         </div>
+                     </button>
                 </div>
             `;
         }).join('');
