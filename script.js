@@ -23,7 +23,8 @@ import {
     orderBy,
     onSnapshot,
     arrayUnion,
-    serverTimestamp
+    serverTimestamp,
+    arrayRemove
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -703,13 +704,10 @@ document.addEventListener('DOMContentLoaded', function() {
     async function performSearch(query) { if(query.length < 2) { searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Digite pelo menos 2 caracteres.</p>`; return; } searchResultsContainer.innerHTML = `<div class="col-span-full">${glassSpinnerHTML.replace('min-h-screen', '')}</div>`; const data = await fetchFromTMDB('search/multi', `query=${encodeURIComponent(query)}`); if(data && data.results) { const filteredResults = data.results.filter(item => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path); if(filteredResults.length > 0) { searchResultsContainer.innerHTML = filteredResults.map(item => createContentCard(item, true)).join(''); } else { searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum resultado para "${query}".</p>`; }} else { searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Ocorreu um erro na busca.</p>`; }}
     
     // --- Player Functions ---
-    window.showPlayer = function(context) {
-        if (hls) {
-            hls.destroy();
-        }
-
-        videoPlayer.pause();
-        videoPlayer.src = "";
+    async function showPlayer(context) {
+        // 1. Reset completo do player
+        hidePlayer(false); // Chama o hidePlayer para limpar o estado sem mexer no histórico
+        await new Promise(resolve => setTimeout(resolve, 50)); // Pequeno delay para garantir a limpeza
 
         let key;
         let itemData = context.itemData;
@@ -765,11 +763,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }, { once: true });
         }
 
-
+        // 2. Lógica de orientação e tela cheia para mobile
         if (window.innerWidth < 768) {
-            playerView.requestFullscreen().catch(err => {
-                console.error(`Fullscreen request failed: ${err.message}`);
-            });
+             try {
+                await playerView.requestFullscreen();
+                if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                    await screen.orientation.lock('landscape');
+                }
+            } catch (err) {
+                console.error("Não foi possível ativar tela cheia ou bloquear orientação:", err);
+            }
         }
 
         if(context.episodes && context.episodes.length > 1) {
@@ -783,11 +786,10 @@ document.addEventListener('DOMContentLoaded', function() {
         attachGlassButtonListeners();
     }
 
-    async function hidePlayer() {
-        playerView.classList.add('hidden');
-        document.body.style.overflow = 'auto';
-        
-        await savePlayerProgress();
+    async function hidePlayer(updateHistory = true) {
+        if(updateHistory){
+            await savePlayerProgress();
+        }
         
         videoPlayer.pause();
         videoPlayer.src = ""; 
@@ -795,8 +797,30 @@ document.addEventListener('DOMContentLoaded', function() {
             hls.destroy();
             hls = null;
         }
-        
+
+        // Resetar o conteúdo e listeners
+        const newPlayer = videoPlayer.cloneNode(true);
+        videoPlayer.parentNode.replaceChild(newPlayer, videoPlayer);
+        // A referência 'videoPlayer' ainda aponta para o elemento antigo. 
+        // É preciso reatribuir ou re-buscar do DOM, mas para a lógica atual, a limpeza de src é o mais importante.
+        document.getElementById('video-player').src = '';
+
+
+        playerView.classList.add('hidden');
+        document.body.style.overflow = 'auto';
         currentPlayerContext = {};
+        
+        // 3. Desbloquear orientação e sair da tela cheia
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        }
+        if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+            screen.orientation.unlock();
+        }
+
+        if(updateHistory && window.location.hash === '#player'){
+            history.back();
+        }
     }
 
     function formatTime(timeInSeconds) {
@@ -904,14 +928,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const isFullscreen = !!document.fullscreenElement;
         fullscreenBtn.querySelector('.glass-content').innerHTML = isFullscreen ? ICONS.exitFullscreen : ICONS.fullscreen;
 
-        if (!isFullscreen && !playerView.classList.contains('hidden') && location.hash === '#player') {
-            history.back(); 
+        if (!isFullscreen && !playerView.classList.contains('hidden')) {
+             hidePlayer();
         }
     });
 
     playPauseBtn.addEventListener('click', togglePlay);
     videoPlayer.addEventListener('click', handlePlayerClick);
-    playerBackBtn.addEventListener('click', () => history.back());
+    playerBackBtn.addEventListener('click', () => hidePlayer());
 
     playerView.addEventListener('mousemove', () => {
         playerView.classList.add('controls-active');
@@ -1033,7 +1057,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.addEventListener('popstate', (event) => {
         if (!playerView.classList.contains('hidden')) {
-            hidePlayer();
+            hidePlayer(false);
         } else if (!detailsView.classList.contains('hidden')) {
             detailsView.classList.add('hidden');
             detailsView.innerHTML = '';
@@ -1155,14 +1179,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const requestData = docSnap.data();
             const requesters = requestData.requesters || [];
             const userVoteIndex = requesters.findIndex(r => r.userId === userId);
+            const userVote = { userId: userId, userName: currentProfile.name };
 
             if (userVoteIndex > -1) {
-                requesters.splice(userVoteIndex, 1);
-                await updateDoc(docRef, { requesters: requesters });
+                // User has voted, so remove the vote
+                await updateDoc(docRef, {
+                    requesters: arrayRemove(requesters[userVoteIndex])
+                });
                 showToast('Voto removido.');
             } else {
+                // User has not voted, add the vote
                 await updateDoc(docRef, {
-                    requesters: arrayUnion({ userId: userId, userName: currentProfile.name })
+                    requesters: arrayUnion(userVote)
                 });
                 showToast('Obrigado pelo seu voto!');
             }
