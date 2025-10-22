@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Player elements
     const playerView = document.getElementById('player-view');
-    const videoPlayer = document.getElementById('video-player');
+    let videoPlayer = document.getElementById('video-player');
     const playerTitle = document.getElementById('player-title');
     const playPauseBtn = document.getElementById('player-play-pause-btn');
     const rewindBtn = document.getElementById('player-rewind-btn');
@@ -801,9 +801,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Resetar o conteúdo e listeners
         const newPlayer = videoPlayer.cloneNode(true);
         videoPlayer.parentNode.replaceChild(newPlayer, videoPlayer);
-        // A referência 'videoPlayer' ainda aponta para o elemento antigo. 
-        // É preciso reatribuir ou re-buscar do DOM, mas para a lógica atual, a limpeza de src é o mais importante.
-        document.getElementById('video-player').src = '';
+        videoPlayer = newPlayer; // Atualiza a referência global
+        addPlayerEventListeners(); // Re-adiciona os listeners ao novo elemento
 
 
         playerView.classList.add('hidden');
@@ -858,44 +857,48 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    videoPlayer.addEventListener('play', () => { playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.pause; });
-    videoPlayer.addEventListener('pause', () => { playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play; });
-    
-    videoPlayer.addEventListener('ended', () => {
-        if (currentPlayerContext.episodes && currentPlayerContext.currentIndex < currentPlayerContext.episodes.length - 1) {
-            changeEpisode(1);
-        } else {
-            playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
-        }
-    });
-
-    videoPlayer.addEventListener('timeupdate', () => {
-        if(isNaN(videoPlayer.currentTime)) return;
-        seekBar.value = videoPlayer.currentTime;
-        if (videoPlayer.duration) {
-            const progressPercent = (videoPlayer.currentTime / videoPlayer.duration) * 100;
-            seekProgressBar.style.width = `${progressPercent}%`;
-        }
-        currentTimeEl.textContent = formatTime(videoPlayer.currentTime);
+    function addPlayerEventListeners() {
+        videoPlayer.addEventListener('play', () => { playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.pause; });
+        videoPlayer.addEventListener('pause', () => { playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play; });
         
-        const now = Date.now();
-        if (now - lastProgressSaveTime > 5000) {
-            savePlayerProgress();
-            lastProgressSaveTime = now;
-        }
-    });
+        videoPlayer.addEventListener('ended', () => {
+            if (currentPlayerContext.episodes && currentPlayerContext.currentIndex < currentPlayerContext.episodes.length - 1) {
+                changeEpisode(1);
+            } else {
+                playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
+            }
+        });
 
-    videoPlayer.addEventListener('loadedmetadata', () => {
-        if(isNaN(videoPlayer.duration)) return;
-        seekBar.max = videoPlayer.duration;
-        durationEl.textContent = formatTime(videoPlayer.duration);
-    });
+        videoPlayer.addEventListener('timeupdate', () => {
+            if(isNaN(videoPlayer.currentTime)) return;
+            seekBar.value = videoPlayer.currentTime;
+            if (videoPlayer.duration) {
+                const progressPercent = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+                seekProgressBar.style.width = `${progressPercent}%`;
+            }
+            currentTimeEl.textContent = formatTime(videoPlayer.currentTime);
+            
+            const now = Date.now();
+            if (now - lastProgressSaveTime > 5000) {
+                savePlayerProgress();
+                lastProgressSaveTime = now;
+            }
+        });
+
+        videoPlayer.addEventListener('loadedmetadata', () => {
+            if(isNaN(videoPlayer.duration)) return;
+            seekBar.max = videoPlayer.duration;
+            durationEl.textContent = formatTime(videoPlayer.duration);
+        });
+        
+        videoPlayer.addEventListener('volumechange', () => {
+            volumeSlider.value = videoPlayer.volume;
+            volumeBtn.querySelector('.glass-content').innerHTML = (videoPlayer.muted || videoPlayer.volume === 0) ? ICONS.volumeMute : ICONS.volumeHigh;
+        });
+
+        videoPlayer.addEventListener('click', handlePlayerClick);
+    }
     
-    videoPlayer.addEventListener('volumechange', () => {
-        volumeSlider.value = videoPlayer.volume;
-        volumeBtn.querySelector('.glass-content').innerHTML = (videoPlayer.muted || videoPlayer.volume === 0) ? ICONS.volumeMute : ICONS.volumeHigh;
-    });
-
     seekBar.addEventListener('input', () => { videoPlayer.currentTime = seekBar.value; });
     volumeSlider.addEventListener('input', (e) => { videoPlayer.volume = e.target.value; videoPlayer.muted = e.target.value == 0; });
     volumeBtn.addEventListener('click', () => { videoPlayer.muted = !videoPlayer.muted; });
@@ -934,7 +937,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     playPauseBtn.addEventListener('click', togglePlay);
-    videoPlayer.addEventListener('click', handlePlayerClick);
     playerBackBtn.addEventListener('click', () => hidePlayer());
 
     playerView.addEventListener('mousemove', () => {
@@ -1016,6 +1018,7 @@ document.addEventListener('DOMContentLoaded', function() {
         settingsBtn.querySelector('.glass-content').innerHTML = ICONS.settings;
         playerBackBtn.querySelector('.glass-content').innerHTML = ICONS.back;
         createSettingsOptions();
+        addPlayerEventListeners();
     }
     
     searchIconBtn.addEventListener('click', () => toggleSearchOverlay(true));
