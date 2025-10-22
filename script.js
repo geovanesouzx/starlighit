@@ -101,6 +101,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const settingsBtn = document.getElementById('player-settings-btn');
     const settingsPanel = document.getElementById('player-settings-panel');
     const playerBackBtn = document.getElementById('player-back-btn');
+    const playerCenterPlayBtn = document.getElementById('player-center-play-btn');
+
 
     // Profile Management Elements
     const manageProfileView = document.getElementById('manage-profile-view');
@@ -130,18 +132,18 @@ document.addEventListener('DOMContentLoaded', function() {
     ];
 
     const ICONS = {
-        play: `<svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>`,
-        pause: `<svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>`,
-        skipForward: `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>`,
-        skipBackward: `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>`,
-        rewind10: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"></path></svg>`,
-        fastForward10: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 5c-4.42 0-8 3.58-8 8s3.58 8 8 8 8-3.58 8-8h-2c0 3.31-2.69 6-6 6s-6-2.69-6-6 2.69-6 6-6V1l5 5-5 5V7z"></path></svg>`,
-        volumeHigh: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"></path></svg>`,
-        volumeMute: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"></path></svg>`,
-        fullscreen: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg>`,
-        exitFullscreen: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"></path></svg>`,
-        settings: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59 1.69.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg>`,
-        back: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>`
+        play: `<i data-lucide="play" class="w-8 h-8 ml-1"></i>`,
+        pause: `<i data-lucide="pause" class="w-8 h-8"></i>`,
+        skipForward: `<i data-lucide="skip-forward" class="w-6 h-6"></i>`,
+        skipBackward: `<i data-lucide="skip-back" class="w-6 h-6"></i>`,
+        rewind10: `<i data-lucide="rotate-ccw" class="w-6 h-6"></i>`,
+        fastForward10: `<i data-lucide="rotate-cw" class="w-6 h-6"></i>`,
+        volumeHigh: `<i data-lucide="volume-2" class="w-6 h-6"></i>`,
+        volumeMute: `<i data-lucide="volume-x" class="w-6 h-6"></i>`,
+        fullscreen: `<i data-lucide="maximize" class="w-6 h-6"></i>`,
+        exitFullscreen: `<i data-lucide="minimize" class="w-6 h-6"></i>`,
+        settings: `<i data-lucide="settings-2" class="w-6 h-6"></i>`,
+        back: `<i data-lucide="arrow-left" class="w-6 h-6"></i>`
     };
     
     const glassSpinnerHTML = `<div class="glass-spinner-wrapper min-h-screen"><div class="glass-spinner"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content"><div class="spinner-ring"></div><div class="spinner-core"></div></div></div></div>`;
@@ -615,7 +617,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.5);"></div>
                     <div class="glass-specular"></div>
                     <div class="glass-content flex justify-between items-center p-3">
-                        <span id="selected-season-text">Temporada ${firstSeasonKey}</span>
+                        <span id="selected-season-text">${data.seasons[firstSeasonKey].title}</span>
                         <i data-lucide="chevron-down" class="w-5 h-5 transition-transform"></i>
                     </div>
                 </button>
@@ -624,7 +626,7 @@ document.addEventListener('DOMContentLoaded', function() {
                      <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.7);"></div>
                      <div class="glass-specular"></div>
                      <div id="season-options-content" class="glass-content p-2">
-                        ${seasonKeys.map(key => `<div class="custom-select-option p-3 rounded-md cursor-pointer" data-season="${key}">Temporada ${key}</div>`).join('')}
+                        ${seasonKeys.map(key => `<div class="custom-select-option p-3 rounded-md cursor-pointer" data-season="${key}">${data.seasons[key].title}</div>`).join('')}
                      </div>
                 </div>
             </div>
@@ -633,21 +635,24 @@ document.addEventListener('DOMContentLoaded', function() {
         lucide.createIcons();
         
         const renderEpisodes = (seasonKey) => {
-            const episodes = data.seasons[seasonKey];
+            const season = data.seasons[seasonKey];
+            const episodes = season.episodes;
             const episodeContainer = document.getElementById('episode-list-container');
             episodeContainer.innerHTML = episodes.map((ep, index) => {
-                const epTitle = ep.name || `Episódio ${ep.episode_number}`;
+                const epTitle = ep.title || `Episódio ${index + 1}`;
                 const epOverview = ep.overview || 'Sem descrição.';
+                const stillPath = ep.still_path ? (ep.still_path.startsWith('http') ? ep.still_path : `https://image.tmdb.org/t/p/w300${ep.still_path}`) : 'https://placehold.co/300x169/1c1917/999999?text=EP';
+
                 return `
                     <div class="episode-item glass-container glass-button rounded-lg overflow-hidden cursor-pointer" data-index="${index}" data-season="${seasonKey}">
                         <div class="glass-filter"></div>
                         <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.3);"></div>
                         <div class="glass-specular"></div>
-                        <div class="glass-content flex items-center p-3 gap-4">
-                            <div class="font-bold text-lg text-stone-400 w-8 text-center">${ep.episode_number}</div>
+                        <div class="glass-content flex items-start p-3 gap-4">
+                            <img src="${stillPath}" class="w-32 h-20 object-cover rounded-md flex-shrink-0">
                             <div class="flex-1">
-                                <h4 class="font-semibold text-white">${epTitle}</h4>
-                                <p class="text-xs text-stone-300 mt-1">${epOverview.substring(0, 100)}${epOverview.length > 100 ? '...' : ''}</p>
+                                <h4 class="font-semibold text-white">Ep ${index + 1}: ${epTitle}</h4>
+                                <p class="text-xs text-stone-300 mt-1 synopsis-truncated-ep">${epOverview}</p>
                             </div>
                         </div>
                     </div>
@@ -669,7 +674,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const option = e.target.closest('.custom-select-option');
             if (option) {
                 const seasonKey = option.dataset.season;
-                document.getElementById('selected-season-text').textContent = `Temporada ${seasonKey}`;
+                document.getElementById('selected-season-text').textContent = data.seasons[seasonKey].title;
                 renderEpisodes(seasonKey);
                 seasonSelectorBtn.click(); // close dropdown
                 attachGlassButtonListeners();
@@ -681,12 +686,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if(episodeItem){
                  const seasonKey = episodeItem.dataset.season;
                  const episodeIndex = parseInt(episodeItem.dataset.index, 10);
-                 const allEpisodesOfSeason = data.seasons[seasonKey];
+                 const allEpisodesOfSeason = data.seasons[seasonKey].episodes;
                  const episode = allEpisodesOfSeason[episodeIndex];
+                 const seasonNumberMatch = data.seasons[seasonKey].title.match(/\d+/);
+                 const seasonNumber = seasonNumberMatch ? seasonNumberMatch[0] : seasonKey;
+
 
                  const context = {
                     videoUrl: episode.url,
-                    title: `${data.name} - T${episode.season_number} E${episode.episode_number}`,
+                    title: `${data.title} - T${seasonNumber} E${episodeIndex + 1}: ${episode.title}`,
                     itemData: data,
                     episodes: allEpisodesOfSeason,
                     currentIndex: episodeIndex
@@ -705,121 +713,75 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // --- Player Functions ---
     async function showPlayer(context) {
-        // 1. Reset completo do player
-        hidePlayer(false); // Chama o hidePlayer para limpar o estado sem mexer no histórico
-        await new Promise(resolve => setTimeout(resolve, 50)); // Pequeno delay para garantir a limpeza
+        history.pushState({ playerOpen: true }, "Player");
 
-        let key;
-        let itemData = context.itemData;
-        if (!itemData) {
-            console.error("showPlayer called without itemData in context.");
+        let urlToLoad = context.videoUrl;
+        if (!urlToLoad) {
+            showToast("URL do vídeo não encontrada.", true);
+            history.back();
             return;
         }
 
-        if (context.episodes) {
-            const episode = context.episodes[context.currentIndex];
-            key = `tv-${itemData.id}-s${episode.season_number}-e${episode.episode_number}`;
-        } else {
-            key = `movie-${itemData.id}`;
-        }
+        try {
+            const urlObject = new URL(urlToLoad);
+            if (urlObject.hostname.includes('api.anivideo.net') && urlObject.pathname.includes('videohls.php')) {
+                const videoSrc = urlObject.searchParams.get('d');
+                if (videoSrc) urlToLoad = videoSrc;
+            }
+        } catch (e) { /* Invalid URL, proceed with original */ }
         
-        currentPlayerContext = { ...context, key, id: itemData.id, itemData };
-
-        history.pushState({view: 'player'}, '', '#player');
+        const playerContainer = document.getElementById('player-container');
+        const loaderContainer = playerContainer.querySelector('.loader-container');
+        
         playerView.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-        playerTitle.textContent = context.title;
+        playerContainer.classList.add('loading');
         
-        let urlToLoad = context.videoUrl;
-         try {
-             const urlObject = new URL(urlToLoad);
-             if (urlObject.hostname.includes('api.anivideo.net') && urlObject.pathname.includes('videohls.php')) {
-                 const videoSrc = urlObject.searchParams.get('d');
-                 if (videoSrc) {
-                     urlToLoad = videoSrc;
-                 }
-             }
-         } catch (e) {
-             // Invalid URL, proceed with original
-         }
+        if (window.innerWidth < 768) {
+            try {
+                await playerView.requestFullscreen();
+                if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                    await screen.orientation.lock('landscape');
+                }
+            } catch (err) { console.warn("Fullscreen/orientation lock failed:", err); }
+        }
+
+        if (hls) hls.destroy();
+        
+        videoPlayer.src = '';
+        videoPlayer.load();
 
         if (Hls.isSupported() && urlToLoad.includes('.m3u8')) {
             hls = new Hls();
             hls.loadSource(urlToLoad);
             hls.attachMedia(videoPlayer);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                if (context.startTime && context.startTime > 5) {
-                    videoPlayer.currentTime = context.startTime;
+            hls.on(Hls.Events.MANIFEST_PARSED, () => videoPlayer.play().catch(e => console.error("Play error:", e)));
+            hls.on(Hls.Events.ERROR, (event, data) => {
+                if (data.fatal) {
+                     console.error('HLS Fatal Error:', data);
+                     playerContainer.innerHTML = `<div class="text-center text-red-400 p-4"><p>Erro ao carregar o vídeo.</p></div>`;
                 }
-               videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo:", e));
             });
         } else {
             videoPlayer.src = urlToLoad;
-            videoPlayer.addEventListener('loadedmetadata', () => {
-                if (context.startTime && context.startTime > 5) {
-                    videoPlayer.currentTime = context.startTime;
-                }
-               videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo:", e));
-            }, { once: true });
+            videoPlayer.play().catch(e => console.error("Play error:", e));
         }
-
-        // 2. Lógica de orientação e tela cheia para mobile
-        if (window.innerWidth < 768) {
-             try {
-                await playerView.requestFullscreen();
-                if (screen.orientation && typeof screen.orientation.lock === 'function') {
-                    await screen.orientation.lock('landscape');
-                }
-            } catch (err) {
-                console.error("Não foi possível ativar tela cheia ou bloquear orientação:", err);
-            }
-        }
-
-        if(context.episodes && context.episodes.length > 1) {
-            nextEpisodeBtn.classList.remove('hidden');
-            prevEpisodeBtn.classList.remove('hidden');
-        } else {
-            nextEpisodeBtn.classList.add('hidden');
-            prevEpisodeBtn.classList.add('hidden');
-        }
-        
-        attachGlassButtonListeners();
     }
 
-    async function hidePlayer(updateHistory = true) {
-        if(updateHistory){
-            await savePlayerProgress();
+    async function hidePlayer() {
+        if (videoPlayer) {
+            videoPlayer.pause();
+            videoPlayer.removeAttribute('src');
+            videoPlayer.load();
         }
-        
-        videoPlayer.pause();
-        videoPlayer.src = ""; 
         if (hls) {
             hls.destroy();
             hls = null;
         }
-
-        // Resetar o conteúdo e listeners
-        const newPlayer = videoPlayer.cloneNode(true);
-        videoPlayer.parentNode.replaceChild(newPlayer, videoPlayer);
-        videoPlayer = newPlayer; // Atualiza a referência global
-        addPlayerEventListeners(); // Re-adiciona os listeners ao novo elemento
-
-
-        playerView.classList.add('hidden');
-        document.body.style.overflow = 'auto';
-        currentPlayerContext = {};
         
-        // 3. Desbloquear orientação e sair da tela cheia
-        if (document.fullscreenElement) {
-            document.exitFullscreen();
-        }
-        if (screen.orientation && typeof screen.orientation.unlock === 'function') {
-            screen.orientation.unlock();
-        }
-
-        if(updateHistory && window.location.hash === '#player'){
-            history.back();
-        }
+        playerView.classList.add('hidden');
+        
+        if (document.fullscreenElement) await document.exitFullscreen();
+        if (screen.orientation && typeof screen.orientation.unlock === 'function') screen.orientation.unlock();
     }
 
     function formatTime(timeInSeconds) {
@@ -842,11 +804,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function handlePlayerClick() {
-        if (playerView.classList.contains('controls-active')) {
-            togglePlay();
-        } else {
-            playerView.classList.add('controls-active');
+    function handlePlayerClick(e) {
+        const target = e.target;
+        // Evita que o togglePlay seja acionado se o clique foi nos controles
+        if(target === videoPlayer || target === playerCenterPlayBtn) {
+            if (playerView.classList.contains('controls-active')) {
+                togglePlay();
+            } else {
+                playerView.classList.add('controls-active');
+            }
         }
         
         clearTimeout(controlsTimeout);
@@ -858,14 +824,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function addPlayerEventListeners() {
-        videoPlayer.addEventListener('play', () => { playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.pause; });
-        videoPlayer.addEventListener('pause', () => { playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play; });
+        videoPlayer.addEventListener('play', () => { 
+            playPauseBtn.innerHTML = ICONS.pause; 
+            playerView.classList.remove('paused');
+            lucide.createIcons();
+        });
+        videoPlayer.addEventListener('pause', () => { 
+            playPauseBtn.innerHTML = ICONS.play; 
+            playerView.classList.add('paused');
+            lucide.createIcons();
+            clearTimeout(controlsTimeout);
+            playerView.classList.add('controls-active');
+        });
         
         videoPlayer.addEventListener('ended', () => {
             if (currentPlayerContext.episodes && currentPlayerContext.currentIndex < currentPlayerContext.episodes.length - 1) {
                 changeEpisode(1);
             } else {
-                playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
+                playPauseBtn.innerHTML = ICONS.play;
+                lucide.createIcons();
             }
         });
 
@@ -890,13 +867,19 @@ document.addEventListener('DOMContentLoaded', function() {
             seekBar.max = videoPlayer.duration;
             durationEl.textContent = formatTime(videoPlayer.duration);
         });
+
+        videoPlayer.addEventListener('waiting', () => playerView.classList.add('loading'));
+        videoPlayer.addEventListener('playing', () => playerView.classList.remove('loading'));
+        videoPlayer.addEventListener('canplay', () => playerView.classList.remove('loading'));
         
         videoPlayer.addEventListener('volumechange', () => {
             volumeSlider.value = videoPlayer.volume;
-            volumeBtn.querySelector('.glass-content').innerHTML = (videoPlayer.muted || videoPlayer.volume === 0) ? ICONS.volumeMute : ICONS.volumeHigh;
+            if (videoPlayer.muted || videoPlayer.volume === 0) volumeBtn.innerHTML = ICONS.volumeMute;
+            else volumeBtn.innerHTML = ICONS.volumeHigh;
+            lucide.createIcons();
         });
 
-        videoPlayer.addEventListener('click', handlePlayerClick);
+        playerView.addEventListener('click', handlePlayerClick);
     }
     
     seekBar.addEventListener('input', () => { videoPlayer.currentTime = seekBar.value; });
@@ -929,15 +912,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     document.addEventListener('fullscreenchange', () => {
         const isFullscreen = !!document.fullscreenElement;
-        fullscreenBtn.querySelector('.glass-content').innerHTML = isFullscreen ? ICONS.exitFullscreen : ICONS.fullscreen;
-
-        if (!isFullscreen && !playerView.classList.contains('hidden')) {
-             hidePlayer();
-        }
+        fullscreenBtn.innerHTML = isFullscreen ? ICONS.exitFullscreen : ICONS.fullscreen;
+        lucide.createIcons();
     });
 
     playPauseBtn.addEventListener('click', togglePlay);
-    playerBackBtn.addEventListener('click', () => hidePlayer());
+    playerBackBtn.addEventListener('click', () => history.back());
 
     playerView.addEventListener('mousemove', () => {
         playerView.classList.add('controls-active');
@@ -1008,15 +988,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function initializeUI() {
-        playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
-        rewindBtn.querySelector('.glass-content').innerHTML = ICONS.rewind10;
-        forwardBtn.querySelector('.glass-content').innerHTML = ICONS.fastForward10;
-        nextEpisodeBtn.querySelector('.glass-content').innerHTML = ICONS.skipForward;
-        prevEpisodeBtn.querySelector('.glass-content').innerHTML = ICONS.skipBackward;
-        volumeBtn.querySelector('.glass-content').innerHTML = ICONS.volumeHigh;
-        fullscreenBtn.querySelector('.glass-content').innerHTML = ICONS.fullscreen;
-        settingsBtn.querySelector('.glass-content').innerHTML = ICONS.settings;
-        playerBackBtn.querySelector('.glass-content').innerHTML = ICONS.back;
+        playPauseBtn.innerHTML = ICONS.pause;
+        rewindBtn.innerHTML = ICONS.rewind10;
+        forwardBtn.innerHTML = ICONS.fastForward10;
+        nextEpisodeBtn.innerHTML = ICONS.skipForward;
+        prevEpisodeBtn.innerHTML = ICONS.skipBackward;
+        volumeBtn.innerHTML = ICONS.volumeHigh;
+        fullscreenBtn.innerHTML = ICONS.fullscreen;
+        settingsBtn.innerHTML = ICONS.settings;
+        playerBackBtn.innerHTML = ICONS.back;
+        playerCenterPlayBtn.innerHTML = ICONS.play;
+        lucide.createIcons();
+
         createSettingsOptions();
         addPlayerEventListeners();
     }
@@ -1059,17 +1042,23 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     window.addEventListener('popstate', (event) => {
-        if (!playerView.classList.contains('hidden')) {
-            hidePlayer(false);
-        } else if (!detailsView.classList.contains('hidden')) {
-            detailsView.classList.add('hidden');
-            detailsView.innerHTML = '';
-            const lastView = document.getElementById(lastActiveViewId);
-            if (lastView) lastView.classList.remove('hidden');
+        const isPlayerOpen = !playerView.classList.contains('hidden');
+        if (isPlayerOpen) {
+            hidePlayer();
+        }
+        
+        if (!event.state || !event.state.playerOpen) {
+            const isDetailsOpen = !detailsView.classList.contains('hidden');
+            if(isDetailsOpen) {
+                detailsView.classList.add('hidden');
+                detailsView.innerHTML = '';
+                const lastView = document.getElementById(lastActiveViewId);
+                if (lastView) lastView.classList.remove('hidden');
 
-            if (document.getElementById('manage-profile-view').classList.contains('hidden')) {
-                document.querySelector('header').classList.remove('hidden');
-                document.querySelector('footer').classList.remove('hidden');
+                if (document.getElementById('manage-profile-view').classList.contains('hidden')) {
+                    document.querySelector('header').classList.remove('hidden');
+                    document.querySelector('footer').classList.remove('hidden');
+                }
             }
         }
     });
@@ -1672,7 +1661,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    if (location.hash === '#player' || location.hash === '#details') {
+    if (location.hash === '#player' || location.hash.startsWith('#details')) {
         history.replaceState(null, document.title, window.location.pathname + window.location.search);
     }
     
