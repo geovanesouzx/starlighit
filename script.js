@@ -573,14 +573,126 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('details-watch-btn').addEventListener('click', () => {
             if (data.type === 'movie') {
                 showPlayer({ videoUrl: data.url, title: title, itemData: data });
+            } else if (data.type === 'tv' && data.seasons) {
+                // For TV shows, play the first available episode
+                const firstSeasonKey = Object.keys(data.seasons).sort((a,b) => a - b)[0];
+                const firstEpisode = data.seasons[firstSeasonKey][0];
+                if (firstEpisode) {
+                    const allEpisodesOfSeason = data.seasons[firstSeasonKey];
+                    const context = {
+                        videoUrl: firstEpisode.url,
+                        title: `${title} - T${firstEpisode.season_number} E${firstEpisode.episode_number}`,
+                        itemData: data,
+                        episodes: allEpisodesOfSeason,
+                        currentIndex: 0
+                    };
+                    showPlayer(context);
+                } else {
+                    showToast("Nenhum episódio encontrado.", true);
+                }
             }
         });
         await updateListButton(document.getElementById('details-add-to-list'), data);
         
         if (data.type === 'tv' && data.seasons) {
-            // Logic to render seasons and episodes
+            renderTvDetails(data);
         }
         attachGlassButtonListeners(); 
+    }
+
+    function renderTvDetails(data) {
+        const container = document.getElementById('tv-content-details');
+        if (!container) return;
+
+        const seasonKeys = Object.keys(data.seasons).sort((a, b) => parseInt(a) - parseInt(b));
+        const firstSeasonKey = seasonKeys[0];
+
+        container.innerHTML = `
+            <div class="custom-select-container relative w-full md:w-64 mb-6">
+                <button id="season-selector-button" class="glass-container glass-button rounded-lg w-full text-left">
+                    <div class="glass-filter"></div>
+                    <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.5);"></div>
+                    <div class="glass-specular"></div>
+                    <div class="glass-content flex justify-between items-center p-3">
+                        <span id="selected-season-text">Temporada ${firstSeasonKey}</span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 transition-transform"></i>
+                    </div>
+                </button>
+                <div id="season-options" class="hidden custom-select-options glass-container rounded-lg animate-fade-in-down">
+                     <div class="glass-filter"></div>
+                     <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.7);"></div>
+                     <div class="glass-specular"></div>
+                     <div id="season-options-content" class="glass-content p-2">
+                        ${seasonKeys.map(key => `<div class="custom-select-option p-3 rounded-md cursor-pointer" data-season="${key}">Temporada ${key}</div>`).join('')}
+                     </div>
+                </div>
+            </div>
+            <div id="episode-list-container" class="space-y-3"></div>
+        `;
+        lucide.createIcons();
+        
+        const renderEpisodes = (seasonKey) => {
+            const episodes = data.seasons[seasonKey];
+            const episodeContainer = document.getElementById('episode-list-container');
+            episodeContainer.innerHTML = episodes.map((ep, index) => {
+                const epTitle = ep.name || `Episódio ${ep.episode_number}`;
+                const epOverview = ep.overview || 'Sem descrição.';
+                return `
+                    <div class="episode-item glass-container glass-button rounded-lg overflow-hidden cursor-pointer" data-index="${index}" data-season="${seasonKey}">
+                        <div class="glass-filter"></div>
+                        <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.3);"></div>
+                        <div class="glass-specular"></div>
+                        <div class="glass-content flex items-center p-3 gap-4">
+                            <div class="font-bold text-lg text-stone-400 w-8 text-center">${ep.episode_number}</div>
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-white">${epTitle}</h4>
+                                <p class="text-xs text-stone-300 mt-1">${epOverview.substring(0, 100)}${epOverview.length > 100 ? '...' : ''}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        };
+
+        renderEpisodes(firstSeasonKey);
+
+        const seasonSelectorBtn = document.getElementById('season-selector-button');
+        const seasonOptions = document.getElementById('season-options');
+
+        seasonSelectorBtn.addEventListener('click', () => {
+            const isHidden = seasonOptions.classList.toggle('hidden');
+            seasonSelectorBtn.querySelector('i').style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
+        });
+        
+        document.getElementById('season-options-content').addEventListener('click', (e) => {
+            const option = e.target.closest('.custom-select-option');
+            if (option) {
+                const seasonKey = option.dataset.season;
+                document.getElementById('selected-season-text').textContent = `Temporada ${seasonKey}`;
+                renderEpisodes(seasonKey);
+                seasonSelectorBtn.click(); // close dropdown
+                attachGlassButtonListeners();
+            }
+        });
+
+        document.getElementById('episode-list-container').addEventListener('click', (e) => {
+            const episodeItem = e.target.closest('.episode-item');
+            if(episodeItem){
+                 const seasonKey = episodeItem.dataset.season;
+                 const episodeIndex = parseInt(episodeItem.dataset.index, 10);
+                 const allEpisodesOfSeason = data.seasons[seasonKey];
+                 const episode = allEpisodesOfSeason[episodeIndex];
+
+                 const context = {
+                    videoUrl: episode.url,
+                    title: `${data.name} - T${episode.season_number} E${episode.episode_number}`,
+                    itemData: data,
+                    episodes: allEpisodesOfSeason,
+                    currentIndex: episodeIndex
+                 };
+                 showPlayer(context);
+            }
+        });
     }
     
     function handleMouseMove(e) { const rect = this.getBoundingClientRect(); const x = e.clientX - rect.left; const y = e.clientY - rect.top; const specular = this.querySelector('.glass-specular'); if (specular) specular.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 30%, rgba(255,255,255,0) 60%)`; }
@@ -1025,6 +1137,44 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    async function handleVote(requestId) {
+        if (!userId || !currentProfile) {
+            showToast("Você precisa estar logado para votar.", true);
+            return;
+        }
+        const docRef = doc(db, 'pedidos', requestId);
+        const voteButton = document.querySelector(`.vote-btn[data-request-id="${requestId}"]`);
+        if (voteButton) voteButton.disabled = true;
+
+        try {
+            const docSnap = await getDoc(docRef);
+            if (!docSnap.exists()) {
+                showToast("Este pedido não existe mais.", true);
+                return;
+            }
+            const requestData = docSnap.data();
+            const requesters = requestData.requesters || [];
+            const userVoteIndex = requesters.findIndex(r => r.userId === userId);
+
+            if (userVoteIndex > -1) {
+                requesters.splice(userVoteIndex, 1);
+                await updateDoc(docRef, { requesters: requesters });
+                showToast('Voto removido.');
+            } else {
+                await updateDoc(docRef, {
+                    requesters: arrayUnion({ userId: userId, userName: currentProfile.name })
+                });
+                showToast('Obrigado pelo seu voto!');
+            }
+        } catch (error) {
+            console.error("Erro ao processar voto:", error);
+            showToast("Ocorreu um erro ao processar seu voto.", true);
+        } finally {
+             if (voteButton) voteButton.disabled = false;
+        }
+    }
+
+
     function renderPendingRequests() {
         const container = document.getElementById('pending-requests-container');
         if (!container) return;
@@ -1036,24 +1186,37 @@ document.addEventListener('DOMContentLoaded', function() {
         container.innerHTML = pendingRequests.map(request => {
             const posterPath = request.posterUrl || 'https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem';
             const requesterCount = (request.requesters || []).length;
-            
+            const userHasVoted = userId && (request.requesters || []).some(r => r.userId === userId);
+
             return `
-                <div class="liquid-glass-card bg-stone-900/50 rounded-lg overflow-hidden flex items-center p-4 gap-4">
+                <div class="liquid-glass-card bg-stone-900/50 rounded-lg overflow-hidden flex flex-col p-4 gap-4">
                     <div class="glass-filter"></div>
                     <div class="glass-overlay"></div>
                     <div class="glass-specular"></div>
                     <div class="glass-content w-full flex items-start gap-4">
-                        <img src="${posterPath}" alt="${request.title || request.name}" class="w-16 rounded-md aspect-[2/3] object-cover">
+                        <img src="${posterPath}" alt="${request.title || request.name}" class="w-20 rounded-md aspect-[2/3] object-cover">
                         <div class="flex-1">
                             <h4 class="font-bold text-white">${request.title} (${request.year || 'N/A'})</h4>
-                            <p class="text-xs text-indigo-300">${requesterCount} ${requesterCount === 1 ? 'voto' : 'votos'}</p> 
+                            <p class="text-xs text-indigo-300 mt-1">${requesterCount} ${requesterCount === 1 ? 'voto' : 'votos'}</p> 
                             <span class="text-xs font-semibold mt-2 inline-block px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-300">Pendente</span>
                         </div>
                     </div>
+                     <button class="vote-btn glass-container glass-button rounded-lg w-full mt-2 ${userHasVoted ? 'voted' : ''}" data-request-id="${request.id}">
+                        <div class="glass-filter"></div>
+                        <div class="glass-overlay"></div>
+                        <div class="glass-specular"></div>
+                        <div class="glass-content flex justify-center items-center gap-2 p-2 text-sm">
+                           ${userHasVoted 
+                             ? '<i data-lucide="minus-circle" class="w-4 h-4"></i> Remover Voto' 
+                             : '<i data-lucide="plus-circle" class="w-4 h-4"></i> Apoiar Pedido'
+                           }
+                        </div>
+                    </button>
                 </div>
             `;
         }).join('');
         attachGlassButtonListeners();
+        lucide.createIcons();
     }
     
     // --- Profile Management Logic ---
@@ -1378,6 +1541,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    document.getElementById('pending-requests-container').addEventListener('click', e => {
+        const voteButton = e.target.closest('.vote-btn');
+        if (voteButton) {
+            const requestId = voteButton.dataset.requestId;
+            handleVote(requestId);
+        }
+    });
+
     async function confirmAndAddRequest(item) {
         const title = item.title || item.name;
         showConfirmationModal(
@@ -1478,3 +1649,4 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('resize', updateMobileNavIndicator);
 
 });
+

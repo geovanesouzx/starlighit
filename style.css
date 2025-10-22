@@ -227,6 +227,21 @@ body {
 }
 .animate-fade-in { animation: fade-in 0.4s ease-out forwards; }
 
+.vote-btn .glass-overlay {
+    --glass-bg-color: rgba(79, 70, 229, 0.3); /* indigo-600 */
+    transition: background-color 0.2s;
+}
+.vote-btn:hover .glass-overlay {
+    --glass-bg-color: rgba(79, 70, 229, 0.4);
+}
+.vote-btn.voted .glass-overlay {
+    --glass-bg-color: rgba(219, 39, 119, 0.3); /* pink-600 */
+}
+.vote-btn.voted:hover .glass-overlay {
+    --glass-bg-color: rgba(219, 39, 119, 0.4);
+}
+
+
 /* Custom Select Styles */
 .custom-select-container { position: relative; }
 .custom-select-options {
@@ -242,6 +257,13 @@ body {
 }
 .custom-select-option:hover {
     background-color: rgba(255, 255, 255, 0.1);
+}
+
+.episode-item .glass-overlay {
+     transition: background-color 0.2s;
+}
+.episode-item:hover .glass-overlay {
+    --glass-bg-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Age Rating Styles */
@@ -604,3 +626,4 @@ input[type="range"].player-volume-slider {
         font-size: 0.75rem;
     }
 }
+
