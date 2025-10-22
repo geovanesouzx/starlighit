@@ -29,6 +29,27 @@ import {
 
 document.addEventListener('DOMContentLoaded', function() {
     lucide.createIcons();
+
+    // Restore last session's location
+    const savedHash = localStorage.getItem('starlight-last-location');
+    if (savedHash && savedHash !== '#player' && savedHash !== window.location.hash) {
+        window.location.hash = savedHash;
+    } else if (!window.location.hash) {
+        window.location.hash = '#home-view';
+    }
+
+    // Save location on change/close
+    window.addEventListener('hashchange', () => {
+        if(window.location.hash !== '#player') { // Don't save player state
+            localStorage.setItem('starlight-last-location', window.location.hash);
+        }
+    });
+    window.addEventListener('beforeunload', () => {
+        if(window.location.hash !== '#player') {
+            localStorage.setItem('starlight-last-location', window.location.hash);
+        }
+    });
+
     // --- Configuração do Firebase ---
     const firebaseConfig = {
         apiKey: "AIzaSyA791i8R8Bmrn3toFxFltZ40TU7PUavev8",
@@ -368,6 +389,7 @@ document.addEventListener('DOMContentLoaded', function() {
             await updateListButton(document.getElementById('hero-add-to-list'), item);
             
             mainBackground.style.opacity = 1;
+            heroContentWrapper.style.opacity = 1;
             heroContentWrapper.classList.remove('hero-fade-out');
         }, 500); 
     }
@@ -504,7 +526,9 @@ document.addEventListener('DOMContentLoaded', function() {
         detailsView.classList.remove('hidden');
         detailsView.innerHTML = '<div class="spinner mx-auto mt-20"></div>';
         window.scrollTo(0, 0);
-        history.pushState({view: 'details'}, '', `#details/${item.docId}`);
+        if (window.location.hash !== `#details/${item.docId}`) {
+            history.pushState({view: 'details'}, '', `#details/${item.docId}`);
+        }
         
         const data = firestoreContent.find(i => i.docId === item.docId);
         if (!data) {
@@ -611,7 +635,9 @@ document.addEventListener('DOMContentLoaded', function() {
             container.innerHTML = '<p class="text-stone-400">Nenhuma temporada encontrada.</p>';
             return;
         }
-        const firstSeasonKey = seasonKeys[0];
+        
+        const savedSeason = localStorage.getItem(`starlight-selected-season-${data.docId}`);
+        const firstSeasonKey = (savedSeason && data.seasons[savedSeason]) ? savedSeason : seasonKeys[0];
 
         container.innerHTML = `
             <div class="custom-select-container relative w-full md:w-64 mb-6">
@@ -689,6 +715,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const seasonKey = option.dataset.season;
                 document.getElementById('selected-season-text').textContent = data.seasons[seasonKey]?.title || `Temporada ${seasonKey}`;
                 renderEpisodes(seasonKey);
+                localStorage.setItem(`starlight-selected-season-${data.docId}`, seasonKey); // Save selected season
                 seasonSelectorBtn.click(); // close dropdown
                 attachGlassButtonListeners();
             }
@@ -743,7 +770,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         currentPlayerContext = { ...context, key, id: itemData.id, itemData };
 
-        history.pushState({view: 'player'}, '', '#player');
+        if (window.location.hash !== '#player') {
+            history.pushState({view: 'player'}, '', '#player');
+        }
         playerView.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
         playerTitle.textContent = context.title;
@@ -856,6 +885,23 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function handleMobilePlayerClick() {
+        if (!playerView.classList.contains('controls-active')) {
+            // If controls are hidden, first tap shows them.
+            playerView.classList.add('controls-active');
+            // Set a timeout to hide them again if no other action is taken
+            clearTimeout(controlsTimeout);
+            if (!videoPlayer.paused) {
+                controlsTimeout = setTimeout(() => {
+                    playerView.classList.remove('controls-active');
+                }, 3000);
+            }
+        } else {
+            // If controls are already visible, second tap toggles play/pause.
+            togglePlay();
+        }
+    }
+
     function handlePlayerClick() {
         if (playerView.classList.contains('controls-active')) {
             togglePlay();
@@ -910,7 +956,12 @@ document.addEventListener('DOMContentLoaded', function() {
             volumeBtn.querySelector('.glass-content').innerHTML = (videoPlayer.muted || videoPlayer.volume === 0) ? ICONS.volumeMute : ICONS.volumeHigh;
         });
 
-        videoPlayer.addEventListener('click', handlePlayerClick);
+        const isMobile = window.innerWidth < 768;
+        if (isMobile) {
+            videoPlayer.addEventListener('click', handleMobilePlayerClick);
+        } else {
+            videoPlayer.addEventListener('click', handlePlayerClick);
+        }
     }
     
     seekBar.addEventListener('input', () => { videoPlayer.currentTime = seekBar.value; });
@@ -951,7 +1002,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     playPauseBtn.addEventListener('click', togglePlay);
-    playerBackBtn.addEventListener('click', () => hidePlayer());
+    playerBackBtn.addEventListener('click', () => history.back());
 
     playerView.addEventListener('mousemove', () => {
         playerView.classList.add('controls-active');
@@ -1073,18 +1124,47 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     window.addEventListener('popstate', (event) => {
-        if (!playerView.classList.contains('hidden')) {
-            hidePlayer(false);
-        } else if (!detailsView.classList.contains('hidden')) {
-            detailsView.classList.add('hidden');
-            detailsView.innerHTML = '';
-            const lastView = document.getElementById(lastActiveViewId);
-            if (lastView) lastView.classList.remove('hidden');
+        const wasPlayerOpen = !playerView.classList.contains('hidden');
+        
+        if (wasPlayerOpen) {
+            hidePlayer(false); // Just close the player UI
+        }
 
-            if (document.getElementById('manage-profile-view').classList.contains('hidden')) {
-                document.querySelector('header').classList.remove('hidden');
-                document.querySelector('footer').classList.remove('hidden');
+        // After ANY popstate, re-evaluate what to show based on the URL.
+        const hash = window.location.hash;
+
+        if (hash.startsWith('#details/')) {
+            const docId = hash.split('/')[1];
+            showDetailsView({ docId });
+        } else {
+             // This is a main screen. Make sure overlays are hidden.
+            if (!detailsView.classList.contains('hidden')) {
+                detailsView.classList.add('hidden');
+                 document.body.classList.remove('overflow-hidden');
             }
+             if (!playerView.classList.contains('hidden')) {
+                hidePlayer(false);
+            }
+            
+            const targetId = hash.substring(1) || 'home-view';
+            const targetView = document.getElementById(targetId);
+
+            document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
+            if(targetView) {
+                targetView.classList.remove('hidden');
+                renderScreenContent(targetId);
+            }
+
+            const nonAppScreens = ['login-view', 'manage-profile-view'];
+            const isAppScreen = !nonAppScreens.includes(targetId);
+
+             if (isAppScreen) {
+                 document.querySelector('header').classList.remove('hidden');
+                 document.querySelector('footer').classList.remove('hidden');
+             } else {
+                 document.querySelector('header').classList.add('hidden');
+                 document.querySelector('footer').classList.add('hidden');
+             }
         }
     });
 
@@ -1675,6 +1755,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     onAuthStateChanged(auth, (user) => {
+        document.body.classList.remove('auth-loading');
         if (user) {
             userId = user.uid;
             listenForNotifications();
@@ -1686,12 +1767,38 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    if (location.hash === '#player' || location.hash === '#details') {
+    if (location.hash === '#player') {
         history.replaceState(null, document.title, window.location.pathname + window.location.search);
+        window.location.hash = localStorage.getItem('starlight-last-location') || '#home-view';
     }
+    handleLocationChange(); // Initial route handling
     
     attachGlassButtonListeners();
     window.addEventListener('resize', updateMobileNavIndicator);
 
+    function handleLocationChange() {
+        const hash = window.location.hash;
+        if (hash.startsWith('#details/')) {
+            const docId = hash.split('/')[1];
+            showDetailsView({ docId });
+        } else {
+            const targetId = hash.substring(1) || 'home-view';
+            document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
+            const targetView = document.getElementById(targetId);
+            if(targetView) {
+                targetView.classList.remove('hidden');
+                renderScreenContent(targetId);
+            }
+             const nonAppScreens = ['login-view', 'manage-profile-view'];
+            const isAppScreen = !nonAppScreens.includes(targetId);
+            if (isAppScreen) {
+                 document.querySelector('header').classList.remove('hidden');
+                 document.querySelector('footer').classList.remove('hidden');
+             } else {
+                 document.querySelector('header').classList.add('hidden');
+                 document.querySelector('footer').classList.add('hidden');
+             }
+        }
+    }
 });
 

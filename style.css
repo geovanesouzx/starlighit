@@ -11,6 +11,10 @@ body {
     overflow-x: hidden; 
 }
 
+body.auth-loading {
+    visibility: hidden;
+}
+
 #login-view {
     background-image: url('https://image.tmdb.org/t/p/original/c2dPK558peXs9QzacwzHYQqqS2r.jpg');
 }
