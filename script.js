@@ -30,25 +30,19 @@ import {
 document.addEventListener('DOMContentLoaded', function() {
     lucide.createIcons();
 
-    // Restore last session's location
-    const savedHash = localStorage.getItem('starlight-last-location');
-    if (savedHash && savedHash !== '#player' && savedHash !== window.location.hash) {
-        window.location.hash = savedHash;
-    } else if (!window.location.hash) {
-        window.location.hash = '#home-view';
+    // REMOVIDO: Lógica de restauração de sessão (localStorage).
+    // Agora, o site sempre define um estado inicial limpo.
+    
+    // Define o estado inicial da hash
+    if (!window.location.hash || window.location.hash === '#player' || window.location.hash === '#') {
+        // Se não houver hash ou for #player (de um reload), vai para home
+        // Use replace para não poluir o histórico inicial
+        window.location.replace('#home-view');
+    } else {
+        // Se a hash já for válida (ex: #series-view), 
+        // o 'hashchange' não vai disparar na carga, então chamamos manualmente.
+        handleNavigation();
     }
-
-    // Save location on change/close
-    window.addEventListener('hashchange', () => {
-        if(window.location.hash !== '#player') { // Don't save player state
-            localStorage.setItem('starlight-last-location', window.location.hash);
-        }
-    });
-    window.addEventListener('beforeunload', () => {
-        if(window.location.hash !== '#player') {
-            localStorage.setItem('starlight-last-location', window.location.hash);
-        }
-    });
 
     // --- Configuração do Firebase ---
     const firebaseConfig = {
@@ -78,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentDetailsItem = null;
     let controlsTimeout;
     let currentPlayerContext = {};
-    let lastActiveViewId = 'home-view';
+    // REMOVIDO: let lastActiveViewId = 'home-view'; (Não é mais necessário)
     let lastProgressSaveTime = 0;
     const detailsView = document.getElementById('details-view');
 
@@ -161,7 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
         volumeMute: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"></path></svg>`,
         fullscreen: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg>`,
         exitFullscreen: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"></path></svg>`,
-        settings: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59 1.69.98l2.49 1c.23.09.49 0 .61.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg>`,
+        settings: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59 1.69.98l2.49 1c.23.09.49 0 .61.22l2-3.46c.12-.22.07.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg>`,
         back: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>`
     };
     
@@ -424,8 +418,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             onSnapshot(doc(db, 'config', 'featured'), (docSnap) => {
                 featuredItemIds = docSnap.exists() ? (docSnap.data().items || []) : [];
-                const currentActiveView = document.querySelector('.content-view:not(.hidden)')?.id || 'home-view';
-                renderScreenContent(currentActiveView, true);
+                // ATUALIZADO: renderiza o conteúdo da view atual.
+                // Isso é importante caso o conteúdo mude enquanto o usuário está em outra tela.
+                handleNavigation();
             });
         });
     }
@@ -450,33 +445,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Navigation and View Management ---
     const views = document.querySelectorAll('.content-view');
     const navLinks = document.querySelectorAll('.nav-item, .mobile-nav-item');
+
+    // CORRIGIDO: O clique no link agora apenas atualiza a hash.
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const targetId = link.getAttribute('data-target');
-            if (!targetId) return;
-            
-            lastActiveViewId = targetId;
-
-            if (targetId !== 'home-view' && heroCarouselInterval) {
-                clearInterval(heroCarouselInterval);
-                heroCarouselInterval = null;
-            } 
-
-            document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(l => l.classList.remove('active'));
-            views.forEach(view => view.classList.add('hidden'));
-            const targetView = document.getElementById(targetId);
-            if(targetView) {
-               targetView.classList.remove('hidden');
-               renderScreenContent(targetId);
+            if (targetId) {
+                // Apenas atualiza a hash. O 'hashchange' listener (handleNavigation) fará o resto.
+                window.location.hash = targetId;
             }
-            
-            document.querySelectorAll(`[data-target="${targetId}"]`).forEach(l => l.classList.add('active'));
-            updateMobileNavIndicator();
-            document.getElementById('main-background').style.opacity = (targetId === 'home-view' && currentHeroItem) ? 1 : 0;
         });
     });
-    
+        
     function renderScreenContent(screenId, forceReload = false) {
         const screenElement = document.getElementById(screenId);
         if (!screenElement ) return;
@@ -484,7 +465,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (screenId === 'home-view') {
             const featuredItems = featuredItemIds.map(id => firestoreContent.find(item => item.docId === id)).filter(Boolean);
             if(featuredItems.length > 0) {
-                updateHero(featuredItems[0]);
+                // Inicia a rotação apenas se não houver um item de herói atual (evita piscar)
+                if (!currentHeroItem || forceReload) {
+                   updateHero(featuredItems[0]);
+                }
                 startHeroRotation();
             }
             populateAllViews();
@@ -505,18 +489,17 @@ document.addEventListener('DOMContentLoaded', function() {
         attachGlassButtonListeners();
     }
 
+    // CORRIGIDO: O clique no poster agora apenas atualiza a hash.
     document.body.addEventListener('click', (e) => {
         const anchor = e.target.closest('a');
         if (anchor && anchor.hash.startsWith('#details/')) {
             e.preventDefault();
-            const docId = anchor.hash.split('/')[1];
-            showDetailsView({ docId });
+            // Apenas atualiza a hash. O 'hashchange' listener (handleNavigation) fará o resto.
+            window.location.hash = anchor.hash;
         }
     });
 
-    function hideDetailsView() {
-        history.back();
-    }
+    // REMOVIDO: A função hideDetailsView() não é mais necessária, pois o 'hashchange' cuida disso.
     
     async function showDetailsView(item) {
         document.querySelector('header').classList.add('hidden');
@@ -526,9 +509,8 @@ document.addEventListener('DOMContentLoaded', function() {
         detailsView.classList.remove('hidden');
         detailsView.innerHTML = '<div class="spinner mx-auto mt-20"></div>';
         window.scrollTo(0, 0);
-        if (window.location.hash !== `#details/${item.docId}`) {
-            history.pushState({view: 'details'}, '', `#details/${item.docId}`);
-        }
+
+        // REMOVIDO: a lógica de pushState foi removida. O 'handleNavigation' já cuida da URL.
         
         const data = firestoreContent.find(i => i.docId === item.docId);
         if (!data) {
@@ -594,7 +576,9 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
         }
 
+        // CORRIGIDO: O botão voltar agora usa history.back()
         document.getElementById('back-from-details').addEventListener('click', () => history.back());
+        
         document.getElementById('details-watch-btn').addEventListener('click', () => {
             if (data.type === 'movie') {
                 showPlayer({ videoUrl: data.url, title: title, itemData: data });
@@ -1085,6 +1069,93 @@ document.addEventListener('DOMContentLoaded', function() {
         createSettingsOptions();
         addPlayerEventListeners();
     }
+
+    // ADICIONADO: Nova função centralizada de navegação
+    function handleNavigation() {
+        const hash = window.location.hash;
+
+        // Lida com o player
+        const wasPlayerOpen = !playerView.classList.contains('hidden');
+        if (hash !== '#player' && wasPlayerOpen) {
+            hidePlayer(false); // Apenas fecha a UI do player se a hash mudou
+        }
+
+        // Esconde overlays que não deveriam estar abertos
+        if (!searchOverlay.classList.contains('hidden')) {
+            toggleSearchOverlay(false);
+        }
+
+        if (hash.startsWith('#details/')) {
+            const docId = hash.split('/')[1];
+            // Evita recarregar se já estiver na tela de detalhes correta (ex: clicando em 'Minha Lista' na própria tela)
+            if (!currentDetailsItem || currentDetailsItem.docId !== docId) {
+                showDetailsView({ docId });
+            }
+        } else if (hash === '#player') {
+            // A lógica do player é tratada por showPlayer() ao clicar em "Assistir".
+            // Se o usuário navegou para cá (ex: FWD/BACK) e o player não está aberto,
+            // significa que o estado está dessincronizado. Voltamos para home.
+            if (wasPlayerOpen) {
+                // O player está aberto, tudo bem.
+            } else {
+                // Estado inválido (ex: URL #player mas player fechado), volta para home.
+                window.location.replace('#home-view');
+            }
+        } else {
+            // É uma view principal
+            if (!detailsView.classList.contains('hidden')) {
+                detailsView.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+                currentDetailsItem = null; // Limpa o item de detalhes atual
+            }
+
+            const targetId = hash.substring(1) || 'home-view';
+            const targetView = document.getElementById(targetId);
+
+            document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
+            if (targetView) {
+                targetView.classList.remove('hidden');
+                renderScreenContent(targetId); // Carrega o conteúdo da view
+            }
+
+            // Gerencia header/footer
+            const nonAppScreens = ['login-view', 'manage-profile-view'];
+            const isAppScreen = !nonAppScreens.includes(targetId);
+
+            if (isAppScreen) {
+                document.querySelector('header').classList.remove('hidden');
+                document.querySelector('footer').classList.remove('hidden');
+            } else {
+                document.querySelector('header').classList.add('hidden');
+                document.querySelector('footer').classList.add('hidden');
+            }
+            
+            // Atualiza o estado ativo dos links de navegação
+            document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(l => l.classList.remove('active'));
+            // O botão de busca móvel não tem data-target, lidamos com ele separadamente
+            if (targetId.startsWith('search')) {
+                 document.getElementById('mobile-search-btn')?.classList.add('active');
+            } else {
+                 document.querySelectorAll(`[data-target="${targetId}"]`).forEach(l => l.classList.add('active'));
+            }
+            updateMobileNavIndicator();
+            
+            // Lógica do background do herói
+            document.getElementById('main-background').style.opacity = (targetId === 'home-view' && currentHeroItem) ? 1 : 0;
+            
+            // Lógica do carrossel do herói
+            if (targetId !== 'home-view' && heroCarouselInterval) {
+                clearInterval(heroCarouselInterval);
+                heroCarouselInterval = null;
+            } else if (targetId === 'home-view' && !heroCarouselInterval && firestoreContent.length > 0) {
+                 // A função renderScreenContent('home-view') já chama o startHeroRotation()
+            }
+        }
+    }
+
+    // ADICIONADO: Listener centralizado para TODAS as mudanças de hash
+    window.addEventListener('hashchange', handleNavigation);
+
     
     searchIconBtn.addEventListener('click', () => toggleSearchOverlay(true));
     closeSearchBtn.addEventListener('click', () => toggleSearchOverlay(false));
@@ -1095,10 +1166,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (mobileSearchBtn) {
         mobileSearchBtn.addEventListener('click', (e) => {
             e.preventDefault();
+            // Apenas mostra o overlay, não muda a hash principal
+            toggleSearchOverlay(true);
+            // Atualiza o indicador visual
             document.querySelectorAll('.mobile-nav-item').forEach(item => item.classList.remove('active'));
             mobileSearchBtn.classList.add('active');
             updateMobileNavIndicator();
-            toggleSearchOverlay(true);
         });
     }
 
@@ -1123,51 +1196,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    window.addEventListener('popstate', (event) => {
-        const wasPlayerOpen = !playerView.classList.contains('hidden');
-        
-        if (wasPlayerOpen) {
-            hidePlayer(false); // Just close the player UI
-        }
-
-        // After ANY popstate, re-evaluate what to show based on the URL.
-        const hash = window.location.hash;
-
-        if (hash.startsWith('#details/')) {
-            const docId = hash.split('/')[1];
-            showDetailsView({ docId });
-        } else {
-             // This is a main screen. Make sure overlays are hidden.
-            if (!detailsView.classList.contains('hidden')) {
-                detailsView.classList.add('hidden');
-                 document.body.classList.remove('overflow-hidden');
-            }
-             if (!playerView.classList.contains('hidden')) {
-                hidePlayer(false);
-            }
-            
-            const targetId = hash.substring(1) || 'home-view';
-            const targetView = document.getElementById(targetId);
-
-            document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
-            if(targetView) {
-                targetView.classList.remove('hidden');
-                renderScreenContent(targetId);
-            }
-
-            const nonAppScreens = ['login-view', 'manage-profile-view'];
-            const isAppScreen = !nonAppScreens.includes(targetId);
-
-             if (isAppScreen) {
-                 document.querySelector('header').classList.remove('hidden');
-                 document.querySelector('footer').classList.remove('hidden');
-             } else {
-                 document.querySelector('header').classList.add('hidden');
-                 document.querySelector('footer').classList.add('hidden');
-             }
-        }
-    });
-
+    // REMOVIDO: O antigo listener 'popstate' foi substituído por 'hashchange' e 'handleNavigation'
+    
     // --- Notification Logic ---
     function listenForNotifications() {
         const q = query(collection(db, "notifications"), orderBy("createdAt", "desc"));
@@ -1411,13 +1441,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Show main app
         loginView.classList.add('hidden');
-        document.querySelector('header').classList.remove('hidden');
-        document.querySelector('footer').classList.remove('hidden');
         manageProfileView.classList.add('hidden');
-        document.getElementById('home-view').classList.remove('hidden');
-        document.getElementById('main-background').style.opacity = 1;
         
-        // Load all content
+        // CORRIGIDO: Navega para #home-view, o listener hashchange cuidará de mostrar a tela
+        window.location.hash = '#home-view';
+        
+        // Carrega todo o conteúdo
         listenToFirestoreContent();
     }
 
@@ -1495,19 +1524,23 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('delete-profile-btn').addEventListener('click', async () => {
         const profileId = document.getElementById('profile-id-input').value;
          if (profileId && profiles.length > 1) {
-            // NOTE: Using a simple confirm for now, a custom modal would be better.
-            if (confirm('Tem certeza que deseja excluir este perfil? Esta ação não pode ser desfeita.')) {
-                try {
-                    const docRef = doc(db, 'users', userId, 'profiles', profileId);
-                    await deleteDoc(docRef);
-                    showToast('Perfil excluído.');
-                    await loadProfiles();
-                    profileModal.classList.add('hidden');
-                } catch (error) {
-                    console.error("Erro ao excluir perfil: ", error);
-                    showToast('Não foi possível excluir o perfil.', true);
+            // CORRIGIDO: Usa o modal de confirmação customizado
+            showConfirmationModal(
+                'Excluir Perfil',
+                'Tem certeza que deseja excluir este perfil? Esta ação não pode ser desfeita.',
+                async () => {
+                     try {
+                        const docRef = doc(db, 'users', userId, 'profiles', profileId);
+                        await deleteDoc(docRef);
+                        showToast('Perfil excluído.');
+                        await loadProfiles();
+                        profileModal.classList.add('hidden');
+                    } catch (error) {
+                        console.error("Erro ao excluir perfil: ", error);
+                        showToast('Não foi possível excluir o perfil.', true);
+                    }
                 }
-            }
+            );
          } else {
              showToast('Não é possível excluir o único perfil.', true);
          }
@@ -1521,15 +1554,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     headerProfileBtn.addEventListener('click', () => {
-         views.forEach(view => view.classList.add('hidden'));
-         document.querySelector('header').classList.add('hidden');
-         document.querySelector('footer').classList.add('hidden');
-         manageProfileView.classList.remove('hidden');
-         document.getElementById('main-background').style.opacity = 0;
+        // CORRIGIDO: Navega para #manage-profile-view, o listener hashchange cuidará de mostrar a tela
+         window.location.hash = '#manage-profile-view';
+         
+         // A lógica de UI foi movida para o handleNavigation
          isEditMode = false;
          manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
          document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
-         renderProfiles();
+         renderProfiles(); // Recarrega os perfis caso algo tenha mudado
     });
 
     // --- Form Switching & Firebase Auth Logic ---
@@ -1737,21 +1769,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function showLoginScreen() {
         userId = null;
         currentProfile = null;
-        views.forEach(view => view.classList.add('hidden'));
-        loginView.classList.remove('hidden');
-        document.querySelector('header').classList.add('hidden');
-        document.querySelector('footer').classList.add('hidden');
+        // CORRIGIDO: Navega para #login-view, o listener hashchange cuidará de mostrar a tela
+        window.location.hash = '#login-view';
     }
 
     async function showProfileScreen() {
-         views.forEach(view => view.classList.add('hidden'));
-         loginView.classList.add('hidden');
-         manageProfileView.classList.remove('hidden');
-         document.getElementById('main-background').style.opacity = 0;
-         isEditMode = false;
-         manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
-         document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
-         await loadProfiles();
+        // CORRIGIDO: Navega para #manage-profile-view, o listener hashchange cuidará de mostrar a tela
+        window.location.hash = '#manage-profile-view';
+        await loadProfiles();
     }
 
     onAuthStateChanged(auth, (user) => {
@@ -1760,45 +1785,32 @@ document.addEventListener('DOMContentLoaded', function() {
             userId = user.uid;
             listenForNotifications();
             listenToRequests();
-            showProfileScreen();
+            
+            // Se o usuário estiver logado, mas em uma tela de não-logado (ex: #login-view),
+            // ou se a hash for inválida, ele é enviado para a seleção de perfil.
+            const currentHash = window.location.hash;
+            if (currentHash === '#login-view' || currentHash === '#') {
+                 showProfileScreen();
+            } else {
+                // O usuário está logado e recarregou a página em uma hash válida (ex: #home-view)
+                // O handleNavigation() no DOMContentLoaded já cuidará de carregar a tela certa.
+                // Mas precisamos garantir que os perfis sejam carregados primeiro se a tela for a de gerenciamento.
+                if (currentHash === '#manage-profile-view') {
+                     loadProfiles();
+                }
+                 // E o conteúdo do firestore precisa ser carregado para todas as outras telas do app.
+                 listenToFirestoreContent();
+            }
             initializeUI();
+
         } else {
             showLoginScreen();
         }
     });
 
-    if (location.hash === '#player') {
-        history.replaceState(null, document.title, window.location.pathname + window.location.search);
-        window.location.hash = localStorage.getItem('starlight-last-location') || '#home-view';
-    }
-    handleLocationChange(); // Initial route handling
+    // REMOVIDO: Bloco `if (location.hash === '#player')` e chamada `handleLocationChange()`.
+    // A lógica agora está no `DOMContentLoaded` e no listener `hashchange`.
     
     attachGlassButtonListeners();
     window.addEventListener('resize', updateMobileNavIndicator);
-
-    function handleLocationChange() {
-        const hash = window.location.hash;
-        if (hash.startsWith('#details/')) {
-            const docId = hash.split('/')[1];
-            showDetailsView({ docId });
-        } else {
-            const targetId = hash.substring(1) || 'home-view';
-            document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
-            const targetView = document.getElementById(targetId);
-            if(targetView) {
-                targetView.classList.remove('hidden');
-                renderScreenContent(targetId);
-            }
-             const nonAppScreens = ['login-view', 'manage-profile-view'];
-            const isAppScreen = !nonAppScreens.includes(targetId);
-            if (isAppScreen) {
-                 document.querySelector('header').classList.remove('hidden');
-                 document.querySelector('footer').classList.remove('hidden');
-             } else {
-                 document.querySelector('header').classList.add('hidden');
-                 document.querySelector('footer').classList.add('hidden');
-             }
-        }
-    }
 });
-
