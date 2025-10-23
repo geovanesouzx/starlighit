@@ -35,10 +35,16 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
     lucide.createIcons();
 
     // Define um hash padrão se nenhum existir e não for #player
-    if (!window.location.hash || window.location.hash === '#player') {
+    // Armazena o hash inicial antes de qualquer modificação
+    let initialHash = window.location.hash;
+    if (!initialHash || initialHash === '#player') {
         history.replaceState(null, '', window.location.pathname + window.location.search); // Limpa #player
-        window.location.hash = '#home-view'; // Define um padrão inicial
+        initialHash = '#home-view'; // Define um padrão inicial
+        window.location.hash = initialHash; // Define o hash na URL
     }
+    // Guarda o hash "anterior" inicial
+    sessionStorage.setItem('starlight-previousHash', initialHash);
+
 
     // --- Configuração do Firebase (CORRIGIDO) ---
     // Usa a configuração dinâmica injetada ou um fallback
@@ -209,12 +215,10 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         settings: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59 1.69.98l2.49 1c.23.09.49 0 .61.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg>`,
         back: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>`,
         aspectContain: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M2 5h2v14H2V5zm20 0h-2v14h2V5zM6 7h12v10H6V7z"></path></svg>`, // Ícone para 'contain'
-        aspectCover: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 5h16v14H4V5z"></path></svg>` // Ícone para 'cover'
-        , // Ícones para Novidades
+        aspectCover: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 5h16v14H4V5z"></path></svg>`, // Ícone para 'cover'
+        // *** Ícones para Novidades - CORRIGIDO ***
         heartOutline: `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>`,
         heartFilled: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>`,
-        // REMOVIDO: comment icon
-        // REMOVIDO: reply icon
     };
 
     // HTML para o spinner de carregamento
@@ -1212,6 +1216,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         // Adiciona #player ao histórico do navegador se ainda não estiver lá
         if (window.location.hash !== '#player') {
             history.pushState({ view: 'player' }, '', '#player');
+            sessionStorage.setItem('starlight-previousHash', '#player'); // Atualiza explicitamente o hash anterior
         }
 
         // Mostra a view do player e esconde a barra de rolagem do body
@@ -1342,6 +1347,11 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
      * @param {boolean} [isChangingEpisode=false] - Se true, não desbloqueia a orientação (mobile).
      */
     async function hidePlayer(updateHistory = true, isChangingEpisode = false) {
+        // Verifica se o player já está escondido para evitar chamadas redundantes
+        if (playerView.classList.contains('hidden')) {
+            console.log("hidePlayer chamado, mas player já está escondido.");
+            return;
+        }
         console.log(`hidePlayer chamado com updateHistory=${updateHistory}, isChangingEpisode=${isChangingEpisode}`);
 
         // Salva o progresso se updateHistory for true e houver um contexto válido e tempo > 0
@@ -1858,14 +1868,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         const hash = window.location.hash; // Pega o hash atual (ex: #home-view, #details/123)
         const previousHash = sessionStorage.getItem('starlight-previousHash') || '#home-view'; // Pega hash anterior
 
-        // *** CORREÇÃO PLAYER NAVIGATION (Back Button): Fechar player principal explicitamente ao voltar ***
-        // Se o player principal estava aberto (visível) e o novo hash NÃO é #player, fecha o player.
-        if (hash !== '#player' && !playerView.classList.contains('hidden')) {
-            console.log("[handleNavigation] Player principal aberto e hash mudou, fechando player...");
-            await hidePlayer(true, false); // Força o fechamento do player antes de continuar
-            // Não retorna aqui, pois a navegação para a view anterior deve continuar
-        }
-
+        // **REMOVIDA a lógica de fechar player daqui - movida para o listener 'popstate'**
 
         // --- Rota de Autenticação ---
         if (!userId) { // Se o usuário NÃO está logado
@@ -1929,6 +1932,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
 
         // Garante que views especiais sejam escondidas ao navegar para views normais
         if (!hash.startsWith('#details/')) detailsView.classList.add('hidden');
+        // **REMOVIDO:** A verificação de fechar o player foi movida para o popstate
 
         // Para mídia de novidades se saiu dessa view
         if (previousHash === '#news-view' && hash !== '#news-view') {
@@ -1967,15 +1971,16 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                 console.log("[handleNavigation] Rota: #player");
                 targetId = 'player-view';
                 // O player é tratado por showPlayer(), não fazemos nada aqui exceto marcar targetId
+                // Se o player NÃO estiver visível (ex: reload na página #player), redireciona
                 if (playerView.classList.contains('hidden')) {
-                    // Se recarregou em #player ou tentou navegar direto, volta para o hash anterior
-                    console.log("[handleNavigation] Tentativa de acesso direto a #player, voltando...");
+                    console.log("[handleNavigation] Tentativa de acesso direto a #player ou player fechado, voltando...");
                     const fallbackHash = previousHash !== '#player' ? previousHash : '#home-view';
                     history.replaceState(null, '', fallbackHash); // Volta para o anterior (ou home)
                     handleNavigation(); // Chama de novo para carregar a view correta
                     return; // Interrompe
                 }
-                targetView = playerView; // Marca a view ativa (já deve estar visível)
+                 // Se chegou aqui, o player já está visível (aberto por showPlayer ou outra ação)
+                targetView = playerView;
             } else {
                 targetId = hash.substring(1) || 'home-view'; // Pega ID da view normal
                 console.log(`[handleNavigation] Rota normal: #${targetId}`);
@@ -2014,24 +2019,50 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             heroCarouselInterval = null;
         }
 
-        // Atualiza hash anterior para a próxima navegação
-        sessionStorage.setItem('starlight-previousHash', `#${targetId}`);
+        // Atualiza hash anterior para a próxima navegação *SE NÃO FOR PLAYER*
+        // Para o player, o hash anterior é atualizado no showPlayer
+        if (targetId !== 'player-view') {
+            sessionStorage.setItem('starlight-previousHash', `#${targetId}`);
+        }
         console.log(`[handleNavigation] Navegação para #${targetId} concluída.`);
     }
 
 
-    // Listener principal de navegação do navegador
-    window.addEventListener('popstate', handleNavigation);
+    // Listener principal de navegação do navegador (popstate)
+    window.addEventListener('popstate', async (event) => {
+        console.log(`[popstate] Evento detectado. Novo hash: ${window.location.hash}`);
+        const previousHash = sessionStorage.getItem('starlight-previousHash') || '#home-view';
+        const currentHash = window.location.hash || '#home-view'; // Garante que não seja vazio
 
-    // *** NOVO: Listener específico para fechar o player de novidades ao usar o botão voltar ***
-    window.addEventListener('popstate', () => {
-        if (!newsPlayerView.classList.contains('hidden')) {
-            console.log("[popstate] Player de novidades aberto, fechando...");
-            hideNewsPlayer();
-            // Não precisa manipular o histórico aqui, pois o popstate já ocorreu.
-            // Apenas fechamos o overlay visual.
+        // *** NOVA LÓGICA PARA FECHAR PLAYERS NO POPSTATE ***
+
+        // 1. Verifica se está saindo do Player Principal (#player)
+        if (previousHash === '#player' && currentHash !== '#player' && !playerView.classList.contains('hidden')) {
+            console.log("[popstate] Saindo do player principal (#player). Fechando...");
+            await hidePlayer(true, false); // Força o fechamento COM desbloqueio de orientação
+            // Atualiza o previousHash após fechar o player para refletir o estado atual
+            sessionStorage.setItem('starlight-previousHash', currentHash);
+             // Chama handleNavigation para renderizar a view correta APÓS fechar o player
+             handleNavigation();
+            return; // Interrompe a execução normal do popstate aqui, handleNavigation fará o resto
         }
+
+        // 2. Verifica se está saindo do Player de Novidades (que não usa hash)
+        // Isso é feito verificando se o elemento está visível
+        if (!newsPlayerView.classList.contains('hidden')) {
+             console.log("[popstate] Player de novidades aberto, fechando...");
+             hideNewsPlayer();
+             // Atualiza o previousHash para refletir o estado atual
+             sessionStorage.setItem('starlight-previousHash', currentHash);
+             // A navegação normal deve prosseguir para mostrar a view anterior
+             // Então NÃO retornamos aqui, deixamos handleNavigation ser chamado abaixo
+        }
+
+        // Se nenhuma condição especial de player foi atendida, executa a navegação normal
+         console.log("[popstate] Nenhuma condição especial de player atendida, chamando handleNavigation...");
+        handleNavigation();
     });
+
 
     // --- Lógica de Notificações ---
     function listenForNotifications() {
@@ -3332,7 +3363,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             handleNavigation(); // Chama para garantir que a UI de login apareça
         }
         // Atualiza o hash anterior após a mudança de auth/perfil
-        sessionStorage.setItem('starlight-previousHash', window.location.hash);
+        // sessionStorage.setItem('starlight-previousHash', window.location.hash); // <-- MOVIDO para o final do handleNavigation e showPlayer
         console.log("onAuthStateChanged concluído.");
     });
 
