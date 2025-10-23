@@ -1131,44 +1131,38 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    /** Manipula cliques na área do vídeo em dispositivos móveis (toque único mostra/esconde controles, toque duplo play/pause - implementado como toque simples por enquanto) */
-    // MUDANÇA: Lógica refeita para toque único mostra, segundo toque pausa/play
+    /** Manipula cliques na área do vídeo em dispositivos móveis */
     function handleMobilePlayerClick() {
+        clearTimeout(controlsTimeout); // Limpa qualquer timeout anterior ao detectar um toque
+
         if (!playerView.classList.contains('controls-active')) {
-            // Se controles escondidos, primeiro toque APENAS mostra os controles
+            // Se controles escondidos -> PRIMEIRO TOQUE: Apenas MOSTRA os controles
             playerView.classList.add('controls-active');
-            clearTimeout(controlsTimeout); // Limpa timeout anterior
-            // Define novo timeout para esconder controles após 3s
-            // MUDANÇA: Timeout deve ser definido mesmo se pausado
-            controlsTimeout = setTimeout(() => {
-                playerView.classList.remove('controls-active');
-            }, 3000);
-        } else {
-            // Se controles visíveis, segundo toque alterna play/pause
-            togglePlay();
-            // MUDANÇA: Resetar timeout APÓS pausar/despausar
-            clearTimeout(controlsTimeout);
-            if (!videoPlayer.paused) { // Se estiver tocando, agenda para esconder
-                 controlsTimeout = setTimeout(() => {
+            // Define novo timeout para esconder controles após 3s (somente se estiver tocando)
+            if (!videoPlayer.paused) {
+                controlsTimeout = setTimeout(() => {
                     playerView.classList.remove('controls-active');
                 }, 3000);
             }
-            // Se pausou, os controles ficam visíveis até o próximo toque ou timeout manual.
+        } else {
+            // Se controles visíveis -> SEGUNDO TOQUE: PAUSA/RETOMA o vídeo
+            togglePlay(); // A função togglePlay já lida com play/pause
+            // O listener 'play'/'pause' no addPlayerEventListeners vai gerenciar o timeout
         }
     }
 
 
-    /** Manipula cliques na área do vídeo em desktop (mostra controles ou alterna play/pause) */
+    /** Manipula cliques na área do vídeo em desktop */
     function handlePlayerClick() {
-        // MUDANÇA: Simplificado - togglePlay só se controles já estiverem ativos
+        clearTimeout(controlsTimeout); // Limpa timeout
+
         if (!playerView.classList.contains('controls-active')) {
              playerView.classList.add('controls-active'); // Se escondidos, apenas mostra
         } else {
             togglePlay(); // Se controles visíveis, alterna play/pause
         }
 
-        // Reseta o timeout para esconder controles
-        clearTimeout(controlsTimeout);
+        // Reseta o timeout para esconder controles (somente se estiver tocando)
         if (!videoPlayer.paused) {
             controlsTimeout = setTimeout(() => {
                 playerView.classList.remove('controls-active');
@@ -1179,27 +1173,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /** Adiciona listeners de evento ao elemento <video> */
     function addPlayerEventListeners() {
-        // Remove listener antigo antes de adicionar novo para evitar duplicidade
-        videoPlayer.removeEventListener('click', handleMobilePlayerClick);
-        videoPlayer.removeEventListener('click', handlePlayerClick);
+        // Remove listeners antigos antes de adicionar novos para evitar duplicidade
+        // Garantir que a referência da função é a mesma
+        const isMobile = window.innerWidth < 768;
+        if (isMobile) {
+            videoPlayer.removeEventListener('click', handlePlayerClick); // Remove listener desktop se existir
+            videoPlayer.removeEventListener('click', handleMobilePlayerClick); // Remove listener mobile antigo
+            videoPlayer.addEventListener('click', handleMobilePlayerClick); // Adiciona listener mobile correto
+        } else {
+            videoPlayer.removeEventListener('click', handleMobilePlayerClick); // Remove listener mobile se existir
+            videoPlayer.removeEventListener('click', handlePlayerClick); // Remove listener desktop antigo
+            videoPlayer.addEventListener('click', handlePlayerClick); // Adiciona listener desktop correto
+        }
 
-        // Atualiza ícone play/pause
+
+        // Listener para o evento 'play'
         videoPlayer.addEventListener('play', () => {
              playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.pause;
-             // MUDANÇA: Garante que o timeout de esconder controles seja reativado ao dar play
-             clearTimeout(controlsTimeout);
+             clearTimeout(controlsTimeout); // Limpa timeout ao dar play
+             // Agenda para esconder controles se estiverem visíveis
              if (playerView.classList.contains('controls-active')) {
                  controlsTimeout = setTimeout(() => {
                      playerView.classList.remove('controls-active');
                  }, 3000);
              }
          });
+         // Listener para o evento 'pause'
         videoPlayer.addEventListener('pause', () => {
             playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
-            // MUDANÇA: Cancela o timeout ao pausar para manter controles visíveis
-            clearTimeout(controlsTimeout);
+            clearTimeout(controlsTimeout); // Cancela o timeout ao pausar
             // Garante que os controles fiquem visíveis ao pausar manualmente
-            if (!videoPlayer.ended) { // Não mostra se pausou porque acabou
+            if (!videoPlayer.ended) {
                  playerView.classList.add('controls-active');
             }
         });
@@ -1248,13 +1252,7 @@ document.addEventListener('DOMContentLoaded', function() {
             volumeBtn.querySelector('.glass-content').innerHTML = (videoPlayer.muted || videoPlayer.volume === 0) ? ICONS.volumeMute : ICONS.volumeHigh;
         });
 
-        // Adiciona listener de clique no vídeo (diferente para mobile/desktop)
-        const isMobile = window.innerWidth < 768;
-        if (isMobile) {
-            videoPlayer.addEventListener('click', handleMobilePlayerClick);
-        } else {
-            videoPlayer.addEventListener('click', handlePlayerClick);
-        }
+        // --- Listener de clique já está sendo adicionado no início da função ---
     }
 
     // --- Listeners dos Controles do Player ---
@@ -2351,7 +2349,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Inicialização ---
     attachGlassButtonListeners(); // Adiciona listeners visuais iniciais
-    window.addEventListener('resize', updateMobileNavIndicator); // Listener para resize (atualiza nav mobile)
+    window.addEventListener('resize', () => { // Listener para resize
+        updateMobileNavIndicator(); // Atualiza nav mobile
+        // Re-avalia qual listener de clique do player adicionar (mobile vs desktop)
+        addPlayerEventListeners();
+    });
 
     // Chama o roteador na carga inicial da página para exibir a view correta
     // O onAuthStateChanged pode chamar handleNavigation novamente, mas é seguro.
