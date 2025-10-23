@@ -6,16 +6,15 @@
 
 body {
     font-family: 'Inter', sans-serif;
-    background-color: #0c0a09; /* stone-950 */
+    background-color: #0c0a09;
     color: #ffffff;
-    overflow-x: hidden;
+    overflow-x: hidden; 
 }
 
 body.auth-loading {
-    visibility: hidden; /* Esconde enquanto autentica */
+    visibility: hidden;
 }
 
-/* Fundo da tela de login (separado do main-background) */
 #login-view {
     background-image: url('https://image.tmdb.org/t/p/original/c2dPK558peXs9QzacwzHYQqqS2r.jpg');
 }
@@ -26,9 +25,8 @@ body.auth-loading {
 }
 
 
-/* Fundo principal (usado na home) */
 .main-background {
-    position: absolute; /* Alterado para absolute */
+    position: absolute;
     top: 0;
     left: 0;
     right: 0;
@@ -37,7 +35,6 @@ body.auth-loading {
     background-position: center;
     transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in-out;
     z-index: -2;
-    opacity: 0; /* Começa invisível, JS controla a visibilidade */
 }
 
 .main-background::after {
@@ -48,7 +45,6 @@ body.auth-loading {
                 linear-gradient(to right, #0c0a09 2%, transparent 50%);
 }
 
-/* Estilos base para o efeito Glass */
 .glass-container {
     position: relative;
     overflow: hidden;
@@ -61,7 +57,7 @@ body.auth-loading {
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    pointer-events: none; /* Não interfere com cliques */
+    pointer-events: none;
 }
 
 .glass-container .glass-filter {
@@ -72,12 +68,12 @@ body.auth-loading {
 
 .glass-container .glass-overlay {
     z-index: 2;
-    background: var(--glass-bg-color); /* Usa variável CSS */
+    background: var(--glass-bg-color);
 }
 
 .glass-container .glass-specular {
     z-index: 3;
-    box-shadow: inset 1px 1px 1px var(--glass-highlight); /* Usa variável CSS */
+    box-shadow: inset 1px 1px 1px var(--glass-highlight);
 }
 
 .glass-container .glass-content {
@@ -85,9 +81,98 @@ body.auth-loading {
     z-index: 4;
 }
 
-/* Efeito Liquid Glass (usado em cards específicos) */
+.glass-button {
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    outline: none;
+}
+.glass-button:hover { transform: scale(1.05); }
+.glass-button:active { transform: scale(0.95); }
+.glass-button .glass-content { color: var(--glass-text); font-weight: 500; }
+
+.nav-item { position: relative; transition: color 0.3s ease; }
+.nav-item::after {
+    content: ''; 
+    position: absolute; 
+    bottom: -6px; 
+    left: 20%; 
+    right: 20%; 
+    height: 2px;
+    background-image: linear-gradient(to right, #a855f7, #ec4899);
+    transform: scaleX(0);
+    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+    transform-origin: center;
+}
+.nav-item.active::after { transform: scaleX(1); }
+.nav-item.active { color: #ffffff; font-weight: 700; }
+
+#mobile-nav-container { border: 1px solid rgba(255, 255, 255, 0.2); }
+#mobile-nav-container::before {
+    content: ''; 
+    position: absolute; 
+    inset: -2px; 
+    border-radius: inherit; 
+    border: 2px solid white;
+    opacity: 0; 
+    animation: float-pulse 6s ease-in-out infinite; 
+    pointer-events: none;
+}
+
+.mobile-nav-item { color: #a0aec0; transition: color 0.3s ease; border-radius: 9999px; flex-shrink: 0; }
+.mobile-nav-item.active { color: #ffffff; font-weight: 600; }
+
+@keyframes float-pulse {
+    0% { transform: translateY(0) scale(1.02); opacity: 0; }
+    50% { transform: translateY(-10px) scale(1.05); opacity: 0.7; }
+    100% { transform: translateY(0) scale(1.02); opacity: 0; }
+}
+
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.content-view { padding-top: 100px; min-height: 100vh; }
+#home-view { padding-top: 0; }
+
+.details-gradient-overlay {
+    background: linear-gradient(to top, #0c0a09 20%, rgba(12,10,9,0.7) 50%, transparent 100%);
+}
+
+#hero-content-wrapper {
+    transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+}
+#hero-content-wrapper.hero-fade-out {
+    opacity: 0;
+    transform: translateY(-20px);
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #475569; /* slate-600 */
+    border-bottom-color: #818cf8; /* indigo-400 */
+    border-radius: 50%;
+    display: inline-block;
+    box-sizing: border-box;
+    animation: rotation 1s linear infinite;
+}
+ @keyframes rotation {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.carousel-container { position: relative; }
+.carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; }
+.carousel-item { scroll-snap-align: start; flex-shrink: 0; }
+.carousel-btn { position: absolute; top: 50%; transform: translateY(-50%); z-index: 10; background-color: rgba(0,0,0,0.5); border-radius: 50%; padding: 0.5rem; color: white; transition: background-color 0.2s; }
+.carousel-btn:hover:not(:disabled) { background-color: rgba(0,0,0,0.8); }
+.carousel-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.carousel-btn.prev { left: 0.5rem; }
+.carousel-btn.next { right: 0.5rem; }
+
+/* Liquid Glass Effect & Profile Card styles*/
 .liquid-glass-card {
-    --bg-color: rgba(0, 0, 0, 0.25); /* Default, pode ser sobrescrito inline */
+    --bg-color: rgba(0, 0, 0, 0.25);
     --highlight: rgba(255, 255, 255, 0.15);
     --text: #ffffff;
     position: relative;
@@ -96,11 +181,9 @@ body.auth-loading {
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s ease;
 }
-/* Removido o hover scale dos cards de notícia para evitar problemas com clique */
-.liquid-glass-card:not(.news-item-card):hover:not(.no-hover-scale) {
+.liquid-glass-card:hover {
     transform: scale(1.05);
 }
-
 .liquid-glass-card .glass-filter,
 .liquid-glass-card .glass-overlay,
 .liquid-glass-card .glass-specular,
@@ -123,8 +206,9 @@ body.auth-loading {
     color: var(--text);
     height: 100%;
 }
-.glass-distortion-overlay { /* Efeito animado sutil */
-    position: absolute;
+
+.glass-distortion-overlay {
+    position: absolute; 
     inset: 0;
     background: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.05) 0%, transparent 80%),
                 radial-gradient(circle at 80% 70%, rgba(255,255,255,0.05) 0%, transparent 80%);
@@ -134,106 +218,14 @@ body.auth-loading {
     z-index: 2;
     pointer-events: none;
 }
+
 @keyframes floatDistort {
     0% { background-position: 0% 0%; }
     50% { background-position: 100% 100%; }
     100% { background-position: 0% 0%; }
 }
 
-
-/* Botões com efeito Glass */
-.glass-button {
-    border: none;
-    cursor: pointer;
-    transition: transform 0.2s ease;
-    outline: none;
-}
-.glass-button:hover { transform: scale(1.05); }
-.glass-button:active { transform: scale(0.95); }
-.glass-button .glass-content { color: var(--glass-text); font-weight: 500; }
-
-/* Navegação */
-.nav-item { position: relative; transition: color 0.3s ease; }
-.nav-item::after {
-    content: '';
-    position: absolute;
-    bottom: -6px;
-    left: 20%;
-    right: 20%;
-    height: 2px;
-    background-image: linear-gradient(to right, #a855f7, #ec4899); /* purple-500 to pink-500 */
-    transform: scaleX(0);
-    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    transform-origin: center;
-}
-.nav-item.active::after { transform: scaleX(1); }
-.nav-item.active { color: #ffffff; font-weight: 700; }
-
-/* Navegação Mobile */
-#mobile-nav-container { border: 1px solid rgba(255, 255, 255, 0.2); }
-#mobile-nav-container::before { /* Efeito de pulso */
-    content: '';
-    position: absolute;
-    inset: -2px;
-    border-radius: inherit;
-    border: 2px solid white;
-    opacity: 0;
-    animation: float-pulse 6s ease-in-out infinite;
-    pointer-events: none;
-}
-.mobile-nav-item { color: #a0aec0; /* zinc-400 */ transition: color 0.3s ease; border-radius: 9999px; flex-shrink: 0; }
-.mobile-nav-item.active { color: #ffffff; font-weight: 600; }
-@keyframes float-pulse {
-    0% { transform: translateY(0) scale(1.02); opacity: 0; }
-    50% { transform: translateY(-10px) scale(1.05); opacity: 0.7; }
-    100% { transform: translateY(0) scale(1.02); opacity: 0; }
-}
-
-/* Utilitários */
-.hide-scrollbar::-webkit-scrollbar { display: none; }
-.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-/* Layout das Views */
-.content-view { padding-top: 100px; min-height: 100vh; }
-#home-view { padding-top: 0; } /* Home não tem padding superior */
-
-/* Overlay de Detalhes */
-.details-gradient-overlay {
-    background: linear-gradient(to top, #0c0a09 20%, rgba(12,10,9,0.7) 50%, transparent 100%);
-}
-
-/* Animação Hero */
-#hero-content-wrapper {
-    transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
-}
-#hero-content-wrapper.hero-fade-out {
-    opacity: 0;
-    transform: translateY(-20px);
-}
-
-/* Spinner */
-.spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #475569; /* slate-600 */
-    border-bottom-color: #818cf8; /* indigo-400 */
-    border-radius: 50%;
-    display: inline-block;
-    box-sizing: border-box;
-    animation: rotation 1s linear infinite;
-}
-.spinner-lg { width: 60px; height: 60px; border-width: 6px; } /* Spinner maior */
- @keyframes rotation {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Carrossel */
-.carousel-container { position: relative; }
-.carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; }
-.carousel-item { scroll-snap-align: start; flex-shrink: 0; }
-
-/* Animações (Fade in/out para painéis) */
+/* Animation for episode list & panels */
 @keyframes fade-in-down {
     from { opacity: 0; transform: translateY(-15px) scale(0.95); }
     to { opacity: 1; transform: translateY(0) scale(1); }
@@ -252,7 +244,6 @@ body.auth-loading {
 }
 .animate-fade-in { animation: fade-in 0.4s ease-out forwards; }
 
-/* Botão de Voto (Pedidos) */
 .vote-btn .glass-overlay {
     --glass-bg-color: rgba(79, 70, 229, 0.3); /* indigo-600 */
     transition: background-color 0.2s;
@@ -268,7 +259,7 @@ body.auth-loading {
 }
 
 
-/* Seletor de Temporada (Detalhes) */
+/* Custom Select Styles */
 .custom-select-container { position: relative; }
 .custom-select-options {
     position: absolute;
@@ -292,11 +283,19 @@ body.auth-loading {
     --glass-bg-color: rgba(255, 255, 255, 0.1) !important;
 }
 
-/* Classificação Indicativa */
+/* Age Rating Styles */
 .rating-box {
-    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-    font-weight: 700; color: white; border-radius: 4px; font-size: 14px;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.5); line-height: 1;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: white;
+    border-radius: 4px;
+    font-size: 14px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    line-height: 1;
 }
 #hero-meta .rating-box { width: 28px; height: 28px; font-size: 12px; }
 .rating-L { --glass-bg-color: rgba(34, 197, 94, 0.5); } /* green-500 */
@@ -306,80 +305,160 @@ body.auth-loading {
 .rating-16 { --glass-bg-color: rgba(239, 68, 68, 0.5); } /* red-500 */
 .rating-18 { --glass-bg-color: rgba(17, 24, 39, 0.6); } /* gray-900 */
 
+.episode-list-glass-card {
+    --glass-bg-color: rgba(25, 25, 25, 0.5);
+    --glass-highlight: rgba(255, 255, 255, 0.1);
+}
 
-/* Video Player Principal (Filmes/Séries) */
+/* Video Player Styles */
 #player-view { background-color: #000; }
-#player-view video {
-    width: 100%;
-    height: 100%;
+#player-view video { 
+    width: 100%; 
+    height: 100%; 
     object-fit: contain; /* Padrão é 'contain'. JS irá alternar para 'cover' */
 }
 .player-controls-wrapper {
     position: absolute;
-    inset: 0; /* Cobre toda a área */
+    bottom: 0;
+    left: 0;
+    right: 0;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0.3s ease;
     pointer-events: none;
-    /* Gradiente sutil apenas na parte inferior para os controles */
-    background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 30%);
+    background: linear-gradient(to top, rgba(0,0,0,0.6), transparent 50%);
 }
 #player-view.controls-active .player-controls-wrapper {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
 }
-.player-control-btn { /* Estilo comum para botões do player */
+.player-control-btn {
     --glass-bg-color: rgba(30, 30, 30, 0.3);
     --glass-highlight: rgba(255, 255, 255, 0.1);
-    width: 44px; height: 44px; padding:0;
+    width: 44px;
+    height: 44px;
+    padding:0;
 }
-.player-control-btn .glass-content { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+.player-control-btn .glass-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
 .player-control-btn svg { width: 24px; height: 24px; }
-
-/* Barra de Progresso do Player */
-.player-seek-bar-container { position: relative; width: 100%; height: 16px; display: flex; align-items: center; }
+.player-seek-bar-container {
+    position: relative;
+    width: 100%;
+    height: 16px;
+    display: flex;
+    align-items: center;
+}
 input[type="range"].player-seek-bar {
-    -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer;
-    width: 100%; position: absolute; left:0; top: 50%; transform: translateY(-50%); z-index: 2; margin:0;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+    width: 100%;
+    position: absolute;
+    left:0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    margin:0;
 }
 .seek-track {
-    position: absolute; left:0; top: 50%; transform: translateY(-50%);
-    width: 100%; height: 4px; background: rgba(255,255,255,0.2); border-radius: 4px;
-    z-index: 1; overflow: hidden;
+    position: absolute;
+    left:0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 4px;
+    z-index: 1;
+    overflow: hidden;
 }
-.seek-progress { background: #e50914; /* Cor da Netflix */ height: 100%; width: 0; }
-input[type="range"].player-seek-bar::-webkit-slider-thumb { /* Bolinha da barra */
-    -webkit-appearance: none; appearance: none; background-color: #fff;
-    height: 16px; width: 16px; border-radius: 50%; border: none; box-shadow: 0 0 5px rgba(0,0,0,0.5);
+.seek-progress {
+    background: #e50914;
+    height: 100%;
+    width: 0;
 }
-/* Slider de Volume */
-input[type="range"].player-volume-slider { -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; }
-input[type="range"].player-volume-slider::-webkit-slider-runnable-track { background: rgba(255,255,255,0.3); height: 4px; border-radius: 2px; }
-input[type="range"].player-volume-slider::-webkit-slider-thumb {
-    -webkit-appearance: none; appearance: none; margin-top: -5px; /* Centraliza a bolinha */
-    background-color: #fff; height: 14px; width: 14px; border-radius: 50%;
+input[type="range"].player-seek-bar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    background-color: #fff;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    border: none;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+input[type="range"].player-volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+}
+ input[type="range"].player-volume-slider::-webkit-slider-runnable-track {
+    background: rgba(255,255,255,0.3);
+    height: 4px;
+    border-radius: 2px;
+}
+ input[type="range"].player-volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    margin-top: -5px;
+    background-color: #fff;
+    height: 14px;
+    width: 14px;
+    border-radius: 50%;
 }
 #player-volume-container { opacity: 0; width: 0; transition: all 0.3s ease; }
-/* Mostra slider ao passar mouse no botão ou no próprio container (se já visível) */
-#player-volume-container:hover, .volume-btn-container:hover + #player-volume-container { opacity: 1; width: 112px; /* 7rem */ }
-
-/* Painel de Configurações do Player */
+#player-volume-container:hover, .volume-btn-container:hover + #player-volume-container {
+    opacity: 1; width: 112px; /* 7rem */
+}
 #player-settings-panel {
-    position: absolute; bottom: 100%; right: 0; margin-bottom: 1rem; width: 200px;
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    margin-bottom: 1rem;
+    width: 200px;
     --glass-bg-color: rgba(30,30,30,0.5);
 }
-.settings-option-btn { width: 100%; text-align: left; padding: 0.75rem 1rem; font-size: 0.875rem; transition: background-color 0.2s; }
+.settings-option-btn {
+    width: 100%;
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    transition: background-color 0.2s;
+}
 .settings-option-btn:hover { background-color: rgba(255,255,255,0.1); }
 .settings-option-btn.active { background-color: rgba(229,9,20,0.5); font-weight: bold; }
 
+/* Progress Bar for Continue Watching */
+.progress-bar-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background-color: rgba(255, 255, 255, 0.3);
+    z-index: 4;
+}
+.progress-bar-fill {
+    height: 100%;
+    background-color: #e50914;
+    width: 0%;
+}
+.episode-item .progress-bar-container {
+    height: 4px;
+    border-radius: 99px;
+    overflow: hidden;
+}
 
-/* Barra de Progresso para "Continuar Assistindo" (cards) */
-.progress-bar-container { position: absolute; bottom: 0; left: 0; right: 0; height: 5px; background-color: rgba(255, 255, 255, 0.3); z-index: 4; }
-.progress-bar-fill { height: 100%; background-color: #e50914; width: 0%; }
-.episode-item .progress-bar-container { height: 4px; border-radius: 99px; overflow: hidden; }
-
-/* Estilos do Formulário de Login/Registro (Glass Form) */
+/* LOGIN FORM STYLES */
 .glass-form {
     --bg-color: rgba(0, 0, 0, 0.25);
     --highlight: rgba(255, 255, 255, 0.15);
@@ -387,151 +466,186 @@ input[type="range"].player-volume-slider::-webkit-slider-thumb {
     --input-bg: rgba(0, 0, 0, 0.2);
     --input-border: rgba(255, 255, 255, 0.1);
     --input-focus: rgba(0, 0, 0, 0.3);
-
-    position: relative; width: 400px; border-radius: 20px; overflow: hidden; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+    
+    position: relative;
+    width: 400px;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
 }
-.glass-form .glass-filter, .glass-form .glass-overlay, .glass-form .glass-specular { position: absolute; inset: 0; border-radius: inherit; }
-.glass-form .glass-filter { z-index: 1; backdrop-filter: blur(4px); filter: url(#glass-distortion) saturate(120%) brightness(1.15); }
+
+.glass-form .glass-filter,
+.glass-form .glass-overlay,
+.glass-form .glass-specular {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+}
+
+.glass-form .glass-filter {
+    z-index: 1;
+    backdrop-filter: blur(4px);
+    filter: url(#glass-distortion) saturate(120%) brightness(1.15);
+}
+
 .glass-form .glass-overlay { z-index: 2; background: var(--bg-color); }
 .glass-form .glass-specular { z-index: 3; box-shadow: inset 1px 1px 1px var(--highlight); }
-.glass-form .glass-content { position: relative; z-index: 4; padding: 30px; color: var(--text); height: 100%; }
+
+.glass-form .glass-content {
+    position: relative;
+    z-index: 4;
+    padding: 30px;
+    color: var(--text);
+    height: 100%;
+}
+
 .form-container { display: none; opacity: 0; transition: opacity 0.3s ease; }
 .form-container.active { display: block; opacity: 1; }
-.form-container h3 { margin: 0 0 20px 0; font-size: 28px; font-weight: 600; text-align: center; }
+
+.form-container h3 {
+    margin: 0 0 20px 0;
+    font-size: 28px;
+    font-weight: 600;
+    text-align: center;
+}
+
 .form-group { position: relative; margin-bottom: 20px; }
-.form-group i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text); opacity: 0.8; }
+.form-group i {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text);
+    opacity: 0.8;
+}
 .form-group input {
-    width: 100%; padding: 12px 15px 12px 45px; background: var(--input-bg); border: 1px solid var(--input-border);
-    border-radius: 10px; color: var(--text); font-size: 16px; transition: border-color 0.3s ease, background 0.3s ease;
-}
-.form-group input:focus { outline: none; background: var(--input-focus); border-color: var(--highlight); }
-.form-group input::placeholder { color: rgba(255, 255, 255, 0.6); }
-.submit-btn {
-    width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 10px; color: var(--text); font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; margin-top: 10px;
-}
-.submit-btn:hover { background: rgba(255, 255, 255, 0.3); border-color: rgba(255, 255, 255, 0.4); }
-.form-switch { text-align: center; margin-top: 20px; font-size: 14px; opacity: 0.8; }
-.form-switch a { color: var(--text); text-decoration: none; font-weight: 600; opacity: 1; }
-.form-switch a:hover { text-decoration: underline; }
-.divider { display: flex; align-items: center; text-align: center; margin: 20px 0; color: rgba(255,255,255,0.6); }
-.divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid rgba(255,255,255,0.2); }
-.divider:not(:empty)::before { margin-right: .5em; }
-.divider:not(:empty)::after { margin-left: .5em; }
-.google-btn { display: flex; align-items: center; justify-content: center; gap: 10px; }
-.google-btn i { font-size: 1.2rem; }
-
-/* Notificações */
-#notification-btn.has-new svg { color: #ec4899; /* pink-500 */ animation: ring-bell 0.8s ease-in-out; }
-@keyframes ring-bell {
-    0%, 100% { transform: rotate(0); } 10%, 30%, 50%, 70%, 90% { transform: rotate(-10deg); } 20%, 40%, 60%, 80% { transform: rotate(10deg); }
-}
-.notification-tab { transition: all 0.2s ease-in-out; color: #a1a1aa; /* stone-400 */ }
-.notification-tab.active { color: #ffffff; font-weight: 600; border-bottom-color: transparent; position: relative; }
-.notification-tab.active::after {
-    content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
-    background-image: linear-gradient(to right, #a855f7, #ec4899);
-}
-.notification-content { display: none; }
-.notification-content.active { display: block; }
-.notification-message { white-space: pre-wrap; word-break: break-word; }
-
-
-/* NOVO: Estilos da Tela de Novidades */
-.news-item-card {
-    /* Manteve a transição, mas removeu o scale on hover */
-    transition: box-shadow 0.3s ease;
-}
-.news-item-card:hover {
-     /* Mantém uma sombra mais sutil no hover para indicar interatividade */
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-}
-.news-item-card iframe, .news-item-card img, .news-item-card .news-video-thumbnail {
-    display: block; /* Remove espaço extra abaixo */
-}
-
-/* Botões de Ação (Like/Comment) */
-.news-item-card .glass-button {
-    transition: background-color 0.2s, color 0.2s, transform 0.1s ease-out;
-    transform: scale(1); /* Estado inicial */
-}
-.news-item-card .glass-button:active {
-    transform: scale(0.9); /* Efeito de clique */
-}
-.news-item-card .like-button svg,
-.news-item-card .comment-button svg {
-    width: 1.1em; /* Tamanho do ícone */
-    height: 1.1em;
-    pointer-events: none; /* Garante que o clique vá para o botão */
-}
-.news-item-card .like-button .glass-content svg,
-.news-item-card .comment-button .glass-content svg {
-     margin-right: 0.3em; /* Espaço entre ícone e número */
-}
-
-
-/* Player de Vídeo para Novidades */
-#news-player-view video {
-    outline: none; /* Remove borda azul no Chrome */
     width: 100%;
-    height: 100%;
-    object-fit: contain; /* Garante que o vídeo caiba na tela */
+    padding: 12px 15px 12px 45px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 16px;
+    transition: border-color 0.3s ease, background 0.3s ease;
+}
+.form-group input:focus {
+    outline: none;
+    background: var(--input-focus);
+    border-color: var(--highlight);
+}
+.form-group input::placeholder { color: rgba(255, 255, 255, 0.6); }
+
+.submit-btn {
+    width: 100%;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
 }
 
-/* Modal de Comentários */
-#comments-modal .liquid-glass-card {
-    transition: none; /* Remove hover do card principal do modal */
-    transform: none;
+.submit-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.4);
 }
-#comments-modal .liquid-glass-card:hover {
-    transform: none;
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2); /* Sombra padrão */
+
+.form-switch {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 14px;
+    opacity: 0.8;
 }
-.comment-item {
-    transition: background-color 0.2s ease;
-}
-.comment-item:hover {
-    background-color: rgba(255, 255, 255, 0.05); /* Fundo sutil no hover */
-}
-.reply-button {
-    opacity: 0.7;
-    transition: opacity 0.2s;
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-}
-.reply-button:hover {
+
+.form-switch a {
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 600;
     opacity: 1;
 }
-#reply-indicator {
-    background-color: rgba(59, 130, 246, 0.1); /* Fundo azul claro transparente */
-    padding: 4px 8px;
-    border-radius: 4px;
-    border: 1px solid rgba(59, 130, 246, 0.3);
+.form-switch a:hover { text-decoration: underline; }
+
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 20px 0;
+    color: rgba(255,255,255,0.6);
+}
+.divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+.divider:not(:empty)::before { margin-right: .5em; }
+.divider:not(:empty)::after { margin-left: .5em; }
+
+.google-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+.google-btn i {
+    font-size: 1.2rem;
 }
 
-/* Ajustes Responsivos */
+/* Notification styles */
+#notification-btn.has-new svg {
+    color: #ec4899; /* pink-500 */
+    animation: ring-bell 0.8s ease-in-out;
+}
+
+@keyframes ring-bell {
+    0%, 100% { transform: rotate(0); }
+    10%, 30%, 50%, 70%, 90% { transform: rotate(-10deg); }
+    20%, 40%, 60%, 80% { transform: rotate(10deg); }
+}
+
+.notification-tab {
+    transition: all 0.2s ease-in-out;
+    color: #a1a1aa; /* stone-400 */
+}
+.notification-tab.active {
+    color: #ffffff;
+    font-weight: 600;
+    border-bottom-color: transparent;
+    position: relative;
+}
+.notification-tab.active::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background-image: linear-gradient(to right, #a855f7, #ec4899);
+}
+.notification-content {
+    display: none;
+}
+.notification-content.active {
+    display: block;
+}
+
+.notification-message {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+
 @media (max-width: 640px) {
-    #player-settings-panel { width: 160px; right: 0.5rem; bottom: calc(100% + 0.5rem); }
-    .settings-option-btn { padding: 0.5rem 0.75rem; font-size: 0.75rem; }
-    .glass-form { width: 90%; max-width: 400px; } /* Ajusta largura do form de login/registro */
-    #comments-modal .liquid-glass-card { height: 90vh; } /* Ajusta altura do modal de comentários */
+    #player-settings-panel {
+        width: 160px;
+        right: 0.5rem;
+        bottom: calc(100% + 0.5rem);
+    }
+    .settings-option-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.75rem;
+    }
 }
-
-/* Spinner dentro do glass */
-.glass-spinner-wrapper { display: flex; align-items: center; justify-content: center; }
-.glass-spinner { width: 60px; height: 60px; border-radius: 50%; position: relative; overflow: hidden; }
-.glass-spinner .glass-filter, .glass-spinner .glass-overlay, .glass-spinner .glass-specular { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; }
-.glass-spinner .glass-filter { z-index: 1; backdrop-filter: blur(3px); filter: saturate(110%) brightness(1.1); }
-.glass-spinner .glass-overlay { z-index: 2; background: rgba(50,50,50,0.3); }
-.glass-spinner .glass-specular { z-index: 3; box-shadow: inset 1px 1px 1px rgba(255,255,255,0.2); }
-.glass-spinner .glass-content { position: relative; z-index: 4; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-.spinner-ring {
-    width: 40px; height: 40px; border: 4px solid transparent; border-top-color: #a855f7; /* purple */ border-right-color: #ec4899; /* pink */
-    border-radius: 50%; animation: rotation 1s linear infinite; position: absolute;
-}
-.spinner-core { /* Ponto central (opcional) */
-    width: 8px; height: 8px; background-color: rgba(255,255,255,0.5); border-radius: 50%;
-}
-
