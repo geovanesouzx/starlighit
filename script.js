@@ -20,7 +20,7 @@ import {
     deleteDoc,
     query,
     where,
-    orderBy,
+    // orderBy, // REMOVIDO - NÃO USAR
     onSnapshot,
     arrayUnion,
     serverTimestamp,
@@ -30,25 +30,13 @@ import {
 document.addEventListener('DOMContentLoaded', function() {
     lucide.createIcons();
 
-    // Restore last session's location
-    const savedHash = localStorage.getItem('starlight-last-location');
-    if (savedHash && savedHash !== '#player' && savedHash !== window.location.hash) {
-        window.location.hash = savedHash;
-    } else if (!window.location.hash) {
+    // REMOVIDO: Lógica de salvar/restaurar localização anterior
+    // Define um hash padrão se nenhum existir
+    if (!window.location.hash || window.location.hash === '#player') {
+         // Limpa o hash #player no recarregamento e define um padrão
+        history.replaceState(null, '', window.location.pathname + window.location.search);
         window.location.hash = '#home-view';
     }
-
-    // Save location on change/close
-    window.addEventListener('hashchange', () => {
-        if(window.location.hash !== '#player') { // Don't save player state
-            localStorage.setItem('starlight-last-location', window.location.hash);
-        }
-    });
-    window.addEventListener('beforeunload', () => {
-        if(window.location.hash !== '#player') {
-            localStorage.setItem('starlight-last-location', window.location.hash);
-        }
-    });
 
     // --- Configuração do Firebase ---
     const firebaseConfig = {
@@ -78,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentDetailsItem = null;
     let controlsTimeout;
     let currentPlayerContext = {};
-    let lastActiveViewId = 'home-view';
+    // let lastActiveViewId = 'home-view'; // Não é mais necessário com o roteamento por hash
     let lastProgressSaveTime = 0;
     const detailsView = document.getElementById('details-view');
 
@@ -272,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function createCarousel(container, title, data) {
-        if (!data || data.length === 0) return;
+        if (!container || !data || data.length === 0) return;
         const section = document.createElement('section');
         section.innerHTML = `
             <div class="liquid-glass-card inline-block mb-6 rounded-full" style="--bg-color: rgba(30,30,30,0.3);">
@@ -299,7 +287,7 @@ document.addEventListener('DOMContentLoaded', function() {
                  <div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.1);"></div>
                  <div class="glass-specular"></div>
                  <div class="glass-content p-0">
-                    <img src="${posterPath}" alt="Pôster de ${item.title}" loading="lazy" class="w-full h-full object-cover rounded-[inherit]">
+                     <img src="${posterPath}" alt="Pôster de ${item.title}" loading="lazy" class="w-full h-full object-cover rounded-[inherit]">
                  </div>
             </div>
         </a>`;
@@ -316,7 +304,7 @@ document.addEventListener('DOMContentLoaded', function() {
                  <div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.1);"></div>
                  <div class="glass-specular"></div>
                  <div class="glass-content p-0">
-                    <img src="${posterPath}" alt="Pôster de ${item.title}" loading="lazy" class="w-full h-full object-cover rounded-[inherit]">
+                     <img src="${posterPath}" alt="Pôster de ${item.title}" loading="lazy" class="w-full h-full object-cover rounded-[inherit]">
                  </div>
             </div>
             <h4 class="text-white text-sm mt-2 truncate">${item.title}</h4>
@@ -424,14 +412,16 @@ document.addEventListener('DOMContentLoaded', function() {
             
             onSnapshot(doc(db, 'config', 'featured'), (docSnap) => {
                 featuredItemIds = docSnap.exists() ? (docSnap.data().items || []) : [];
-                const currentActiveView = document.querySelector('.content-view:not(.hidden)')?.id || 'home-view';
-                renderScreenContent(currentActiveView, true);
+                // const currentActiveView = document.querySelector('.content-view:not(.hidden)')?.id || 'home-view';
+                // A navegação agora é centralizada, apenas renderiza a view atual
+                handleNavigation();
             });
         });
     }
 
     async function populateAllViews() {
         const carouselsContainer = document.getElementById('home-carousels-container');
+        if (!carouselsContainer) return;
         carouselsContainer.innerHTML = '';
         
         const recentlyAdded = [...firestoreContent]
@@ -448,7 +438,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // --- Navigation and View Management ---
-    const views = document.querySelectorAll('.content-view');
+    
+    // NOVO: Manipulador de clique de link de navegação
     const navLinks = document.querySelectorAll('.nav-item, .mobile-nav-item');
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
@@ -456,24 +447,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const targetId = link.getAttribute('data-target');
             if (!targetId) return;
             
-            lastActiveViewId = targetId;
-
-            if (targetId !== 'home-view' && heroCarouselInterval) {
-                clearInterval(heroCarouselInterval);
-                heroCarouselInterval = null;
-            } 
-
-            document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(l => l.classList.remove('active'));
-            views.forEach(view => view.classList.add('hidden'));
-            const targetView = document.getElementById(targetId);
-            if(targetView) {
-               targetView.classList.remove('hidden');
-               renderScreenContent(targetId);
+            // ATUALIZADO: Apenas muda o hash. O listener 'hashchange' fará o resto.
+            if (window.location.hash !== `#${targetId}`) {
+                window.location.hash = targetId;
             }
-            
-            document.querySelectorAll(`[data-target="${targetId}"]`).forEach(l => l.classList.add('active'));
-            updateMobileNavIndicator();
-            document.getElementById('main-background').style.opacity = (targetId === 'home-view' && currentHeroItem) ? 1 : 0;
         });
     });
     
@@ -505,30 +482,27 @@ document.addEventListener('DOMContentLoaded', function() {
         attachGlassButtonListeners();
     }
 
+    // NOVO: Manipulador de clique de cartão de conteúdo
     document.body.addEventListener('click', (e) => {
         const anchor = e.target.closest('a');
         if (anchor && anchor.hash.startsWith('#details/')) {
             e.preventDefault();
-            const docId = anchor.hash.split('/')[1];
-            showDetailsView({ docId });
+            // ATUALIZADO: Apenas muda o hash.
+            window.location.hash = anchor.hash;
         }
     });
-
-    function hideDetailsView() {
-        history.back();
-    }
     
     async function showDetailsView(item) {
+        // Esta função agora APENAS renderiza o conteúdo da view.
+        // O roteador (handleNavigation) cuida de mostrar/esconder.
         document.querySelector('header').classList.add('hidden');
         document.querySelector('footer').classList.add('hidden');
-        document.querySelectorAll('.content-view').forEach(v => v.classList.add('hidden'));
 
         detailsView.classList.remove('hidden');
         detailsView.innerHTML = '<div class="spinner mx-auto mt-20"></div>';
         window.scrollTo(0, 0);
-        if (window.location.hash !== `#details/${item.docId}`) {
-            history.pushState({view: 'details'}, '', `#details/${item.docId}`);
-        }
+        
+        // REMOVIDO: history.pushState
         
         const data = firestoreContent.find(i => i.docId === item.docId);
         if (!data) {
@@ -770,9 +744,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         currentPlayerContext = { ...context, key, id: itemData.id, itemData };
 
+        // ATUALIZADO: Usa pushState para mudar o URL sem disparar hashchange
+        // Isso permite que o botão 'Voltar' funcione
         if (window.location.hash !== '#player') {
             history.pushState({view: 'player'}, '', '#player');
         }
+        
         playerView.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
         playerTitle.textContent = context.title;
@@ -860,9 +837,8 @@ document.addEventListener('DOMContentLoaded', function() {
             screen.orientation.unlock();
         }
 
-        if(updateHistory && window.location.hash === '#player'){
-            history.back();
-        }
+        // ATUALIZADO: Não mexe mais no history.back()
+        // O roteador (handleNavigation) fará isso ao ser chamado pelo popstate
     }
 
     function formatTime(timeInSeconds) {
@@ -977,7 +953,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const newContext = { ...currentPlayerContext, currentIndex: newIndex };
             const episode = newContext.episodes[newIndex];
             newContext.title = `${newContext.itemData.name} - T${episode.season_number} E${episode.episode_number}`;
-            showPlayer(newContext);
+            showPlayer(newContext); // showPlayer fará o reset e pushState
         }
     }
 
@@ -997,7 +973,9 @@ document.addEventListener('DOMContentLoaded', function() {
         fullscreenBtn.querySelector('.glass-content').innerHTML = isFullscreen ? ICONS.exitFullscreen : ICONS.fullscreen;
 
         if (!isFullscreen && !playerView.classList.contains('hidden')) {
-             hidePlayer();
+             // O usuário saiu do fullscreen (ex: com ESC)
+             // O ideal é voltar para a tela de detalhes
+             history.back();
         }
     });
 
@@ -1066,7 +1044,8 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('hero-watch-btn').addEventListener('click', () => {
         if (!currentHeroItem) return;
         showPlayer({ 
-            videoUrl: 'https://api.anivideo.net/videohls.php?d=https://cdn-s01.mywallpaper-4k-image.net/stream/o/one-piece-dublado-v2/78.mp4/index.m3u8&nocache1757330957', 
+            // videoUrl: 'https://api.anivideo.net/videohls.php?d=https://cdn-s01.mywallpaper-4k-image.net/stream/o/one-piece-dublado-v2/78.mp4/index.m3u8&nocache1757330957', 
+            videoUrl: currentHeroItem.url, // Usa a URL do item
             title: currentHeroItem.title || currentHeroItem.name,
             itemData: currentHeroItem
         });
@@ -1123,59 +1102,118 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    window.addEventListener('popstate', (event) => {
-        const wasPlayerOpen = !playerView.classList.contains('hidden');
-        
-        if (wasPlayerOpen) {
-            hidePlayer(false); // Just close the player UI
+    // --- NOVO: Roteador Central ---
+    function handleNavigation() {
+        const hash = window.location.hash;
+
+        // --- Rota de Autenticação ---
+        if (!userId) {
+            if (hash !== '#login-view') {
+                // Força a tela de login se não estiver nela
+                history.replaceState(null, '', '#login-view');
+            }
+            showLoginScreen();
+            return;
         }
 
-        // After ANY popstate, re-evaluate what to show based on the URL.
-        const hash = window.location.hash;
+        // --- Rota de Seleção de Perfil ---
+        if (!currentProfile) {
+            if (hash !== '#manage-profile-view') {
+                 // Força a tela de perfil se não estiver nela
+                history.replaceState(null, '', '#manage-profile-view');
+            }
+            showProfileScreen(); // Esta função já lida com mostrar/esconder
+            return;
+        }
+
+        // --- Roteamento do Aplicativo (Usuário Logado e com Perfil) ---
+
+        // Garante que overlays especiais sejam fechados
+        if (!searchOverlay.classList.contains('hidden')) {
+            toggleSearchOverlay(false);
+        }
+
+        // Esconde header/footer para views especiais
+        if (hash.startsWith('#details/') || hash === '#player') {
+            document.querySelector('header').classList.add('hidden');
+            document.querySelector('footer').classList.add('hidden');
+        } else {
+            document.querySelector('header').classList.remove('hidden');
+            document.querySelector('footer').classList.remove('hidden');
+        }
+        
+        // Garante que views especiais sejam escondidas ao navegar para views normais
+        if (!hash.startsWith('#details/')) {
+             detailsView.classList.add('hidden');
+        }
+         if (hash !== '#player') {
+             if (!playerView.classList.contains('hidden')) {
+                 hidePlayer(false); // Apenas esconde a UI, não salva progresso nem mexe no history
+             }
+         }
+
+        // Esconde todas as views principais
+        document.querySelectorAll('#view-container > .content-view').forEach(view => view.classList.add('hidden'));
 
         if (hash.startsWith('#details/')) {
             const docId = hash.split('/')[1];
-            showDetailsView({ docId });
+            showDetailsView({ docId }); // showDetailsView vai mostrar 'detailsView'
+        } else if (hash === '#player') {
+            // Esta view é mostrada por showPlayer(), o roteador apenas garante que outras estejam escondidas
+            if (playerView.classList.contains('hidden')) {
+                // O usuário provavelmente recarregou a página em #player.
+                // Não temos contexto, então volte.
+                history.back();
+            }
         } else {
-             // This is a main screen. Make sure overlays are hidden.
-            if (!detailsView.classList.contains('hidden')) {
-                detailsView.classList.add('hidden');
-                 document.body.classList.remove('overflow-hidden');
-            }
-             if (!playerView.classList.contains('hidden')) {
-                hidePlayer(false);
-            }
-            
+            // Navegação de View Padrão (home, series, etc.)
             const targetId = hash.substring(1) || 'home-view';
             const targetView = document.getElementById(targetId);
 
-            document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
-            if(targetView) {
+            if (targetView) {
                 targetView.classList.remove('hidden');
                 renderScreenContent(targetId);
+            } else {
+                // Fallback para home
+                document.getElementById('home-view').classList.remove('hidden');
+                renderScreenContent('home-view');
+                if(window.location.hash !== '#home-view') {
+                    history.replaceState(null, '', '#home-view');
+                }
             }
 
-            const nonAppScreens = ['login-view', 'manage-profile-view'];
-            const isAppScreen = !nonAppScreens.includes(targetId);
+            // Atualiza destaques de navegação
+            document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(l => l.classList.remove('active'));
+            document.querySelectorAll(`[data-target="${targetId}"]`).forEach(l => l.classList.add('active'));
+            updateMobileNavIndicator();
+            
+            // Atualiza background
+            document.getElementById('main-background').style.opacity = (targetId === 'home-view' && currentHeroItem) ? 1 : 0;
 
-             if (isAppScreen) {
-                 document.querySelector('header').classList.remove('hidden');
-                 document.querySelector('footer').classList.remove('hidden');
-             } else {
-                 document.querySelector('header').classList.add('hidden');
-                 document.querySelector('footer').classList.add('hidden');
-             }
+            // Para rotação do hero
+            if (targetId !== 'home-view' && heroCarouselInterval) {
+                clearInterval(heroCarouselInterval);
+                heroCarouselInterval = null;
+            }
         }
-    });
+    }
+
+    // Adiciona os listeners de navegação
+    window.addEventListener('popstate', handleNavigation);
+    window.addEventListener('hashchange', handleNavigation);
+
 
     // --- Notification Logic ---
     function listenForNotifications() {
-        const q = query(collection(db, "notifications"), orderBy("createdAt", "desc"));
+        // CORRIGIDO: Removido orderBy
+        const q = query(collection(db, "notifications"));
         onSnapshot(q, (snapshot) => {
             notifications = [];
             snapshot.forEach((doc) => {
                 notifications.push({ id: doc.id, ...doc.data() });
             });
+            // CORRIGIDO: Ordenação feita no cliente
+            notifications.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
             updateNotificationBell();
         });
     }
@@ -1331,10 +1369,10 @@ document.addEventListener('DOMContentLoaded', function() {
                          <div class="glass-overlay"></div>
                          <div class="glass-specular"></div>
                          <div class="glass-content flex justify-center items-center gap-2 p-2 text-sm">
-                           ${userHasVoted 
+                            ${userHasVoted 
                              ? '<i data-lucide="minus-circle" class="w-4 h-4"></i> Remover Voto' 
                              : '<i data-lucide="plus-circle" class="w-4 h-4"></i> Apoiar Pedido'
-                           }
+                            }
                          </div>
                      </button>
                 </div>
@@ -1363,10 +1401,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="relative w-full aspect-square liquid-glass-card">
                      <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
                      <div class="glass-content p-0">
-                        <img src="${profile.avatar}" alt="${profile.name}" class="w-full h-full object-cover rounded-[inherit]">
-                        <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${isEditMode ? '!opacity-100' : ''}">
-                            <svg class="w-12 h-12 text-white ${isEditMode ? '' : 'hidden'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z"></path></svg>
-                        </div>
+                         <img src="${profile.avatar}" alt="${profile.name}" class="w-full h-full object-cover rounded-[inherit]">
+                         <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${isEditMode ? '!opacity-100' : ''}">
+                             <svg class="w-12 h-12 text-white ${isEditMode ? '' : 'hidden'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z"></path></svg>
+                         </div>
                      </div>
                 </div>
                 <p class="text-center text-lg text-gray-300 group-hover:text-white mt-3 transition-colors">${profile.name}</p>
@@ -1409,15 +1447,15 @@ document.addEventListener('DOMContentLoaded', function() {
         headerProfileBtn.innerHTML = '';
         headerProfileBtn.appendChild(avatarImg);
 
-        // Show main app
-        loginView.classList.add('hidden');
-        document.querySelector('header').classList.remove('hidden');
-        document.querySelector('footer').classList.remove('hidden');
-        manageProfileView.classList.add('hidden');
-        document.getElementById('home-view').classList.remove('hidden');
-        document.getElementById('main-background').style.opacity = 1;
-        
-        // Load all content
+        // ATUALIZADO: Apenas muda o hash. O roteador cuidará de mostrar/esconder as views.
+        if (window.location.hash !== '#home-view') {
+            window.location.hash = '#home-view';
+        } else {
+            // Se já estiver em home-view, força a navegação para recarregar
+            handleNavigation();
+        }
+
+        // Carrega o conteúdo do Firestore (o roteador chamará renderScreenContent)
         listenToFirestoreContent();
     }
 
@@ -1482,7 +1520,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 await addDoc(colRef, profileData);
                 showToast('Perfil criado com sucesso!');
             }
-            await loadProfiles();
+            await loadProfiles(); // Recarrega os perfis
             profileModal.classList.add('hidden');
         } catch (error) {
             console.error("Erro ao salvar perfil: ", error);
@@ -1495,19 +1533,23 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('delete-profile-btn').addEventListener('click', async () => {
         const profileId = document.getElementById('profile-id-input').value;
          if (profileId && profiles.length > 1) {
-            // NOTE: Using a simple confirm for now, a custom modal would be better.
-            if (confirm('Tem certeza que deseja excluir este perfil? Esta ação não pode ser desfeita.')) {
-                try {
-                    const docRef = doc(db, 'users', userId, 'profiles', profileId);
-                    await deleteDoc(docRef);
-                    showToast('Perfil excluído.');
-                    await loadProfiles();
-                    profileModal.classList.add('hidden');
-                } catch (error) {
-                    console.error("Erro ao excluir perfil: ", error);
-                    showToast('Não foi possível excluir o perfil.', true);
+            // CORRIGIDO: Usa o modal de confirmação customizado
+            showConfirmationModal(
+                'Excluir Perfil',
+                'Tem certeza que deseja excluir este perfil? Esta ação não pode ser desfeita.',
+                async () => { // Callback de confirmação
+                    try {
+                        const docRef = doc(db, 'users', userId, 'profiles', profileId);
+                        await deleteDoc(docRef);
+                        showToast('Perfil excluído.');
+                        await loadProfiles();
+                        profileModal.classList.add('hidden');
+                    } catch (error) {
+                        console.error("Erro ao excluir perfil: ", error);
+                        showToast('Não foi possível excluir o perfil.', true);
+                    }
                 }
-            }
+            );
          } else {
              showToast('Não é possível excluir o único perfil.', true);
          }
@@ -1521,15 +1563,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     headerProfileBtn.addEventListener('click', () => {
-         views.forEach(view => view.classList.add('hidden'));
-         document.querySelector('header').classList.add('hidden');
-         document.querySelector('footer').classList.add('hidden');
-         manageProfileView.classList.remove('hidden');
-         document.getElementById('main-background').style.opacity = 0;
+         // ATUALIZADO: Apenas muda o hash.
          isEditMode = false;
          manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
          document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
-         renderProfiles();
+         currentProfile = null; // Força a re-seleção
+         window.location.hash = 'manage-profile-view';
     });
 
     // --- Form Switching & Firebase Auth Logic ---
@@ -1737,16 +1776,19 @@ document.addEventListener('DOMContentLoaded', function() {
     function showLoginScreen() {
         userId = null;
         currentProfile = null;
-        views.forEach(view => view.classList.add('hidden'));
+        document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
         loginView.classList.remove('hidden');
         document.querySelector('header').classList.add('hidden');
         document.querySelector('footer').classList.add('hidden');
+        document.getElementById('main-background').style.opacity = 0;
     }
 
     async function showProfileScreen() {
-         views.forEach(view => view.classList.add('hidden'));
+         document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
          loginView.classList.add('hidden');
          manageProfileView.classList.remove('hidden');
+         document.querySelector('header').classList.add('hidden');
+         document.querySelector('footer').classList.add('hidden');
          document.getElementById('main-background').style.opacity = 0;
          isEditMode = false;
          manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
@@ -1760,45 +1802,28 @@ document.addEventListener('DOMContentLoaded', function() {
             userId = user.uid;
             listenForNotifications();
             listenToRequests();
-            showProfileScreen();
             initializeUI();
+            
+            // Carrega os perfis. O usuário SEMPRE terá que escolher um perfil ao carregar.
+            loadProfiles(); 
+            currentProfile = null; // Força a seleção
+            
+            if (window.location.hash !== '#manage-profile-view') {
+                 // Use replaceState para não poluir o histórico
+                history.replaceState(null, '', '#manage-profile-view');
+            }
+            handleNavigation(); // Roda o roteador. Ele verá !currentProfile e mostrará a tela de perfil.
         } else {
-            showLoginScreen();
+            userId = null;
+            currentProfile = null;
+            if (window.location.hash !== '#login-view') {
+                history.replaceState(null, '', '#login-view');
+            }
+            handleNavigation(); // Roda o roteador. Ele verá !userId e mostrará a tela de login.
         }
     });
-
-    if (location.hash === '#player') {
-        history.replaceState(null, document.title, window.location.pathname + window.location.search);
-        window.location.hash = localStorage.getItem('starlight-last-location') || '#home-view';
-    }
-    handleLocationChange(); // Initial route handling
     
     attachGlassButtonListeners();
     window.addEventListener('resize', updateMobileNavIndicator);
 
-    function handleLocationChange() {
-        const hash = window.location.hash;
-        if (hash.startsWith('#details/')) {
-            const docId = hash.split('/')[1];
-            showDetailsView({ docId });
-        } else {
-            const targetId = hash.substring(1) || 'home-view';
-            document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
-            const targetView = document.getElementById(targetId);
-            if(targetView) {
-                targetView.classList.remove('hidden');
-                renderScreenContent(targetId);
-            }
-             const nonAppScreens = ['login-view', 'manage-profile-view'];
-            const isAppScreen = !nonAppScreens.includes(targetId);
-            if (isAppScreen) {
-                 document.querySelector('header').classList.remove('hidden');
-                 document.querySelector('footer').classList.remove('hidden');
-             } else {
-                 document.querySelector('header').classList.add('hidden');
-                 document.querySelector('footer').classList.add('hidden');
-             }
-        }
-    }
 });
-
