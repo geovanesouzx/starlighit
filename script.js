@@ -1174,7 +1174,10 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
      */
     async function showPlayer(context) {
         // 1. Reset completo do player antes de iniciar um novo
-        hidePlayer(false, true); // Limpa estado anterior, marca como 'isChangingEpisode'
+        // **Não chama mais hidePlayer daqui para evitar loop com handleNavigation**
+        // O reset será feito pontualmente se necessário (ex: trocar episódio)
+        // hidePlayer(false, true); // <--- REMOVIDO DAQUI
+
         await new Promise(resolve => setTimeout(resolve, 50)); // Pequeno delay
 
         let key; // Chave única para salvar o progresso (ex: 'movie-123', 'tv-456-s1-e2')
@@ -1232,6 +1235,16 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         }
 
         console.log("Tentando carregar URL:", urlToLoad);
+
+        // Limpa estado anterior do HLS se existir
+        if (hls) {
+            hls.destroy();
+            hls = null;
+        }
+        // Remove src anterior do video element
+        videoPlayer.removeAttribute('src');
+        videoPlayer.load();
+
 
         // Configura HLS.js se for um stream .m3u8 e o navegador suportar
         if (Hls.isSupported() && urlToLoad.includes('.m3u8')) {
@@ -1300,7 +1313,8 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             }
             try {
                 if (screen.orientation && typeof screen.orientation.lock === 'function') {
-                    await screen.orientation.lock('landscape');
+                    // Tenta travar em landscape, mas permite qualquer landscape
+                    await screen.orientation.lock('landscape').catch(e => console.warn("Falha ao travar landscape:", e));
                 }
             } catch (err) {
                 console.error("Não foi possível bloquear orientação:", err);
@@ -1609,6 +1623,9 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                 clearTimeout(controlsTimeout);
                 return;
             }
+             // **Chama hidePlayer para resetar o estado antes de carregar o novo**
+             hidePlayer(true, true); // Salva progresso, marca como trocando de episódio
+
             // Cria novo contexto com índice atualizado e novo título
             const newContext = {
                 ...currentPlayerContext,
@@ -1617,7 +1634,9 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                 videoUrl: episode.url, // IMPORTANTE: Atualizar a URL do vídeo
                 startTime: 0 // Começa do início
             };
-            showPlayer(newContext); // Mostra o player com o novo episódio
+            // Chama showPlayer após um pequeno delay para garantir que hidePlayer concluiu
+            setTimeout(() => showPlayer(newContext), 100);
+
         } else {
             console.log("Não há mais episódios nessa direção.");
             // Poderia mostrar uma mensagem ou fechar o player
@@ -1839,6 +1858,15 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         const hash = window.location.hash; // Pega o hash atual (ex: #home-view, #details/123)
         const previousHash = sessionStorage.getItem('starlight-previousHash') || '#home-view'; // Pega hash anterior
 
+        // *** CORREÇÃO PLAYER NAVIGATION (Back Button): Fechar player principal explicitamente ao voltar ***
+        // Se o player principal estava aberto (visível) e o novo hash NÃO é #player, fecha o player.
+        if (hash !== '#player' && !playerView.classList.contains('hidden')) {
+            console.log("[handleNavigation] Player principal aberto e hash mudou, fechando player...");
+            await hidePlayer(true, false); // Força o fechamento do player antes de continuar
+            // Não retorna aqui, pois a navegação para a view anterior deve continuar
+        }
+
+
         // --- Rota de Autenticação ---
         if (!userId) { // Se o usuário NÃO está logado
             console.log("[handleNavigation] Usuário não logado, redirecionando para #login-view");
@@ -1902,21 +1930,18 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         // Garante que views especiais sejam escondidas ao navegar para views normais
         if (!hash.startsWith('#details/')) detailsView.classList.add('hidden');
 
-        // *** CORREÇÃO PLAYER NAVIGATION: Chama hidePlayer adequadamente ***
-        if (hash !== '#player' && !playerView.classList.contains('hidden')) {
-             console.log("[handleNavigation] Hash mudou de #player, chamando hidePlayer(true).");
-             // 'true' para salvar progresso, 'false' para isChangingEpisode
-             await hidePlayer(true, false); // Aguarda hidePlayer concluir (async)
-        }
-
-
         // Para mídia de novidades se saiu dessa view
         if (previousHash === '#news-view' && hash !== '#news-view') {
             stopNewsViewMedia();
         }
 
-        // Esconde todas as views principais
-        document.querySelectorAll('#view-container > .content-view').forEach(view => view.classList.add('hidden'));
+        // Esconde todas as views principais *exceto a do player se for o hash atual*
+        document.querySelectorAll('#view-container > .content-view').forEach(view => {
+             if (hash !== '#player' || view.id !== 'player-view') { // Não esconde o player se o hash é #player
+                view.classList.add('hidden');
+            }
+        });
+
 
         // --- Lógica de Roteamento ---
         let targetId = 'home-view'; // Default
@@ -1950,7 +1975,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                     handleNavigation(); // Chama de novo para carregar a view correta
                     return; // Interrompe
                 }
-                targetView = playerView; // Marca a view ativa
+                targetView = playerView; // Marca a view ativa (já deve estar visível)
             } else {
                 targetId = hash.substring(1) || 'home-view'; // Pega ID da view normal
                 console.log(`[handleNavigation] Rota normal: #${targetId}`);
@@ -1995,8 +2020,18 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
     }
 
 
-    // Adiciona os listeners de navegação do navegador
+    // Listener principal de navegação do navegador
     window.addEventListener('popstate', handleNavigation);
+
+    // *** NOVO: Listener específico para fechar o player de novidades ao usar o botão voltar ***
+    window.addEventListener('popstate', () => {
+        if (!newsPlayerView.classList.contains('hidden')) {
+            console.log("[popstate] Player de novidades aberto, fechando...");
+            hideNewsPlayer();
+            // Não precisa manipular o histórico aqui, pois o popstate já ocorreu.
+            // Apenas fechamos o overlay visual.
+        }
+    });
 
     // --- Lógica de Notificações ---
     function listenForNotifications() {
@@ -3331,3 +3366,4 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
 
 
 }); // Fim do DOMContentLoaded
+
