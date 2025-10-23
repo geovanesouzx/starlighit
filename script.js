@@ -2564,7 +2564,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         const newsDocRef = doc(db, 'news', newsId);
-        const likeIcon = likeBtn.querySelector('i');
+        const likeIcon = likeBtn.firstElementChild;
         const likeCountSpan = likeBtn.querySelector('.like-count');
         const isCurrentlyLiked = likeBtn.classList.contains('text-pink-500');
 
@@ -2629,18 +2629,21 @@ document.addEventListener('DOMContentLoaded', function() {
         if (submitBtn) submitBtn.disabled = true;
 
         try {
-            const commentsColRef = collection(db, 'news', newsId, 'comments');
-            await addDoc(commentsColRef, commentData);
-            inputElement.value = ''; // Limpa input
-            // Não precisa recarregar tudo, o listener onSnapshot (a ser adicionado) cuidará disso
-            // ou podemos adicionar o comentário manualmente na UI para otimismo
-            showToast('Comentário adicionado!');
-            // Opcional: Adicionar o comentário localmente na UI imediatamente
-             const newCommentCard = createCommentCard({ id: 'temp-' + Date.now(), ...commentData }, newsId); // Cria card com ID temporário
-             commentsListElement.prepend(newCommentCard); // Adiciona no início da lista
-             attachGlassButtonListeners();
-             lucide.createIcons();
-        } catch (error) {
+    const commentsColRef = collection(db, 'news', newsId, 'comments');
+    // MUDANÇA 1: Guardamos o resultado do addDoc em uma nova variável "newCommentRef"
+    const newCommentRef = await addDoc(commentsColRef, commentData);
+    
+    inputElement.value = ''; // Limpa input
+    showToast('Comentário adicionado!');
+
+    // Opcional: Adicionar o comentário localmente na UI imediatamente
+    // MUDANÇA 2: Usamos a ID real (newCommentRef.id) em vez da ID temporária
+    const newCommentCard = createCommentCard({ id: newCommentRef.id, ...commentData }, newsId);
+    
+    commentsListElement.prepend(newCommentCard); // Adiciona no início da lista
+    attachGlassButtonListeners();
+    lucide.createIcons();
+} catch (error) {
             console.error("Erro ao adicionar comentário:", error);
             showToast("Erro ao enviar comentário.", true);
         } finally {
