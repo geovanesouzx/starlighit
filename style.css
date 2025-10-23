@@ -312,7 +312,11 @@ body.auth-loading {
 
 /* Video Player Styles */
 #player-view { background-color: #000; }
-#player-view video { width: 100%; height: 100%; object-fit: contain; }
+#player-view video { 
+    width: 100%; 
+    height: 100%; 
+    object-fit: contain; /* Padrão é 'contain'. JS irá alternar para 'cover' */
+}
 .player-controls-wrapper {
     position: absolute;
     bottom: 0;

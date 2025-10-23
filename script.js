@@ -110,6 +110,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const settingsBtn = document.getElementById('player-settings-btn');
     const settingsPanel = document.getElementById('player-settings-panel');
     const playerBackBtn = document.getElementById('player-back-btn');
+    const aspectRatioBtn = document.getElementById('player-aspect-ratio-btn'); // NOVO
+    let currentAspectRatio = 'contain'; // NOVO: 'contain' ou 'cover'
 
     // Elementos de Gerenciamento de Perfil
     const manageProfileView = document.getElementById('manage-profile-view');
@@ -152,7 +154,10 @@ document.addEventListener('DOMContentLoaded', function() {
         fullscreen: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg>`,
         exitFullscreen: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"></path></svg>`,
         settings: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59 1.69.98l2.49 1c.23.09.49 0 .61.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg>`,
-        back: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>`
+        back: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>`,
+        // NOVOS ÍCONES DE ASPECT RATIO
+        aspectContain: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M2 5h2v14H2V5zm20 0h-2v14h2V5zM6 7h12v10H6V7z"></path></svg>`,
+        aspectCover: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 5h16v14H4V5z"></path></svg>`
     };
 
     // HTML para o spinner de carregamento
@@ -279,7 +284,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const progressData = {
             currentTime: videoPlayer.currentTime, // Tempo atual
             duration: videoPlayer.duration,       // Duração total
-            lastWatched: Date.now(),              // Timestamp da última atualização
+            lastWatched: Date.now(),             // Timestamp da última atualização
             item: currentPlayerContext.itemData, // Dados do filme/série geral
             // Dados do episódio específico (se for uma série)
             episode: currentPlayerContext.episodes ? currentPlayerContext.episodes[currentPlayerContext.currentIndex] : null,
@@ -828,10 +833,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                      <i data-lucide="play-circle" class="w-8 h-8 text-white"></i> <!-- Ícone de play ao passar o mouse -->
                                  </div>
                              </div>
-                            <div class="flex-1">
-                                <h4 class="font-semibold text-white">${index + 1}. ${epTitle}</h4>
-                                <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden">${epOverview}</p> <!-- Limita altura da sinopse -->
-                            </div>
+                             <div class="flex-1">
+                                 <h4 class="font-semibold text-white">${index + 1}. ${epTitle}</h4>
+                                 <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden">${epOverview}</p> <!-- Limita altura da sinopse -->
+                             </div>
                         </div>
                     </div>
                 `;
@@ -873,11 +878,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
                  // Prepara o contexto para o player
                  const context = {
-                    videoUrl: episode.url, // URL do vídeo do episódio
-                    title: `${data.name} - T${seasonKey} E${episode.episode_number || episodeIndex + 1}`, // Título para o player
-                    itemData: data, // Dados gerais da série
-                    episodes: allEpisodesOfSeason, // Lista de todos os episódios da temporada
-                    currentIndex: episodeIndex // Índice do episódio clicado
+                     videoUrl: episode.url, // URL do vídeo do episódio
+                     title: `${data.name} - T${seasonKey} E${episode.episode_number || episodeIndex + 1}`, // Título para o player
+                     itemData: data, // Dados gerais da série
+                     episodes: allEpisodesOfSeason, // Lista de todos os episódios da temporada
+                     currentIndex: episodeIndex // Índice do episódio clicado
                  };
                  showPlayer(context); // Inicia o player
             }
@@ -944,7 +949,7 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     async function showPlayer(context) {
         // 1. Reset completo do player antes de iniciar um novo
-        hidePlayer(false); // Limpa estado anterior sem mexer no histórico
+        hidePlayer(false, true); // Limpa estado anterior, marca como 'isChangingEpisode'
         await new Promise(resolve => setTimeout(resolve, 50)); // Pequeno delay
 
         let key; // Chave única para salvar o progresso (ex: 'movie-123', 'tv-456-s1-e2')
@@ -991,7 +996,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Configura HLS.js se for um stream .m3u8 e o navegador suportar
         if (Hls.isSupported() && urlToLoad.includes('.m3u8')) {
-            hls = new Hls(); // Cria instância
+            // MUDANÇA: Adiciona configuração de buffer para tentar reduzir travamentos
+            hls = new Hls({
+                maxBufferLength: 30,    // Segundos de buffer
+                maxBufferSize: 60 * 1000 * 1000, // 60MB de buffer
+                startLevel: -1          // Começa na qualidade automática
+            });
             hls.loadSource(urlToLoad); // Carrega a fonte
             hls.attachMedia(videoPlayer); // Anexa ao elemento <video>
             hls.on(Hls.Events.MANIFEST_PARSED, () => { // Quando o manifesto HLS for carregado
@@ -1013,15 +1023,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 2. Lógica de orientação e tela cheia para mobile
         if (window.innerWidth < 768) { // Se for tela pequena (considerado mobile)
+             // MUDANÇA: Lógica ajustada para (re)tentar bloquear a orientação
+             if (!document.fullscreenElement) { // Só tenta entrar em fullscreen se já não estiver
+                try {
+                    await playerView.requestFullscreen();
+                } catch (err) {
+                     console.error("Não foi possível ativar tela cheia:", err);
+                }
+             }
+             // Tenta (re)travar a orientação.
+             // Se foi um clique (nextBtn), funciona.
+             // Se foi 'ended', pode falhar, mas como não demos unlock,
+             // a orientação anterior (landscape) deve ser mantida.
              try {
-                 await playerView.requestFullscreen(); // Tenta entrar em tela cheia
-                 // Tenta travar a orientação em paisagem
                  if (screen.orientation && typeof screen.orientation.lock === 'function') {
                      await screen.orientation.lock('landscape');
                  }
              } catch (err) {
-                 // Erros comuns aqui: usuário negou permissão, navegador não suporta
-                 console.error("Não foi possível ativar tela cheia ou bloquear orientação:", err);
+                console.error("Não foi possível bloquear orientação:", err);
              }
         }
 
@@ -1040,8 +1059,9 @@ document.addEventListener('DOMContentLoaded', function() {
     /**
      * Esconde o player de vídeo e limpa seu estado.
      * @param {boolean} [updateHistory=true] - Se true, salva o progresso e volta no histórico.
+     * @param {boolean} [isChangingEpisode=false] - Se true, não desbloqueia a orientação (mobile).
      */
-    async function hidePlayer(updateHistory = true) {
+    async function hidePlayer(updateHistory = true, isChangingEpisode = false) { // MUDANÇA: Adicionado isChangingEpisode
         // Salva o progresso se updateHistory for true e houver um contexto válido
         if(updateHistory && currentPlayerContext.key){
             await savePlayerProgress();
@@ -1063,12 +1083,20 @@ document.addEventListener('DOMContentLoaded', function() {
         currentPlayerContext = {}; // Limpa o contexto do player
 
         // 3. Sai da tela cheia e desbloqueia a orientação
-        if (document.fullscreenElement) {
-            document.exitFullscreen().catch(err => console.error("Erro ao sair da tela cheia:", err));
+        // MUDANÇA: Só executa se NÃO estiver trocando de episódio
+        if (!isChangingEpisode) {
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(err => console.error("Erro ao sair da tela cheia:", err));
+            }
+            if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+                screen.orientation.unlock(); // Desbloqueia a orientação da tela
+            }
         }
-        if (screen.orientation && typeof screen.orientation.unlock === 'function') {
-            screen.orientation.unlock(); // Desbloqueia a orientação da tela
-        }
+
+        // MUDANÇA: Reseta o aspect ratio para o padrão
+        videoPlayer.style.objectFit = 'contain';
+        currentAspectRatio = 'contain';
+        if(aspectRatioBtn) aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectContain;
 
         // NÃO chama history.back() aqui. O roteador (`handleNavigation`) fará isso
         // quando o evento 'popstate' for disparado pelo clique no botão voltar do navegador.
@@ -1201,6 +1229,21 @@ document.addEventListener('DOMContentLoaded', function() {
     volumeBtn.addEventListener('click', () => { videoPlayer.muted = !videoPlayer.muted; }); // Mutar/Desmutar
     rewindBtn.addEventListener('click', () => { videoPlayer.currentTime -= 10; }); // Voltar 10s
     forwardBtn.addEventListener('click', () => { videoPlayer.currentTime += 10; }); // Avançar 10s
+
+    // NOVO: Listener do botão de Aspect Ratio
+    aspectRatioBtn.addEventListener('click', () => {
+        if (currentAspectRatio === 'contain') {
+            currentAspectRatio = 'cover';
+            videoPlayer.style.objectFit = 'cover';
+            aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectCover;
+            showToast('Proporção: Preencher');
+        } else {
+            currentAspectRatio = 'contain';
+            videoPlayer.style.objectFit = 'contain';
+            aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectContain;
+            showToast('Proporção: Padrão');
+        }
+    });
 
     /**
      * Muda para o episódio anterior ou próximo.
@@ -1349,6 +1392,7 @@ document.addEventListener('DOMContentLoaded', function() {
         fullscreenBtn.querySelector('.glass-content').innerHTML = ICONS.fullscreen;
         settingsBtn.querySelector('.glass-content').innerHTML = ICONS.settings;
         playerBackBtn.querySelector('.glass-content').innerHTML = ICONS.back;
+        aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectContain; // NOVO
         createSettingsOptions(); // Cria opções de velocidade/qualidade
         addPlayerEventListeners(); // Adiciona listeners ao <video>
     }
@@ -1477,7 +1521,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
          if (hash !== '#player') {
              if (!playerView.classList.contains('hidden')) {
-                 hidePlayer(false); // Esconde player (sem salvar/voltar histórico)
+                 hidePlayer(false, false); // Esconde player (NÃO está trocando de ep)
              }
          }
 
@@ -1709,10 +1753,10 @@ document.addEventListener('DOMContentLoaded', function() {
                          <div class="glass-overlay"></div>
                          <div class="glass-specular"></div>
                          <div class="glass-content flex justify-center items-center gap-2 p-2 text-sm">
-                            ${userHasVoted /* Muda texto e ícone do botão com base no voto */
-                             ? '<i data-lucide="minus-circle" class="w-4 h-4"></i> Remover Voto'
-                             : '<i data-lucide="plus-circle" class="w-4 h-4"></i> Apoiar Pedido'
-                            }
+                             ${userHasVoted /* Muda texto e ícone do botão com base no voto */
+                                 ? '<i data-lucide="minus-circle" class="w-4 h-4"></i> Remover Voto'
+                                 : '<i data-lucide="plus-circle" class="w-4 h-4"></i> Apoiar Pedido'
+                             }
                          </div>
                      </button>
                 </div>
