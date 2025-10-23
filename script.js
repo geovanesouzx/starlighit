@@ -899,7 +899,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateMobileNavIndicator() { const indicator = document.getElementById('mobile-nav-indicator'); const activeItem = document.querySelector('#mobile-nav .mobile-nav-item.active'); if (indicator && activeItem) { const left = activeItem.offsetLeft; const width = activeItem.offsetWidth; indicator.style.width = `${width}px`; indicator.style.transform = `translateX(${left}px)`; }}
     /** Mostra ou esconde o overlay de busca */
     function toggleSearchOverlay(show) { if (show) { searchOverlay.classList.remove('hidden'); searchInput.focus(); document.body.style.overflow = 'hidden'; } else { searchOverlay.classList.add('hidden'); searchInput.value = ''; searchResultsContainer.innerHTML = ''; document.body.style.overflow = 'auto'; }}
-    
+
     // -----------------------------------------------------------------
     // --- FUNÇÃO DE BUSCA CORRIGIDA ---
     // -----------------------------------------------------------------
@@ -932,7 +932,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum resultado para "${query}" em nosso catálogo.</p>`;
         }
-        
+
         // Re-anexa listeners para os cards de vidro recém-criados
         attachGlassButtonListeners();
     }
@@ -1132,29 +1132,39 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /** Manipula cliques na área do vídeo em dispositivos móveis (toque único mostra/esconde controles, toque duplo play/pause - implementado como toque simples por enquanto) */
+    // MUDANÇA: Lógica refeita para toque único mostra, segundo toque pausa/play
     function handleMobilePlayerClick() {
         if (!playerView.classList.contains('controls-active')) {
-            // Se controles escondidos, primeiro toque mostra
+            // Se controles escondidos, primeiro toque APENAS mostra os controles
             playerView.classList.add('controls-active');
             clearTimeout(controlsTimeout); // Limpa timeout anterior
-            // Define novo timeout para esconder controles após 3s (se não estiver pausado)
-            if (!videoPlayer.paused) {
-                controlsTimeout = setTimeout(() => {
+            // Define novo timeout para esconder controles após 3s
+            // MUDANÇA: Timeout deve ser definido mesmo se pausado
+            controlsTimeout = setTimeout(() => {
+                playerView.classList.remove('controls-active');
+            }, 3000);
+        } else {
+            // Se controles visíveis, segundo toque alterna play/pause
+            togglePlay();
+            // MUDANÇA: Resetar timeout APÓS pausar/despausar
+            clearTimeout(controlsTimeout);
+            if (!videoPlayer.paused) { // Se estiver tocando, agenda para esconder
+                 controlsTimeout = setTimeout(() => {
                     playerView.classList.remove('controls-active');
                 }, 3000);
             }
-        } else {
-            // Se controles visíveis, segundo toque (na verdade, qualquer toque) alterna play/pause
-            togglePlay();
+            // Se pausou, os controles ficam visíveis até o próximo toque ou timeout manual.
         }
     }
 
+
     /** Manipula cliques na área do vídeo em desktop (mostra controles ou alterna play/pause) */
     function handlePlayerClick() {
-        if (playerView.classList.contains('controls-active')) {
-            togglePlay(); // Se controles visíveis, alterna play/pause
+        // MUDANÇA: Simplificado - togglePlay só se controles já estiverem ativos
+        if (!playerView.classList.contains('controls-active')) {
+             playerView.classList.add('controls-active'); // Se escondidos, apenas mostra
         } else {
-            playerView.classList.add('controls-active'); // Se escondidos, mostra
+            togglePlay(); // Se controles visíveis, alterna play/pause
         }
 
         // Reseta o timeout para esconder controles
@@ -1166,11 +1176,33 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+
     /** Adiciona listeners de evento ao elemento <video> */
     function addPlayerEventListeners() {
+        // Remove listener antigo antes de adicionar novo para evitar duplicidade
+        videoPlayer.removeEventListener('click', handleMobilePlayerClick);
+        videoPlayer.removeEventListener('click', handlePlayerClick);
+
         // Atualiza ícone play/pause
-        videoPlayer.addEventListener('play', () => { playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.pause; });
-        videoPlayer.addEventListener('pause', () => { playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play; });
+        videoPlayer.addEventListener('play', () => {
+             playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.pause;
+             // MUDANÇA: Garante que o timeout de esconder controles seja reativado ao dar play
+             clearTimeout(controlsTimeout);
+             if (playerView.classList.contains('controls-active')) {
+                 controlsTimeout = setTimeout(() => {
+                     playerView.classList.remove('controls-active');
+                 }, 3000);
+             }
+         });
+        videoPlayer.addEventListener('pause', () => {
+            playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
+            // MUDANÇA: Cancela o timeout ao pausar para manter controles visíveis
+            clearTimeout(controlsTimeout);
+            // Garante que os controles fiquem visíveis ao pausar manualmente
+            if (!videoPlayer.ended) { // Não mostra se pausou porque acabou
+                 playerView.classList.add('controls-active');
+            }
+        });
 
         // Quando o vídeo/episódio termina
         videoPlayer.addEventListener('ended', () => {
@@ -1178,8 +1210,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (currentPlayerContext.episodes && currentPlayerContext.currentIndex < currentPlayerContext.episodes.length - 1) {
                 changeEpisode(1); // Vai para o próximo
             } else {
-                // Senão, apenas mostra o ícone de play
+                // Senão, apenas mostra o ícone de play e mantém controles visíveis
                 playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
+                playerView.classList.add('controls-active'); // Garante que controles fiquem visíveis no final
+                clearTimeout(controlsTimeout); // Cancela qualquer timeout pendente
             }
         });
 
@@ -1299,13 +1333,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Listener para mostrar controles ao mover o mouse sobre o player (desktop)
     playerView.addEventListener('mousemove', () => {
-        playerView.classList.add('controls-active'); // Mostra controles
-        clearTimeout(controlsTimeout); // Limpa timeout anterior
-        // Define novo timeout para esconder (se não estiver pausado)
-        if (!videoPlayer.paused) {
-            controlsTimeout = setTimeout(() => {
-                playerView.classList.remove('controls-active');
-            }, 3000);
+        // MUDANÇA: Não executar esta lógica em mobile
+        if (window.innerWidth >= 768) {
+            playerView.classList.add('controls-active'); // Mostra controles
+            clearTimeout(controlsTimeout); // Limpa timeout anterior
+            // Define novo timeout para esconder (se não estiver pausado)
+            if (!videoPlayer.paused) {
+                controlsTimeout = setTimeout(() => {
+                    playerView.classList.remove('controls-active');
+                }, 3000);
+            }
         }
     });
 
@@ -1401,13 +1438,13 @@ document.addEventListener('DOMContentLoaded', function() {
     searchIconBtn.addEventListener('click', () => toggleSearchOverlay(true)); // Abrir busca (desktop)
     closeSearchBtn.addEventListener('click', () => toggleSearchOverlay(false)); // Fechar busca
     document.getElementById('search-overlay-bg').addEventListener('click', () => toggleSearchOverlay(false)); // Fechar ao clicar no fundo
-    
+
     // Listener de busca com debounce (CORRIGIDO)
     searchInput.addEventListener('input', () => {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
             // Chama a nova função performSearch (que agora é síncrona)
-            performSearch(searchInput.value); 
+            performSearch(searchInput.value);
         }, 400); // 400ms de debounce
     });
 
@@ -2321,3 +2358,4 @@ document.addEventListener('DOMContentLoaded', function() {
     // handleNavigation(); << Removido - onAuthStateChanged cuidará da chamada inicial.
 
 });
+
