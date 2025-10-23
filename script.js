@@ -68,7 +68,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentPlayerContext = {};
     let lastProgressSaveTime = 0;
     const detailsView = document.getElementById('details-view');
-    const detailsBackground = document.getElementById('details-background'); // Elemento de fundo dos detalhes
 
     let heroCarouselInterval;
     let featuredItemIds = [];
@@ -347,7 +346,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function createContentCard(item) {
         if (!item || !item.poster) return ''; // Retorna vazio se não houver item ou pôster
         // Define o caminho do pôster, com fallback para placeholder
-        const posterPath = item.poster && item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
+        const posterPath = item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
         // Retorna o HTML do card como um link para a tela de detalhes
         return `
         <a href="#details/${item.docId}" class="carousel-item w-36 sm:w-48 cursor-pointer group block flex-shrink-0">
@@ -364,13 +363,13 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     /**
-     * Cria o HTML para um card de conteúdo em grid (usado em Séries, Filmes, Minha Lista, Busca).
+     * Cria o HTML para um card de conteúdo em grid (usado em Séries, Filmes, Minha Lista).
      * @param {object} item - O objeto do item.
      * @returns {string} - O HTML do card.
      */
     function createGridCard(item) {
         if (!item || !item.poster) return '';
-        const posterPath = item.poster && item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
+        const posterPath = item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
         // Inclui o título abaixo da imagem
         return `
         <a href="#details/${item.docId}" class="group block cursor-pointer">
@@ -447,7 +446,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const heroContentWrapper = document.getElementById('hero-content-wrapper');
         const mainBackground = document.getElementById('main-background');
-        const isMobile = window.innerWidth < 768; // Verifica se é mobile
 
         // Inicia a transição de fade-out
         heroContentWrapper.classList.add('hero-fade-out');
@@ -456,22 +454,16 @@ document.addEventListener('DOMContentLoaded', function() {
         // Aguarda a animação de fade-out antes de atualizar o conteúdo
         setTimeout(async () => {
             currentHeroItem = item; // Define o item atual do hero
+            const backgroundUrl = item.backdrop; // URL do backdrop
 
-            // Escolhe a URL do backdrop (vertical se mobile e disponível, senão horizontal)
-            const backgroundUrl = (isMobile && item.backdrop_vertical && item.backdrop_vertical.startsWith('http'))
-                ? item.backdrop_vertical
-                : (item.backdrop && item.backdrop.startsWith('http'))
-                    ? item.backdrop
-                    : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight'; // Fallback final
-
-            // Define a imagem de fundo principal
+            // Define a imagem de fundo principal (ainda usa a horizontal por enquanto)
             mainBackground.style.backgroundImage = `url('${backgroundUrl}')`;
 
             // Atualiza os textos e informações
             document.getElementById('hero-category').textContent = 'EM DESTAQUE';
             document.getElementById('hero-title').textContent = item.title || item.name;
             // Limita a sinopse a 200 caracteres
-            document.getElementById('hero-overview').textContent = (item.synopsis || '').length > 200 ? (item.synopsis || '').substring(0, 200) + '...' : (item.synopsis || '');
+            document.getElementById('hero-overview').textContent = item.synopsis.length > 200 ? item.synopsis.substring(0, 200) + '...' : item.synopsis;
             const releaseYear = item.year; // Ano de lançamento
 
             // Atualiza a seção de metadados (classificação, ano)
@@ -489,7 +481,6 @@ document.addEventListener('DOMContentLoaded', function() {
             heroContentWrapper.classList.remove('hero-fade-out');
         }, 500); // Tempo correspondente à duração da animação CSS
     }
-
 
     /**
      * Atualiza a aparência (ícone e texto) de um botão "Minha Lista".
@@ -610,9 +601,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if(featuredItems.length > 0) {
                 updateHero(featuredItems[0]); // Mostra o primeiro item
                 startHeroRotation(); // Inicia a rotação
-            } else if (firestoreContent.length > 0) {
-                 updateHero(firestoreContent[0]); // Fallback para o primeiro item do catálogo se não houver destaques
-                 if (heroCarouselInterval) clearInterval(heroCarouselInterval); // Para rotação se não houver múltiplos destaques
             }
             populateAllViews(); // Popula os carrosséis da home
         } else if (screenId === 'series-view') {
@@ -652,54 +640,62 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelector('footer').classList.add('hidden');
 
         detailsView.classList.remove('hidden'); // Mostra a view de detalhes
-        // Limpa o conteúdo anterior enquanto carrega
-        detailsView.querySelector('.relative')?.remove(); // Remove o container antigo se existir
-        detailsView.innerHTML = '<div class="spinner-lg mx-auto mt-20"></div>'; // Mostra spinner
+        detailsView.innerHTML = '<div class="spinner mx-auto mt-20"></div>'; // Mostra spinner
         window.scrollTo(0, 0); // Rola para o topo
 
         // Busca os dados do item no cache local do Firestore
         const data = firestoreContent.find(i => i.docId === item.docId);
         if (!data) { // Se não encontrar, mostra erro
             detailsView.innerHTML = '<p class="text-center text-red-400">Conteúdo não encontrado.</p>';
-            detailsBackground.style.backgroundImage = ''; // Limpa fundo
             return;
         }
 
         currentDetailsItem = data; // Define o item atual dos detalhes
-        const isMobile = window.innerWidth < 768; // Verifica se é mobile
+        // Extrai informações do item
+        const title = data.title || data.name;
+        const releaseYear = data.year || '';
+        const genres = data.genres ? data.genres.map(g => `<span class="bg-white/10 text-xs font-semibold px-2 py-1 rounded-full text-white">${g}</span>`).join('') : '';
+        let duration = '';
+        if (data.type === 'movie' && data.duration) {
+             duration = data.duration;
+        } else if (data.type === 'tv' && data.seasons) {
+            duration = `${Object.keys(data.seasons).length} Temporada(s)`;
+        }
 
-        // Escolhe a URL do backdrop (vertical se mobile e disponível, senão horizontal, senão placeholder)
-        const backgroundUrl = (isMobile && data.backdrop_vertical && data.backdrop_vertical.startsWith('http'))
-            ? data.backdrop_vertical
-            : (data.backdrop && data.backdrop.startsWith('http'))
-                ? data.backdrop
-                : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight'; // Fallback final
+        // Define URLs de imagem com fallback
+        let backgroundUrl = data.backdrop;
+        const finalImageUrl = backgroundUrl.startsWith('http') ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
+        const posterUrl = data.poster.startsWith('http') ? data.poster : 'https://placehold.co/500x750/1a1a1a/ffffff?text=Capa';
 
-
-        // Define o fundo na div separada
-        detailsBackground.style.backgroundImage = `url('${backgroundUrl}')`;
-
-        // Limpa o spinner e recria a estrutura interna da view de detalhes
+        // Define o HTML da tela de detalhes
         detailsView.innerHTML = `
+            <div class="fixed inset-0 z-[-1] bg-cover bg-center bg-no-repeat" style="background-image: url('${finalImageUrl}');">
+                 <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+                 <div class="absolute inset-0 details-gradient-overlay"></div>
+            </div>
+
             <div class="relative">
                 <button id="back-from-details" class="fixed top-6 left-6 z-20 bg-black/20 backdrop-blur-sm rounded-full p-2 hover:bg-black/40 transition-colors" aria-label="Voltar">
                     <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                 </button>
+
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-screen flex items-center pt-24 pb-12">
                     <div class="flex flex-col md:flex-row items-center md:items-start gap-8 lg:gap-12 w-full">
                         <div class="flex-shrink-0 w-48 sm:w-56 md:w-64 mx-auto md:mx-0">
-                            <img id="details-poster" src="" alt="" class="rounded-lg shadow-2xl w-full aspect-[2/3] object-cover">
+                            <img src="${posterUrl}" alt="${title}" class="rounded-lg shadow-2xl w-full aspect-[2/3] object-cover">
                         </div>
                         <div class="flex-1 mt-6 md:mt-0 text-center md:text-left">
-                            <h1 id="details-title" class="text-3xl md:text-5xl lg:text-6xl font-black text-white" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.7);"></h1>
-                            <div id="details-meta" class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300"></div>
-                            <div id="details-genres" class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start"></div>
+                            <h1 class="text-3xl md:text-5xl lg:text-6xl font-black text-white" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.7);">${title}</h1>
+                            <div id="details-meta" class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300">
+                                <!-- Metadados (ano, duração, classificação) serão inseridos aqui -->
+                            </div>
+                            <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genres}</div>
                             <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
                                 <button id="details-watch-btn" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"><svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>Assistir</div></button>
                                 <button id="details-add-to-list" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"></div></button>
                             </div>
                             <h3 class="mt-8 text-lg sm:text-xl font-semibold text-white">Sinopse</h3>
-                            <p id="details-synopsis" class="mt-2 text-gray-300 max-w-2xl text-sm leading-relaxed"></p>
+                            <p class="mt-2 text-gray-300 max-w-2xl text-sm leading-relaxed">${data.synopsis || data.overview || 'Sinopse não disponível.'}</p>
                             <div id="tv-content-details" class="mt-10"></div> <!-- Container para temporadas/episódios -->
                         </div>
                     </div>
@@ -707,36 +703,9 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
 
-        // Preenche os dados nos elementos recém-criados
-        const title = data.title || data.name;
-        const releaseYear = data.year || '';
-        const genres = data.genres ? data.genres.map(g => `<span class="bg-white/10 text-xs font-semibold px-2 py-1 rounded-full text-white">${g}</span>`).join('') : '';
-        let duration = '';
-        if (data.type === 'movie' && data.duration) {
-             // Formata a duração em horas e minutos se for um número
-             if (!isNaN(data.duration)) {
-                const hours = Math.floor(data.duration / 60);
-                const minutes = data.duration % 60;
-                duration = `${hours > 0 ? hours + 'h ' : ''}${minutes}min`;
-             } else {
-                 duration = data.duration; // Usa o valor como está se não for número
-             }
-        } else if (data.type === 'tv' && data.seasons) {
-            const seasonCount = Object.keys(data.seasons).length;
-            duration = `${seasonCount} Temporada${seasonCount !== 1 ? 's' : ''}`;
-        }
-        const posterUrl = data.poster && data.poster.startsWith('http') ? data.poster : 'https://placehold.co/500x750/1a1a1a/ffffff?text=Capa';
-
-        document.getElementById('details-poster').src = posterUrl;
-        document.getElementById('details-poster').alt = title;
-        document.getElementById('details-title').textContent = title;
-        document.getElementById('details-genres').innerHTML = genres;
-        document.getElementById('details-synopsis').textContent = data.synopsis || data.overview || 'Sinopse não disponível.';
-
         // Popula a seção de metadados
         const detailsMetaContainer = detailsView.querySelector('#details-meta');
         if (detailsMetaContainer) {
-            detailsMetaContainer.innerHTML = ''; // Limpa antes de adicionar
             displayContentRating(data, detailsMetaContainer); // Adiciona classificação
             // Adiciona ano e duração
             detailsMetaContainer.innerHTML += `
@@ -780,7 +749,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         attachGlassButtonListeners(); // Reatacha listeners visuais
     }
-
 
     /**
      * Renderiza a seção de temporadas e episódios para uma série na tela de detalhes.
@@ -926,7 +894,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateMobileNavIndicator() { const indicator = document.getElementById('mobile-nav-indicator'); const activeItem = document.querySelector('#mobile-nav .mobile-nav-item.active'); if (indicator && activeItem) { const left = activeItem.offsetLeft; const width = activeItem.offsetWidth; indicator.style.width = `${width}px`; indicator.style.transform = `translateX(${left}px)`; }}
     /** Mostra ou esconde o overlay de busca */
     function toggleSearchOverlay(show) { if (show) { searchOverlay.classList.remove('hidden'); searchInput.focus(); document.body.style.overflow = 'hidden'; } else { searchOverlay.classList.add('hidden'); searchInput.value = ''; searchResultsContainer.innerHTML = ''; document.body.style.overflow = 'auto'; }}
-
+    
     // -----------------------------------------------------------------
     // --- FUNÇÃO DE BUSCA CORRIGIDA ---
     // -----------------------------------------------------------------
@@ -959,7 +927,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum resultado para "${query}" em nosso catálogo.</p>`;
         }
-
+        
         // Re-anexa listeners para os cards de vidro recém-criados
         attachGlassButtonListeners();
     }
@@ -1191,11 +1159,9 @@ document.addEventListener('DOMContentLoaded', function() {
         videoPlayer.addEventListener('timeupdate', () => {
             if(isNaN(videoPlayer.currentTime)) return; // Ignora se currentTime for NaN
             seekBar.value = videoPlayer.currentTime; // Atualiza valor do slider
-            if (videoPlayer.duration && isFinite(videoPlayer.duration)) { // Verifica se duration é finito
+            if (videoPlayer.duration) { // Atualiza a barra visual
                 const progressPercent = (videoPlayer.currentTime / videoPlayer.duration) * 100;
                 seekProgressBar.style.width = `${progressPercent}%`;
-            } else {
-                 seekProgressBar.style.width = `0%`; // Reseta se a duração for inválida
             }
             currentTimeEl.textContent = formatTime(videoPlayer.currentTime); // Atualiza tempo atual formatado
 
@@ -1209,17 +1175,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Quando metadados carregam (obtém duração)
         videoPlayer.addEventListener('loadedmetadata', () => {
-            // Verifica se duration é um número finito antes de usar
-            if(!isNaN(videoPlayer.duration) && isFinite(videoPlayer.duration)) {
-                seekBar.max = videoPlayer.duration; // Define o máximo do slider
-                durationEl.textContent = formatTime(videoPlayer.duration); // Mostra duração total formatada
-            } else {
-                seekBar.max = 0; // Define como 0 se inválido
-                durationEl.textContent = "00:00";
-                console.warn("Duração do vídeo inválida:", videoPlayer.duration);
-            }
+            if(isNaN(videoPlayer.duration)) return; // Ignora se duration for NaN
+            seekBar.max = videoPlayer.duration; // Define o máximo do slider
+            durationEl.textContent = formatTime(videoPlayer.duration); // Mostra duração total formatada
         });
-
 
         // Atualiza ícone de volume e valor do slider de volume
         videoPlayer.addEventListener('volumechange', () => {
@@ -1371,29 +1330,11 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('hero-watch-btn').addEventListener('click', () => {
         if (!currentHeroItem) return; // Sai se não houver item no hero
         // Pega a URL do item no Firestore e inicia o player
-        // Verifica se é filme ou série para determinar a URL a ser usada
-        let watchContext = {
-             title: currentHeroItem.title || currentHeroItem.name,
-             itemData: currentHeroItem
-        };
-        if(currentHeroItem.type === 'movie' && currentHeroItem.url) {
-            watchContext.videoUrl = currentHeroItem.url;
-        } else if (currentHeroItem.type === 'tv' && currentHeroItem.seasons) {
-             const firstSeasonKey = Object.keys(currentHeroItem.seasons).sort((a,b) => parseInt(a) - parseInt(b))[0];
-             const firstEpisode = currentHeroItem.seasons[firstSeasonKey]?.episodes?.[0];
-             if (firstEpisode) {
-                 watchContext.videoUrl = firstEpisode.url;
-                 watchContext.episodes = currentHeroItem.seasons[firstSeasonKey].episodes;
-                 watchContext.currentIndex = 0;
-                 watchContext.title = `${watchContext.title} - T${firstSeasonKey} E${firstEpisode.episode_number || 1}`;
-             } else {
-                 showToast("Nenhum episódio encontrado para iniciar.", true); return;
-             }
-        } else {
-             showToast("URL de vídeo não encontrada.", true); return;
-        }
-
-        showPlayer(watchContext);
+        showPlayer({
+            videoUrl: currentHeroItem.url, // Usa a URL do item do Firestore
+            title: currentHeroItem.title || currentHeroItem.name,
+            itemData: currentHeroItem
+        });
     });
 
     /** Inicializa a UI do player (define ícones iniciais, adiciona listeners) */
@@ -1416,13 +1357,13 @@ document.addEventListener('DOMContentLoaded', function() {
     searchIconBtn.addEventListener('click', () => toggleSearchOverlay(true)); // Abrir busca (desktop)
     closeSearchBtn.addEventListener('click', () => toggleSearchOverlay(false)); // Fechar busca
     document.getElementById('search-overlay-bg').addEventListener('click', () => toggleSearchOverlay(false)); // Fechar ao clicar no fundo
-
+    
     // Listener de busca com debounce (CORRIGIDO)
     searchInput.addEventListener('input', () => {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
             // Chama a nova função performSearch (que agora é síncrona)
-            performSearch(searchInput.value);
+            performSearch(searchInput.value); 
         }, 400); // 400ms de debounce
     });
 
@@ -1493,23 +1434,23 @@ document.addEventListener('DOMContentLoaded', function() {
                  }
                 const foundProfile = profiles.find(p => p.id === lastProfileId);
                 if (foundProfile) {
-                    // Se encontrou, seleciona automaticamente e PULA a tela de seleção
+                    // Se encontrou um perfil válido salvo, seleciona-o automaticamente
                     selectAndEnterProfile(foundProfile);
-                    autoSelectedProfile = true;
+                    autoSelectedProfile = true; // Marca que um perfil foi selecionado
+                    // Não retorna aqui, continua para o roteamento do app
                 }
             }
 
-            // Se nenhum perfil foi selecionado automaticamente, mostra a tela de seleção
+            // Se NENHUM perfil foi selecionado automaticamente
             if (!autoSelectedProfile) {
-                currentProfile = null; // Garante que currentProfile esteja nulo
-                if (window.location.hash !== '#manage-profile-view') {
+                // Garante que a view de seleção de perfil seja exibida
+                if (hash !== '#manage-profile-view') {
                     history.replaceState(null, '', '#manage-profile-view');
                 }
-                handleNavigation(); // Roda o roteador (vai cair na condição !currentProfile)
-                return; // Importante retornar aqui para evitar processamento duplicado
+                showProfileScreen(); // Mostra a tela de seleção de perfil
+                return; // Interrompe a função aqui
             }
-             // Se um perfil foi selecionado (autoSelectedProfile = true),
-             // selectAndEnterProfile já chamou handleNavigation se necessário.
+             // Se um perfil foi auto-selecionado, a função continua para o roteamento do app abaixo
         }
 
 
@@ -1533,7 +1474,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Garante que views especiais (detalhes, player) sejam escondidas ao navegar para views normais
         if (!hash.startsWith('#details/')) {
              detailsView.classList.add('hidden'); // Esconde detalhes
-             detailsBackground.style.backgroundImage = ''; // Limpa fundo dos detalhes
         }
          if (hash !== '#player') {
              if (!playerView.classList.contains('hidden')) {
@@ -1586,12 +1526,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (targetId !== 'home-view' && heroCarouselInterval) {
                 clearInterval(heroCarouselInterval);
                 heroCarouselInterval = null;
-            } else if (targetId === 'home-view' && !heroCarouselInterval && featuredItemIds.length > 1) {
-                startHeroRotation(); // Reinicia se voltar para home e houver itens
             }
         }
     }
-
 
     // Adiciona os listeners de navegação do navegador (botão voltar/avançar, mudança de hash)
     window.addEventListener('popstate', handleNavigation);
@@ -2318,7 +2255,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 handleNavigation(); // Roda o roteador (vai cair na condição !currentProfile)
             }
              // Se um perfil foi selecionado (autoSelectedProfile = true),
-             // selectAndEnterProfile já chamou handleNavigation se necessário.
+             // selectAndEnterProfile já chamou handleNavigation, então não precisa chamar de novo.
 
         } else { // Se o usuário NÃO está logado
             userId = null;
