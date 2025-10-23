@@ -1074,10 +1074,14 @@ document.addEventListener('DOMContentLoaded', function() {
         // Define a chave com base se é filme ou episódio de série
         if (context.episodes) { // É uma série
             const episode = context.episodes[context.currentIndex];
-            key = `tv-${itemData.docId}-s${episode.season_number}-e${episode.episode_number}`;
+            // Garante que season_number e episode_number existam para a chave
+            const seasonNum = episode.season_number ?? 1; // Fallback para 1 se não definido
+            const episodeNum = episode.episode_number ?? (context.currentIndex + 1); // Fallback para index+1
+            key = `tv-${itemData.docId}-s${seasonNum}-e${episodeNum}`;
         } else { // É um filme
             key = `movie-${itemData.docId}`;
         }
+
 
         // Define o contexto atual do player
         currentPlayerContext = { ...context, key, id: itemData.docId, itemData };
@@ -2100,39 +2104,60 @@ document.addEventListener('DOMContentLoaded', function() {
     const newsContainer = document.getElementById('news-items-container');
     if (newsContainer) {
         newsContainer.addEventListener('click', (e) => {
+            // Adiciona logs para depuração
+            //console.log("Clique detectado na área de novidades:", e.target);
+
             const likeButton = e.target.closest('.like-button');
             const commentButton = e.target.closest('.comment-button');
             const videoThumbnail = e.target.closest('.news-video-thumbnail');
-            const iframeOverlay = e.target.closest('.news-iframe-play-overlay'); // **NOVO: Listener para overlay do iframe**
+            const iframeOverlay = e.target.closest('.news-iframe-play-overlay');
 
             if (likeButton) {
+                //console.log("Botão Like clicado");
                 const card = likeButton.closest('.news-item-card');
                 const newsId = card?.dataset.newsId;
                 if (newsId) handleNewsLike(newsId);
             } else if (commentButton) {
+                console.log("Botão Comentar clicado"); // Log para verificar clique
                 const card = commentButton.closest('.news-item-card');
                 const newsId = card?.dataset.newsId;
-                if (newsId) openCommentsModal(newsId);
+                if (newsId) {
+                    console.log("Abrindo modal para newsId:", newsId); // Log
+                    openCommentsModal(newsId);
+                } else {
+                     console.log("Não foi possível encontrar newsId para o botão de comentar."); // Log
+                }
             } else if (videoThumbnail) {
+                //console.log("Thumbnail de vídeo direto clicado");
                 const url = videoThumbnail.dataset.videoUrl;
                 const title = videoThumbnail.dataset.videoTitle;
                 if (url) showNewsPlayer(url, title);
-            } else if (iframeOverlay) { // **NOVO: Lógica para iniciar iframe**
+            } else if (iframeOverlay) {
+                //console.log("Overlay de Iframe clicado");
                 const container = iframeOverlay.closest('.news-iframe-container');
                 const iframeSrc = container?.dataset.iframeSrc;
                 const wrapperId = iframeOverlay.id.replace('overlay-', 'iframe-wrapper-');
                 const wrapper = document.getElementById(wrapperId);
 
                 if (iframeSrc && wrapper) {
-                    // Adiciona autoplay=1 se for youtube
                     let finalSrc = iframeSrc;
-                     if (iframeSrc.includes('youtube.com') || iframeSrc.includes('youtu.be')) {
-                         const url = new URL(iframeSrc);
-                         url.searchParams.set('autoplay', '1');
-                         finalSrc = url.toString();
-                     }
+                    // Adiciona autoplay=1 APENAS se for YouTube
+                    if (iframeSrc.includes('youtube.com') || iframeSrc.includes('youtu.be')) {
+                        try {
+                            const url = new URL(iframeSrc);
+                            url.searchParams.set('autoplay', '1');
+                            finalSrc = url.toString();
+                        } catch (error) {
+                             console.error("URL do YouTube inválida:", iframeSrc, error);
+                             // Usa a URL original se der erro
+                        }
+                    }
+                    // Remove allow="autoplay" para outros iframes, sandbox controla o resto
+                    const allowAttribute = (iframeSrc.includes('youtube.com') || iframeSrc.includes('youtu.be'))
+                        ? 'allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; autoplay"'
+                        : 'allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"'; // Sem autoplay
 
-                    wrapper.innerHTML = `<iframe src="${finalSrc}" frameborder="0" sandbox="allow-scripts allow-same-origin allow-presentation allow-popups" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; autoplay" allowfullscreen class="w-full h-full"></iframe>`;
+                    wrapper.innerHTML = `<iframe src="${finalSrc}" frameborder="0" sandbox="allow-scripts allow-same-origin allow-presentation allow-popups" ${allowAttribute} allowfullscreen class="w-full h-full"></iframe>`;
                     iframeOverlay.classList.add('hidden'); // Esconde o overlay
                 }
             }
@@ -2887,6 +2912,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Funções e Listeners de Comentários ---
 
     function openCommentsModal(newsId) {
+         console.log(`[openCommentsModal] Abrindo para: ${newsId}`); // Log
         if (!newsId) return;
         const newsItem = newsItems.find(item => item.id === newsId);
         currentNewsCommentsModalId = newsId;
@@ -2899,7 +2925,10 @@ document.addEventListener('DOMContentLoaded', function() {
         cancelReply();
         // **CORREÇÃO:** Chama lucide.createIcons DEPOIS de tornar o modal visível
         // para garantir que o ícone 'x' seja renderizado
-        setTimeout(() => lucide.createIcons(), 0);
+        setTimeout(() => {
+             console.log("[openCommentsModal] Recriando ícones Lucide"); // Log
+             lucide.createIcons();
+         }, 0);
     }
 
 
@@ -2914,10 +2943,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function handleCommentSubmit(event) {
         event.preventDefault();
-        if (!userId || !currentProfile || !currentNewsCommentsModalId) return;
+         console.log("[handleCommentSubmit] Tentando enviar comentário..."); // Log
+        if (!userId || !currentProfile || !currentNewsCommentsModalId) {
+             console.log("[handleCommentSubmit] Erro: Usuário/Perfil/NewsId ausente."); // Log
+             showToast("Erro: Faça login e selecione um perfil para comentar.", true);
+             return;
+         }
 
         const commentText = commentInput.value.trim();
-        if (!commentText) return;
+        if (!commentText) {
+             console.log("[handleCommentSubmit] Erro: Comentário vazio."); // Log
+             return; // Não envia comentário vazio
+         }
 
         const commentData = {
             profileId: currentProfile.id,
@@ -2929,14 +2966,16 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         try {
+            console.log("[handleCommentSubmit] Adicionando documento ao Firestore:", commentData); // Log
             const commentsColRef = collection(db, "news", currentNewsCommentsModalId, "comments");
             await addDoc(commentsColRef, commentData);
+            console.log("[handleCommentSubmit] Comentário adicionado com sucesso."); // Log
             commentInput.value = '';
             cancelReply();
             // O listener onSnapshot atualizará a lista
         } catch (error) {
-            console.error("Erro ao adicionar comentário:", error);
-            showToast("Erro ao enviar comentário.", true);
+            console.error("[handleCommentSubmit] Erro ao adicionar comentário:", error); // Log de erro
+            showToast("Erro ao enviar comentário. Tente novamente.", true);
         }
     }
 
@@ -3059,10 +3098,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Reseta src de iframes na seção de novidades para pará-los e remove o iframe carregado
         const newsIframeContainers = document.querySelectorAll('.news-iframe-container');
         newsIframeContainers.forEach(container => {
-             const overlayId = container.querySelector('.news-iframe-play-overlay')?.id;
-             const wrapperId = overlayId?.replace('overlay-', 'iframe-wrapper-');
-             const wrapper = wrapperId ? document.getElementById(wrapperId) : null;
-             const overlay = overlayId ? document.getElementById(overlayId) : null;
+             const overlay = container.querySelector('.news-iframe-play-overlay');
+             const wrapper = container.querySelector('[id^="iframe-wrapper-"]'); // Encontra o wrapper pelo prefixo do ID
 
              if (wrapper) wrapper.innerHTML = ''; // Remove o iframe se existir
              if (overlay) overlay.classList.remove('hidden'); // Mostra o overlay de play novamente
