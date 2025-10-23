@@ -20,11 +20,14 @@ import {
     deleteDoc,
     query,
     where,
-    // orderBy, // REMOVIDO - NÃO USAR
+    orderBy, // RE-ADICIONADO PARA ORDENAR NOVIDADES E COMENTÁRIOS
+    limit,   // Para paginação de comentários (opcional)
+    startAfter, // Para paginação de comentários (opcional)
     onSnapshot,
-    arrayUnion,
     serverTimestamp,
-    arrayRemove
+    arrayUnion,
+    arrayRemove,
+    increment // Para contadores de likes/replies
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -53,6 +56,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const googleProvider = new GoogleAuthProvider();
 
     let userId = null;
+    let userEmail = null; // Guardar email para referência
+    let userDisplayName = null; // Guardar nome para comentários/respostas
 
     // Constantes da API TMDB (Exemplo - use suas chaves reais)
     const API_KEY = '5954890d9e9b723ff3032f2ec429fec3'; // Chave de exemplo
@@ -79,6 +84,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let firestoreContent = []; // Cache do conteúdo principal
     let pendingRequests = []; // Cache de pedidos pendentes
+    let newsItemsCache = []; // Cache para novidades
+    let unsubscribeNewsListener = null; // Para parar de ouvir novidades ao deslogar
 
     // Elementos DOM frequentemente usados
     const loginView = document.getElementById('login-view');
@@ -155,7 +162,6 @@ document.addEventListener('DOMContentLoaded', function() {
         exitFullscreen: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"></path></svg>`,
         settings: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59 1.69.98l2.49 1c.23.09.49 0 .61.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg>`,
         back: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>`,
-        // NOVOS ÍCONES DE ASPECT RATIO
         aspectContain: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M2 5h2v14H2V5zm20 0h-2v14h2V5zM6 7h12v10H6V7z"></path></svg>`,
         aspectCover: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 5h16v14H4V5z"></path></svg>`
     };
@@ -284,7 +290,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const progressData = {
             currentTime: videoPlayer.currentTime, // Tempo atual
             duration: videoPlayer.duration,       // Duração total
-            lastWatched: Date.now(),             // Timestamp da última atualização
+            lastWatched: Date.now(),            // Timestamp da última atualização
             item: currentPlayerContext.itemData, // Dados do filme/série geral
             // Dados do episódio específico (se for uma série)
             episode: currentPlayerContext.episodes ? currentPlayerContext.episodes[currentPlayerContext.currentIndex] : null,
@@ -620,6 +626,8 @@ document.addEventListener('DOMContentLoaded', function() {
             populateMyList(); // Popula a grid da "Minha Lista"
         } else if (screenId === 'requests-view') {
             renderPendingRequests(); // Renderiza os pedidos pendentes
+        } else if (screenId === 'news-view') {
+            renderNewsFeed(); // NOVO: Renderiza o feed de novidades
         }
         lucide.createIcons(); // Recria ícones
         attachGlassButtonListeners(); // Reatacha listeners visuais
@@ -827,16 +835,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.3);"></div>
                         <div class="glass-specular"></div>
                         <div class="glass-content flex items-start p-3 gap-4">
-                             <div class="relative flex-shrink-0">
-                                 <img src="${stillPath}" alt="Cena do episódio" class="w-32 sm:w-40 rounded-md aspect-video object-cover">
-                                 <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                     <i data-lucide="play-circle" class="w-8 h-8 text-white"></i> <!-- Ícone de play ao passar o mouse -->
-                                 </div>
-                             </div>
-                             <div class="flex-1">
-                                 <h4 class="font-semibold text-white">${index + 1}. ${epTitle}</h4>
-                                 <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden">${epOverview}</p> <!-- Limita altura da sinopse -->
-                             </div>
+                            <div class="relative flex-shrink-0">
+                                <img src="${stillPath}" alt="Cena do episódio" class="w-32 sm:w-40 rounded-md aspect-video object-cover">
+                                <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <i data-lucide="play-circle" class="w-8 h-8 text-white"></i> <!-- Ícone de play ao passar o mouse -->
+                                </div>
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-white">${index + 1}. ${epTitle}</h4>
+                                <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden">${epOverview}</p> <!-- Limita altura da sinopse -->
+                            </div>
                         </div>
                     </div>
                 `;
@@ -871,20 +879,20 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('episode-list-container').addEventListener('click', (e) => {
             const episodeItem = e.target.closest('.episode-item');
             if(episodeItem){ // Se clicou em um episódio
-                 const seasonKey = episodeItem.dataset.season; // Pega a temporada
-                 const episodeIndex = parseInt(episodeItem.dataset.index, 10); // Pega o índice do episódio
-                 const allEpisodesOfSeason = data.seasons[seasonKey].episodes;
-                 const episode = allEpisodesOfSeason[episodeIndex]; // Pega os dados do episódio
+                const seasonKey = episodeItem.dataset.season; // Pega a temporada
+                const episodeIndex = parseInt(episodeItem.dataset.index, 10); // Pega o índice do episódio
+                const allEpisodesOfSeason = data.seasons[seasonKey].episodes;
+                const episode = allEpisodesOfSeason[episodeIndex]; // Pega os dados do episódio
 
-                 // Prepara o contexto para o player
-                 const context = {
-                     videoUrl: episode.url, // URL do vídeo do episódio
-                     title: `${data.name} - T${seasonKey} E${episode.episode_number || episodeIndex + 1}`, // Título para o player
-                     itemData: data, // Dados gerais da série
-                     episodes: allEpisodesOfSeason, // Lista de todos os episódios da temporada
-                     currentIndex: episodeIndex // Índice do episódio clicado
-                 };
-                 showPlayer(context); // Inicia o player
+                // Prepara o contexto para o player
+                const context = {
+                    videoUrl: episode.url, // URL do vídeo do episódio
+                    title: `${data.name} - T${seasonKey} E${episode.episode_number || episodeIndex + 1}`, // Título para o player
+                    itemData: data, // Dados gerais da série
+                    episodes: allEpisodesOfSeason, // Lista de todos os episódios da temporada
+                    currentIndex: episodeIndex // Índice do episódio clicado
+                };
+                showPlayer(context); // Inicia o player
             }
         });
     }
@@ -894,15 +902,12 @@ document.addEventListener('DOMContentLoaded', function() {
     /** Efeito visual: Remove gradiente especular ao tirar o mouse */
     function handleMouseLeave() { const specular = this.querySelector('.glass-specular'); if (specular) specular.style.background = 'none'; }
     /** Adiciona listeners para os efeitos visuais 'glass' a todos os elementos relevantes */
-    function attachGlassButtonListeners() { document.querySelectorAll('.glass-button, .liquid-glass-card, .player-control-btn, .glass-container[style*="--bg-color"], .glass-form').forEach(element => { if (!element.hasGlassListener) { element.addEventListener('mousemove', handleMouseMove); element.addEventListener('mouseleave', handleMouseLeave); element.hasGlassListener = true; }}); } // 'hasGlassListener' evita adicionar múltiplos listeners
+    function attachGlassButtonListeners() { document.querySelectorAll('.glass-button, .liquid-glass-card, .player-control-btn, .glass-container[style*="--bg-color"], .glass-form, .news-card, .comment-card, .reply-card').forEach(element => { if (!element.hasGlassListener) { element.addEventListener('mousemove', handleMouseMove); element.addEventListener('mouseleave', handleMouseLeave); element.hasGlassListener = true; }}); } // 'hasGlassListener' evita adicionar múltiplos listeners
     /** Atualiza a posição e tamanho do indicador da navegação mobile */
     function updateMobileNavIndicator() { const indicator = document.getElementById('mobile-nav-indicator'); const activeItem = document.querySelector('#mobile-nav .mobile-nav-item.active'); if (indicator && activeItem) { const left = activeItem.offsetLeft; const width = activeItem.offsetWidth; indicator.style.width = `${width}px`; indicator.style.transform = `translateX(${left}px)`; }}
     /** Mostra ou esconde o overlay de busca */
     function toggleSearchOverlay(show) { if (show) { searchOverlay.classList.remove('hidden'); searchInput.focus(); document.body.style.overflow = 'hidden'; } else { searchOverlay.classList.add('hidden'); searchInput.value = ''; searchResultsContainer.innerHTML = ''; document.body.style.overflow = 'auto'; }}
 
-    // -----------------------------------------------------------------
-    // --- FUNÇÃO DE BUSCA CORRIGIDA ---
-    // -----------------------------------------------------------------
     /**
      * Realiza a busca no CATÁLOGO LOCAL (firestoreContent) e exibe os resultados.
      */
@@ -936,9 +941,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Re-anexa listeners para os cards de vidro recém-criados
         attachGlassButtonListeners();
     }
-    // -----------------------------------------------------------------
-    // --- FIM DA CORREÇÃO ---
-    // -----------------------------------------------------------------
 
 
     // --- Funções do Player ---
@@ -1000,7 +1002,7 @@ document.addEventListener('DOMContentLoaded', function() {
             hls = new Hls({
                 maxBufferLength: 30,    // Segundos de buffer
                 maxBufferSize: 60 * 1000 * 1000, // 60MB de buffer
-                startLevel: -1          // Começa na qualidade automática
+                startLevel: -1           // Começa na qualidade automática
             });
             hls.loadSource(urlToLoad); // Carrega a fonte
             hls.attachMedia(videoPlayer); // Anexa ao elemento <video>
@@ -1023,25 +1025,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 2. Lógica de orientação e tela cheia para mobile
         if (window.innerWidth < 768) { // Se for tela pequena (considerado mobile)
-             // MUDANÇA: Lógica ajustada para (re)tentar bloquear a orientação
-             if (!document.fullscreenElement) { // Só tenta entrar em fullscreen se já não estiver
-                try {
-                    await playerView.requestFullscreen();
-                } catch (err) {
-                     console.error("Não foi possível ativar tela cheia:", err);
-                }
-             }
-             // Tenta (re)travar a orientação.
-             // Se foi um clique (nextBtn), funciona.
-             // Se foi 'ended', pode falhar, mas como não demos unlock,
-             // a orientação anterior (landscape) deve ser mantida.
-             try {
-                 if (screen.orientation && typeof screen.orientation.lock === 'function') {
-                     await screen.orientation.lock('landscape');
-                 }
-             } catch (err) {
-                console.error("Não foi possível bloquear orientação:", err);
-             }
+           // MUDANÇA: Lógica ajustada para (re)tentar bloquear a orientação
+           if (!document.fullscreenElement) { // Só tenta entrar em fullscreen se já não estiver
+               try {
+                   await playerView.requestFullscreen();
+               } catch (err) {
+                   console.error("Não foi possível ativar tela cheia:", err);
+               }
+           }
+           // Tenta (re)travar a orientação.
+           // Se foi um clique (nextBtn), funciona.
+           // Se foi 'ended', pode falhar, mas como não demos unlock,
+           // a orientação anterior (landscape) deve ser mantida.
+           try {
+               if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                   await screen.orientation.lock('landscape');
+               }
+           } catch (err) {
+               console.error("Não foi possível bloquear orientação:", err);
+           }
         }
 
         // Mostra/Esconde botões de episódio anterior/próximo
@@ -1416,7 +1418,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     /** Inicializa a UI do player (define ícones iniciais, adiciona listeners) */
-    function initializeUI() {
+    function initializePlayerUI() {
         // Define os ícones SVG para cada botão
         playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
         rewindBtn.querySelector('.glass-content').innerHTML = ICONS.rewind10;
@@ -1437,12 +1439,11 @@ document.addEventListener('DOMContentLoaded', function() {
     closeSearchBtn.addEventListener('click', () => toggleSearchOverlay(false)); // Fechar busca
     document.getElementById('search-overlay-bg').addEventListener('click', () => toggleSearchOverlay(false)); // Fechar ao clicar no fundo
 
-    // Listener de busca com debounce (CORRIGIDO)
+    // Listener de busca com debounce
     searchInput.addEventListener('input', () => {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-            // Chama a nova função performSearch (que agora é síncrona)
-            performSearch(searchInput.value);
+            performSearch(searchInput.value); // Chama a função de busca
         }, 400); // 400ms de debounce
     });
 
@@ -1485,7 +1486,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- NOVO: Roteador Central ---
+    // --- Roteador Central ---
     /** Função principal que lida com a navegação baseada no hash da URL */
     async function handleNavigation() {
         const hash = window.location.hash; // Pega o hash atual (ex: #home-view, #details/123)
@@ -1508,9 +1509,9 @@ document.addEventListener('DOMContentLoaded', function() {
             let autoSelectedProfile = false;
             if (lastProfileId) {
                 // Carrega os perfis do Firestore APENAS se precisar verificar o último perfil
-                 if (!profiles || profiles.length === 0) { // Evita recarregar se já tiver
-                     await loadProfiles(); // loadProfiles() também chama renderProfiles()
-                 }
+                if (!profiles || profiles.length === 0) { // Evita recarregar se já tiver
+                    await loadProfiles(); // loadProfiles() também chama renderProfiles()
+                }
                 const foundProfile = profiles.find(p => p.id === lastProfileId);
                 if (foundProfile) {
                     // Se encontrou um perfil válido salvo, seleciona-o automaticamente
@@ -1613,7 +1614,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('popstate', handleNavigation);
     // window.addEventListener('hashchange', handleNavigation); // Não precisamos mais do hashchange, popstate cobre tudo
 
-    // --- Lógica de Notificações --- (sem alterações significativas)
+    // --- Lógica de Notificações ---
     function listenForNotifications() {
         const q = query(collection(db, "notifications")); // Query sem orderBy
         onSnapshot(q, (snapshot) => {
@@ -1653,8 +1654,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const createNotifHTML = (notif, isDismissable) => {
             // Adiciona botão de dispensar apenas se for 'Novidade'
             const dismissBtn = isDismissable ? `<button class="remove-notification-btn text-stone-500 hover:text-white" data-notif-id="${notif.id}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>` : '';
+
+             // **FIX:** Adiciona data attribute com dados do link
+             let linkDataAttr = '';
+             if (notif.link) {
+                 linkDataAttr = `data-link-type="${notif.link.type}" data-link-value="${notif.link.url || notif.link.docId}"`;
+             }
+
             return `
-                <div class="notification-item flex items-start gap-2 p-2 rounded-md transition-colors hover:bg-white/5">
+                <div class="notification-item flex items-start gap-2 p-2 rounded-md transition-colors hover:bg-white/5 ${notif.link ? 'cursor-pointer' : ''}" ${linkDataAttr}>
                     <div class="flex-grow">
                         <p class="font-bold text-white">${notif.title}</p>
                         <p class="text-stone-300 text-sm notification-message">${notif.message}</p>
@@ -1668,7 +1676,7 @@ document.addEventListener('DOMContentLoaded', function() {
         novidadesContainer.innerHTML = novidades.length > 0 ? novidades.map(n => createNotifHTML(n, true)).join('') : '<p class="text-stone-400 text-center p-4">Nenhuma novidade.</p>';
     }
 
-    // Listener para o painel de notificações (troca de abas, dispensar)
+    // Listener para o painel de notificações (troca de abas, dispensar, **FIX: click no item**)
     notificationPanel.addEventListener('click', (e) => {
         // Troca de abas
         const tab = e.target.closest('.notification-tab');
@@ -1677,6 +1685,7 @@ document.addEventListener('DOMContentLoaded', function() {
             notificationPanel.querySelectorAll('.notification-content').forEach(c => c.classList.remove('active'));
             tab.classList.add('active');
             document.getElementById(`notifications-${tab.dataset.tab}`).classList.add('active');
+            return; // Impede que o clique na aba acione o clique no item
         }
 
         // Dispensar notificação (tipo Novidade)
@@ -1689,6 +1698,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateNotificationBell(); // Atualiza indicador
             }
             removeBtn.closest('.notification-item').remove(); // Remove o item da UI
+             return; // Impede que o clique no botão acione o clique no item
+        }
+
+        // **FIX: Clique no item da notificação para navegação**
+        const notificationItem = e.target.closest('.notification-item[data-link-type]');
+        if (notificationItem) {
+             const linkType = notificationItem.dataset.linkType;
+             const linkValue = notificationItem.dataset.linkValue;
+
+             if (linkType === 'internal' && linkValue) {
+                 window.location.hash = `#details/${linkValue}`; // Navega para detalhes
+             } else if (linkType === 'external' && linkValue) {
+                 window.open(linkValue, '_blank'); // Abre link externo
+             }
+             // Fecha o painel após clicar
+             notificationPanel.classList.remove('animate-fade-in-down');
+             notificationPanel.classList.add('animate-fade-out-up');
+             setTimeout(() => notificationPanel.classList.add('hidden'), 250);
         }
     });
 
@@ -1871,6 +1898,7 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     async function selectAndEnterProfile(profile) {
         currentProfile = profile; // Define o perfil globalmente
+        userDisplayName = profile.name; // Guarda o nome do perfil selecionado
 
         // **NOVO:** Salva o ID do perfil selecionado no localStorage
         localStorage.setItem(`starlight-lastProfile-${userId}`, profile.id);
@@ -1893,6 +1921,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Inicia o carregamento do conteúdo do Firestore (necessário após selecionar perfil)
         listenToFirestoreContent();
         listenToRequests(); // Escuta pedidos após selecionar perfil
+        listenForNews(); // Escuta novidades após selecionar perfil
     }
 
     /**
@@ -2016,13 +2045,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Listener para o botão de perfil no header (leva para a tela de gerenciamento)
     headerProfileBtn.addEventListener('click', () => {
-         // Reseta o estado de edição e força a seleção de perfil ao mudar o hash
-         isEditMode = false;
-         manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
-         document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
-         currentProfile = null; // **IMPORTANTE:** Limpa o perfil atual para forçar seleção
-         localStorage.removeItem(`starlight-lastProfile-${userId}`); // Limpa o perfil salvo
-         window.location.hash = 'manage-profile-view'; // Navega para a tela de gerenciamento
+       // Reseta o estado de edição e força a seleção de perfil ao mudar o hash
+       isEditMode = false;
+       manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
+       document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
+       currentProfile = null; // **IMPORTANTE:** Limpa o perfil atual para forçar seleção
+       localStorage.removeItem(`starlight-lastProfile-${userId}`); // Limpa o perfil salvo
+       window.location.hash = 'manage-profile-view'; // Navega para a tela de gerenciamento
     });
 
     // --- Lógica de Autenticação e Troca de Formulário (Login/Registro) ---
@@ -2080,18 +2109,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Login com Google
     document.getElementById('google-signin-btn').addEventListener('click', () => {
         signInWithPopup(auth, googleProvider)
-             .then(async (result) => {
-                 // **NOVO:** Verifica se é o primeiro login com Google e cria perfil se necessário
-                 const user = result.user;
-                 if (user) {
-                     const profilesCol = collection(db, 'users', user.uid, 'profiles');
-                     const snapshot = await getDocs(profilesCol);
-                     if (snapshot.empty) { // Se não existem perfis, cria um
+            .then(async (result) => {
+                // **NOVO:** Verifica se é o primeiro login com Google e cria perfil se necessário
+                const user = result.user;
+                if (user) {
+                    const profilesCol = collection(db, 'users', user.uid, 'profiles');
+                    const snapshot = await getDocs(profilesCol);
+                    if (snapshot.empty) { // Se não existem perfis, cria um
                           await addDoc(profilesCol, { name: user.displayName || "Usuário", avatar: user.photoURL || AVATARS[0] });
-                     }
-                      // onAuthStateChanged cuidará da navegação
-                 }
-             })
+                    }
+                     // onAuthStateChanged cuidará da navegação
+                }
+            })
             .catch((error) => { // Trata erros de login com Google
                 console.error("Erro de login com Google:", error);
                 showToast(`Erro: ${error.message}`, true);
@@ -2105,6 +2134,11 @@ document.addEventListener('DOMContentLoaded', function() {
             // **NOVO:** Limpa o perfil salvo no localStorage ao sair
             if (currentUserId) {
                 localStorage.removeItem(`starlight-lastProfile-${currentUserId}`);
+            }
+            // Para o listener de novidades se estiver ativo
+            if (unsubscribeNewsListener) {
+                unsubscribeNewsListener();
+                unsubscribeNewsListener = null;
             }
             // O onAuthStateChanged vai detectar a mudança e redirecionar para o login
         }).catch((error) => { // Trata erros de logout
@@ -2286,18 +2320,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /** Mostra a tela de seleção/gerenciamento de perfil */
     async function showProfileScreen() {
-         // Esconde outras views, header e footer
-         document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
-         loginView.classList.add('hidden');
-         manageProfileView.classList.remove('hidden'); // Mostra gerenciamento de perfil
-         document.querySelector('header').classList.add('hidden');
-         document.querySelector('footer').classList.add('hidden');
-         document.getElementById('main-background').style.opacity = 0; // Esconde background
-         // Reseta o modo de edição
-         isEditMode = false;
-         manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
-         document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
-         await loadProfiles(); // Carrega e renderiza os perfis
+       // Esconde outras views, header e footer
+       document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
+       loginView.classList.add('hidden');
+       manageProfileView.classList.remove('hidden'); // Mostra gerenciamento de perfil
+       document.querySelector('header').classList.add('hidden');
+       document.querySelector('footer').classList.add('hidden');
+       document.getElementById('main-background').style.opacity = 0; // Esconde background
+       // Reseta o modo de edição
+       isEditMode = false;
+       manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
+       document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
+       await loadProfiles(); // Carrega e renderiza os perfis
     }
 
     // Listener principal de mudança de estado de autenticação
@@ -2305,11 +2339,14 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.classList.remove('auth-loading'); // Torna o body visível
         if (user) { // Se o usuário está logado
             userId = user.uid; // Define o userId global
+            userEmail = user.email; // Guarda email
+            userDisplayName = user.displayName; // Guarda nome do Google (se houver)
+
             // Inicia listeners do Firestore que dependem do usuário
             listenForNotifications();
             // listenToRequests(); // Movido para depois da seleção de perfil
 
-            initializeUI(); // Inicializa UI do player (pode ser feito aqui)
+            initializePlayerUI(); // Inicializa UI do player (pode ser feito aqui)
 
             // **LÓGICA DE PERFIL NO LOGIN:**
             // Tenta carregar o último perfil do localStorage
@@ -2338,7 +2375,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         } else { // Se o usuário NÃO está logado
             userId = null;
+            userEmail = null;
+            userDisplayName = null;
             currentProfile = null;
+            // Para o listener de novidades se estiver ativo
+            if (unsubscribeNewsListener) {
+                unsubscribeNewsListener();
+                unsubscribeNewsListener = null;
+            }
             // Garante que o hash seja #login-view
             if (window.location.hash !== '#login-view') {
                 history.replaceState(null, '', '#login-view');
@@ -2359,5 +2403,578 @@ document.addEventListener('DOMContentLoaded', function() {
     // O onAuthStateChanged pode chamar handleNavigation novamente, mas é seguro.
     // handleNavigation(); << Removido - onAuthStateChanged cuidará da chamada inicial.
 
-});
+    // -----------------------------------------------------------------
+    // --- NOVO: Funções de Novidades, Likes, Comentários, Respostas ---
+    // -----------------------------------------------------------------
 
+    /** Escuta por atualizações na coleção 'news' e atualiza o cache */
+    function listenForNews() {
+        // Para o listener anterior se existir (evita duplicação ao trocar de perfil)
+        if (unsubscribeNewsListener) {
+            unsubscribeNewsListener();
+        }
+
+        const q = query(collection(db, "news"), orderBy("createdAt", "desc"));
+        unsubscribeNewsListener = onSnapshot(q, (snapshot) => {
+            newsItemsCache = [];
+            snapshot.forEach((doc) => {
+                newsItemsCache.push({ id: doc.id, ...doc.data() });
+            });
+            // Re-renderiza o feed se a view de novidades estiver ativa
+            if (window.location.hash === '#news-view') {
+                renderNewsFeed();
+            }
+        }, (error) => {
+            console.error("Erro ao escutar novidades: ", error);
+        });
+    }
+
+    /** Renderiza o feed de novidades na tela */
+    function renderNewsFeed() {
+        const newsContainer = document.getElementById('news-view');
+        if (!newsContainer) return;
+
+        // Limpa o conteúdo anterior, exceto o título (se houver)
+        // Assume que o título está fora de um container específico de itens
+        const itemsContainerId = 'news-items-container';
+        let itemsContainer = newsContainer.querySelector(`#${itemsContainerId}`);
+        if (!itemsContainer) {
+            // Se o container não existe, cria-o (ajuste conforme sua estrutura HTML)
+             newsContainer.innerHTML = `
+                <div class="max-w-3xl mx-auto pb-16 w-full px-4 md:px-6 space-y-8">
+                    <h2 class="text-3xl sm:text-4xl font-bold text-white mb-8">Novidades</h2>
+                    <div id="${itemsContainerId}" class="space-y-8"></div>
+                </div>`;
+            itemsContainer = newsContainer.querySelector(`#${itemsContainerId}`);
+        } else {
+             itemsContainer.innerHTML = ''; // Limpa apenas o container dos itens
+        }
+
+
+        if (newsItemsCache.length === 0) {
+            itemsContainer.innerHTML = '<p class="text-center text-gray-400">Nenhuma novidade publicada ainda.</p>';
+            return;
+        }
+
+        newsItemsCache.forEach(item => {
+            const newsCard = createNewsCard(item);
+            itemsContainer.appendChild(newsCard);
+        });
+        attachGlassButtonListeners();
+        lucide.createIcons();
+    }
+
+    /** Cria o elemento HTML para um card de novidade */
+    function createNewsCard(item) {
+        const card = document.createElement('div');
+        card.className = 'news-card liquid-glass-card bg-stone-900/50 rounded-lg overflow-hidden'; // Estilo Liquid Glass
+        card.dataset.newsId = item.id; // Guarda o ID
+
+        const date = item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric'}) : 'Data indisponível';
+        let contentHTML = '';
+
+        // Renderiza o conteúdo principal (texto, imagem ou vídeo)
+        switch (item.type) {
+            case 'text':
+                contentHTML = `<p class="text-stone-300 mt-2 whitespace-pre-wrap">${item.content}</p>`;
+                break;
+            case 'image':
+                contentHTML = `<img src="${item.content}" alt="${item.title || 'Imagem da novidade'}" class="mt-4 rounded-lg max-w-full h-auto mx-auto">`;
+                break;
+            case 'video':
+                contentHTML = `<div class="aspect-video mt-4"><iframe src="${item.content}" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="w-full h-full rounded-lg"></iframe></div>`;
+                break;
+            default:
+                contentHTML = `<p class="text-stone-500 mt-2">[Conteúdo ${item.type} não suportado]</p>`;
+        }
+
+        const likes = item.likes || [];
+        const userHasLiked = userId ? likes.includes(userId) : false;
+        const likeCount = item.likeCount || likes.length; // Usa likeCount se existir, senão o tamanho do array
+
+        card.innerHTML = `
+            <div class="glass-filter"></div>
+            <div class="glass-overlay"></div>
+            <div class="glass-specular"></div>
+            <div class="glass-content p-4 sm:p-6">
+                ${item.title ? `<h3 class="text-xl font-semibold text-white">${item.title}</h3>` : ''}
+                <p class="text-xs text-stone-400 mb-4">${date}</p>
+                ${contentHTML}
+                <div class="mt-4 pt-4 border-t border-white/10 flex items-center justify-between gap-4">
+                    <button class="like-btn flex items-center gap-2 text-stone-400 hover:text-pink-500 transition-colors ${userHasLiked ? 'text-pink-500' : ''}" data-news-id="${item.id}">
+                        <i data-lucide="${userHasLiked ? 'heart-handshake' : 'heart'}" class="w-5 h-5"></i>
+                        <span class="like-count text-sm">${likeCount}</span>
+                    </button>
+                    <button class="comment-btn flex items-center gap-2 text-stone-400 hover:text-indigo-400 transition-colors" data-news-id="${item.id}">
+                        <i data-lucide="message-square" class="w-5 h-5"></i>
+                        <span class="comment-count-display text-sm">Comentar</span> <!-- Opcional: mostrar contagem -->
+                    </button>
+                    <!-- <button class="share-btn flex items-center gap-2 text-stone-400 hover:text-green-400 transition-colors" data-news-id="${item.id}">
+                        <i data-lucide="share-2" class="w-5 h-5"></i>
+                        <span class="text-sm">Compartilhar</span>
+                    </button> -->
+                </div>
+                <div class="comments-section mt-4 hidden">
+                     <div class="comment-input-area mb-4">
+                         <textarea class="comment-input w-full p-2 bg-black/30 rounded-lg text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none border border-white/20" rows="2" placeholder="Escreva seu comentário..."></textarea>
+                         <button class="submit-comment-btn bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-md text-sm mt-2 float-right">Enviar</button>
+                     </div>
+                     <div class="comments-list space-y-3">
+                        </div>
+                </div>
+            </div>`;
+
+        // Adiciona listeners para os botões e área de comentários
+        addNewsCardListeners(card);
+        return card;
+    }
+
+    /** Adiciona listeners aos botões e elementos de um card de novidade */
+    function addNewsCardListeners(cardElement) {
+        const likeBtn = cardElement.querySelector('.like-btn');
+        const commentBtn = cardElement.querySelector('.comment-btn');
+        const commentsSection = cardElement.querySelector('.comments-section');
+        const commentInput = cardElement.querySelector('.comment-input');
+        const submitCommentBtn = cardElement.querySelector('.submit-comment-btn');
+        const commentsList = cardElement.querySelector('.comments-list');
+        const newsId = cardElement.dataset.newsId;
+
+        likeBtn.addEventListener('click', () => handleLike(newsId, likeBtn));
+        commentBtn.addEventListener('click', () => {
+             commentsSection.classList.toggle('hidden');
+             if (!commentsSection.classList.contains('hidden') && commentsList.innerHTML === '') {
+                 loadComments(newsId, commentsList); // Carrega comentários ao abrir pela 1ª vez
+             }
+         });
+        submitCommentBtn.addEventListener('click', () => submitComment(newsId, commentInput, commentsList));
+
+        // Listener para submeter comentário com Enter (Shift+Enter para nova linha)
+        commentInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault(); // Impede nova linha
+                submitComment(newsId, commentInput, commentsList);
+            }
+        });
+    }
+
+    /** Lida com o clique no botão de curtir */
+    async function handleLike(newsId, likeBtn) {
+        if (!userId) {
+            showToast("Você precisa estar logado para curtir.", true);
+            return;
+        }
+        const newsDocRef = doc(db, 'news', newsId);
+        const likeIcon = likeBtn.querySelector('i');
+        const likeCountSpan = likeBtn.querySelector('.like-count');
+        const isCurrentlyLiked = likeBtn.classList.contains('text-pink-500');
+
+        // Otimização: Atualiza UI imediatamente
+        likeBtn.classList.toggle('text-pink-500');
+        likeIcon.setAttribute('data-lucide', isCurrentlyLiked ? 'heart' : 'heart-handshake');
+        lucide.createIcons({ nodes: [likeIcon] }); // Recria só o ícone clicado
+        const currentCount = parseInt(likeCountSpan.textContent || '0');
+        likeCountSpan.textContent = isCurrentlyLiked ? Math.max(0, currentCount - 1) : currentCount + 1;
+        likeBtn.disabled = true; // Desabilita temporariamente
+
+        try {
+            if (isCurrentlyLiked) {
+                // Remove o like
+                await updateDoc(newsDocRef, {
+                    likes: arrayRemove(userId),
+                    likeCount: increment(-1) // Decrementa contador
+                });
+            } else {
+                // Adiciona o like
+                await updateDoc(newsDocRef, {
+                    likes: arrayUnion(userId),
+                    likeCount: increment(1) // Incrementa contador
+                });
+            }
+            // A UI já foi atualizada, apenas reabilita o botão
+        } catch (error) {
+            console.error("Erro ao curtir/descurtir:", error);
+            showToast("Erro ao processar o like.", true);
+            // Reverte a UI em caso de erro
+            likeBtn.classList.toggle('text-pink-500'); // Reverte a cor
+            likeIcon.setAttribute('data-lucide', isCurrentlyLiked ? 'heart-handshake' : 'heart');
+            lucide.createIcons({ nodes: [likeIcon] });
+            likeCountSpan.textContent = currentCount; // Reverte contagem
+        } finally {
+             likeBtn.disabled = false; // Reabilita o botão
+        }
+    }
+
+    /** Submete um novo comentário */
+    async function submitComment(newsId, inputElement, commentsListElement) {
+        if (!userId || !currentProfile) {
+            showToast("Você precisa estar logado para comentar.", true);
+            return;
+        }
+        const commentText = inputElement.value.trim();
+        if (!commentText) {
+            showToast("O comentário não pode estar vazio.", true);
+            return;
+        }
+
+        const commentData = {
+            userId: userId,
+            userName: currentProfile.name || userEmail || "Usuário", // Usa nome do perfil ou email
+            text: commentText,
+            createdAt: serverTimestamp(),
+            repliesCount: 0 // Inicia contador de respostas
+        };
+
+        inputElement.disabled = true; // Desabilita input durante envio
+        const submitBtn = inputElement.nextElementSibling; // Assume que o botão é o próximo elemento
+        if (submitBtn) submitBtn.disabled = true;
+
+        try {
+            const commentsColRef = collection(db, 'news', newsId, 'comments');
+            await addDoc(commentsColRef, commentData);
+            inputElement.value = ''; // Limpa input
+            // Não precisa recarregar tudo, o listener onSnapshot (a ser adicionado) cuidará disso
+            // ou podemos adicionar o comentário manualmente na UI para otimismo
+            showToast('Comentário adicionado!');
+            // Opcional: Adicionar o comentário localmente na UI imediatamente
+             const newCommentCard = createCommentCard({ id: 'temp-' + Date.now(), ...commentData }, newsId); // Cria card com ID temporário
+             commentsListElement.prepend(newCommentCard); // Adiciona no início da lista
+             attachGlassButtonListeners();
+             lucide.createIcons();
+        } catch (error) {
+            console.error("Erro ao adicionar comentário:", error);
+            showToast("Erro ao enviar comentário.", true);
+        } finally {
+             inputElement.disabled = false;
+             if (submitBtn) submitBtn.disabled = false;
+        }
+    }
+
+    /** Carrega os comentários de um post (poderia ter paginação no futuro) */
+    async function loadComments(newsId, commentsListElement) {
+        commentsListElement.innerHTML = `<div class="spinner mx-auto my-4"></div>`; // Spinner
+        const q = query(collection(db, 'news', newsId, 'comments'), orderBy('createdAt', 'desc')); // Ordena por mais recentes
+
+        // Usar onSnapshot para atualizações em tempo real (opcional, mas bom)
+        onSnapshot(q, (snapshot) => {
+            if (snapshot.empty) {
+                commentsListElement.innerHTML = '<p class="text-stone-400 text-sm text-center">Nenhum comentário ainda.</p>';
+                return;
+            }
+            commentsListElement.innerHTML = ''; // Limpa spinner/conteúdo anterior
+            snapshot.forEach(doc => {
+                const commentCard = createCommentCard({ id: doc.id, ...doc.data() }, newsId);
+                commentsListElement.appendChild(commentCard);
+            });
+            attachGlassButtonListeners();
+            lucide.createIcons();
+        }, (error) => {
+             console.error("Erro ao carregar comentários:", error);
+             commentsListElement.innerHTML = '<p class="text-red-400 text-sm text-center">Erro ao carregar comentários.</p>';
+        });
+    }
+
+    /** Cria o HTML para um card de comentário */
+    function createCommentCard(comment, newsId) {
+        const card = document.createElement('div');
+        card.className = 'comment-card liquid-glass-card bg-stone-800/40 rounded-lg p-3';
+        card.dataset.commentId = comment.id;
+
+        const date = comment.createdAt?.toDate ? comment.createdAt.toDate().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' - ' + comment.createdAt.toDate().toLocaleDateString('pt-BR') : '';
+        const repliesCount = comment.repliesCount || 0;
+
+        card.innerHTML = `
+             <div class="glass-filter"></div>
+             <div class="glass-overlay" style="--bg-color: rgba(30, 30, 30, 0.2);"></div>
+             <div class="glass-specular"></div>
+             <div class="glass-content">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="font-semibold text-sm text-indigo-300">${comment.userName || 'Usuário'}</span>
+                    <span class="text-xs text-stone-400">${date}</span>
+                </div>
+                <p class="text-sm text-stone-200 whitespace-pre-wrap">${comment.text}</p>
+                <div class="mt-2 flex items-center gap-4">
+                     <button class="reply-btn text-xs text-stone-400 hover:text-indigo-400 flex items-center gap-1">
+                         <i data-lucide="corner-down-left" class="w-3 h-3"></i> Responder
+                     </button>
+                     ${repliesCount > 0 ? `<button class="view-replies-btn text-xs text-stone-400 hover:text-indigo-400 flex items-center gap-1" data-count="${repliesCount}">
+                         <i data-lucide="messages-square" class="w-3 h-3"></i> Ver ${repliesCount} ${repliesCount === 1 ? 'resposta' : 'respostas'}
+                     </button>` : ''}
+                </div>
+                <div class="reply-input-area hidden mt-2 ml-4">
+                    <textarea class="reply-input w-full p-2 bg-black/40 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none border border-white/10" rows="1" placeholder="Escreva sua resposta..."></textarea>
+                    <button class="submit-reply-btn bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded-md text-xs mt-1 float-right">Enviar</button>
+                </div>
+                <div class="replies-list hidden mt-2 ml-4 space-y-2 border-l-2 border-white/10 pl-3">
+                    </div>
+             </div>
+        `;
+        addCommentCardListeners(card, newsId, comment.id);
+        return card;
+    }
+
+     /** Adiciona listeners aos botões de um card de comentário */
+    function addCommentCardListeners(cardElement, newsId, commentId) {
+        const replyBtn = cardElement.querySelector('.reply-btn');
+        const viewRepliesBtn = cardElement.querySelector('.view-replies-btn');
+        const replyInputArea = cardElement.querySelector('.reply-input-area');
+        const replyInput = cardElement.querySelector('.reply-input');
+        const submitReplyBtn = cardElement.querySelector('.submit-reply-btn');
+        const repliesList = cardElement.querySelector('.replies-list');
+
+        replyBtn.addEventListener('click', () => replyInputArea.classList.toggle('hidden'));
+        if (viewRepliesBtn) {
+            viewRepliesBtn.addEventListener('click', () => {
+                const isHidden = repliesList.classList.toggle('hidden');
+                 viewRepliesBtn.innerHTML = isHidden
+                     ? `<i data-lucide="messages-square" class="w-3 h-3"></i> Ver ${viewRepliesBtn.dataset.count} ${viewRepliesBtn.dataset.count == 1 ? 'resposta' : 'respostas'}`
+                     : `<i data-lucide="chevron-up" class="w-3 h-3"></i> Ocultar respostas`;
+                 lucide.createIcons({ nodes: [viewRepliesBtn] });
+                if (!isHidden && repliesList.innerHTML === '') {
+                    loadReplies(newsId, commentId, repliesList); // Carrega respostas ao expandir
+                }
+            });
+        }
+        submitReplyBtn.addEventListener('click', () => submitReply(newsId, commentId, replyInput, repliesList, viewRepliesBtn));
+
+        replyInput.addEventListener('keydown', (e) => {
+             if (e.key === 'Enter' && !e.shiftKey) {
+                 e.preventDefault();
+                 submitReply(newsId, commentId, replyInput, repliesList, viewRepliesBtn);
+             }
+         });
+    }
+
+    /** Submete uma nova resposta a um comentário */
+    async function submitReply(newsId, commentId, inputElement, repliesListElement, viewRepliesBtn) {
+         if (!userId || !currentProfile) {
+            showToast("Você precisa estar logado para responder.", true);
+            return;
+        }
+        const replyText = inputElement.value.trim();
+        if (!replyText) {
+            showToast("A resposta não pode estar vazia.", true);
+            return;
+        }
+
+        const replyData = {
+            userId: userId,
+            userName: currentProfile.name || userEmail || "Usuário",
+            text: replyText,
+            createdAt: serverTimestamp()
+        };
+
+        inputElement.disabled = true;
+        const submitBtn = inputElement.nextElementSibling;
+        if(submitBtn) submitBtn.disabled = true;
+
+        try {
+            const repliesColRef = collection(db, 'news', newsId, 'comments', commentId, 'replies');
+            await addDoc(repliesColRef, replyData);
+
+            // Incrementa o contador de respostas no documento do comentário
+            const commentDocRef = doc(db, 'news', newsId, 'comments', commentId);
+            await updateDoc(commentDocRef, { repliesCount: increment(1) });
+
+            inputElement.value = '';
+            inputElement.closest('.reply-input-area').classList.add('hidden'); // Esconde input area
+            showToast('Resposta adicionada!');
+             // Opcional: Adicionar resposta localmente na UI imediatamente
+             const newReplyCard = createReplyCard({ id: 'temp-reply-' + Date.now(), ...replyData });
+             repliesListElement.prepend(newReplyCard); // Adiciona no início
+             repliesListElement.classList.remove('hidden'); // Garante que a lista esteja visível
+             // Atualiza o botão "Ver respostas"
+             const newCount = (parseInt(viewRepliesBtn?.dataset.count || '0') + 1);
+             if (viewRepliesBtn) {
+                 viewRepliesBtn.dataset.count = newCount;
+                 viewRepliesBtn.innerHTML = `<i data-lucide="chevron-up" class="w-3 h-3"></i> Ocultar respostas`; // Assume que está expandido
+                 lucide.createIcons({ nodes: [viewRepliesBtn] });
+             } else {
+                 // Se não havia botão (0 respostas), cria um agora (simplificado)
+                 const commentCard = inputElement.closest('.comment-card');
+                 const buttonContainer = commentCard.querySelector('.flex.items-center.gap-4'); // Container dos botões
+                 if (buttonContainer) {
+                    const newViewRepliesBtn = document.createElement('button');
+                    newViewRepliesBtn.className = "view-replies-btn text-xs text-stone-400 hover:text-indigo-400 flex items-center gap-1";
+                    newViewRepliesBtn.dataset.count = 1;
+                    newViewRepliesBtn.innerHTML = `<i data-lucide="chevron-up" class="w-3 h-3"></i> Ocultar respostas`;
+                    buttonContainer.appendChild(newViewRepliesBtn);
+                    // Adiciona listener ao novo botão (importante!)
+                    addCommentCardListeners(commentCard, newsId, commentId);
+                    lucide.createIcons({ nodes: [newViewRepliesBtn] });
+                 }
+             }
+
+        } catch (error) {
+            console.error("Erro ao adicionar resposta:", error);
+            showToast("Erro ao enviar resposta.", true);
+        } finally {
+            inputElement.disabled = false;
+            if(submitBtn) submitBtn.disabled = false;
+        }
+    }
+
+    /** Carrega as respostas de um comentário */
+    function loadReplies(newsId, commentId, repliesListElement) {
+        repliesListElement.innerHTML = `<div class="spinner mx-auto my-2 w-4 h-4 border-2"></div>`; // Spinner menor
+        const q = query(collection(db, 'news', newsId, 'comments', commentId, 'replies'), orderBy('createdAt', 'asc')); // Ordena por mais antigas
+
+        // Usar onSnapshot para atualizações
+        onSnapshot(q, (snapshot) => {
+            if (snapshot.empty) {
+                repliesListElement.innerHTML = '<p class="text-stone-500 text-xs text-center">Nenhuma resposta ainda.</p>';
+                return;
+            }
+            repliesListElement.innerHTML = ''; // Limpa spinner/conteúdo anterior
+            snapshot.forEach(doc => {
+                const replyCard = createReplyCard({ id: doc.id, ...doc.data() });
+                repliesListElement.appendChild(replyCard);
+            });
+             attachGlassButtonListeners(); // Reanexa se houver botões futuros na resposta
+             lucide.createIcons();
+        }, (error) => {
+             console.error("Erro ao carregar respostas:", error);
+             repliesListElement.innerHTML = '<p class="text-red-400 text-xs text-center">Erro ao carregar respostas.</p>';
+        });
+    }
+
+    /** Cria o HTML para um card de resposta */
+    function createReplyCard(reply) {
+         const card = document.createElement('div');
+         card.className = 'reply-card liquid-glass-card bg-stone-700/30 rounded-md p-2';
+         card.dataset.replyId = reply.id;
+         const date = reply.createdAt?.toDate ? reply.createdAt.toDate().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+
+         card.innerHTML = `
+             <div class="glass-filter"></div>
+             <div class="glass-overlay" style="--bg-color: rgba(40, 40, 40, 0.2);"></div>
+             <div class="glass-specular"></div>
+             <div class="glass-content">
+                <div class="flex items-center justify-between mb-0.5">
+                    <span class="font-semibold text-xs text-indigo-300">${reply.userName || 'Usuário'}</span>
+                    <span class="text-xs text-stone-500">${date}</span>
+                </div>
+                <p class="text-xs text-stone-300 whitespace-pre-wrap">${reply.text}</p>
+             </div>
+        `;
+         return card;
+    }
+
+
+    // --- Lógica de Pedidos --- (Adaptações)
+    function listenToRequests() {
+        const q = query(collection(db, "pedidos"), where("status", "==", "pending"));
+        onSnapshot(q, (snapshot) => {
+            pendingRequests = [];
+            snapshot.forEach((doc) => {
+                pendingRequests.push({ id: doc.id, ...doc.data() });
+            });
+             // Ordena no cliente por data de criação (mais recente primeiro)
+             pendingRequests.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+            // Re-renderiza se a view de pedidos estiver ativa
+            if (window.location.hash === '#requests-view') {
+                 renderPendingRequests();
+            }
+        }, (error) => {
+            console.error("Erro ao escutar pedidos: ", error);
+        });
+    }
+
+    // --- Estado Inicial e Listener de Autenticação ---
+
+    /** Mostra a tela de login e esconde o resto */
+    function showLoginScreen() {
+        userId = null; // Limpa userId
+        userEmail = null;
+        userDisplayName = null;
+        currentProfile = null; // Limpa currentProfile
+        // Esconde todas as views principais, header e footer
+        document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
+        loginView.classList.remove('hidden'); // Mostra login
+        document.querySelector('header').classList.add('hidden');
+        document.querySelector('footer').classList.add('hidden');
+        document.getElementById('main-background').style.opacity = 0; // Esconde background
+        // Para o listener de novidades se estiver ativo
+        if (unsubscribeNewsListener) {
+            unsubscribeNewsListener();
+            unsubscribeNewsListener = null;
+        }
+    }
+
+    /** Mostra a tela de seleção/gerenciamento de perfil */
+    async function showProfileScreen() {
+       // Esconde outras views, header e footer
+       document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
+       loginView.classList.add('hidden');
+       manageProfileView.classList.remove('hidden'); // Mostra gerenciamento de perfil
+       document.querySelector('header').classList.add('hidden');
+       document.querySelector('footer').classList.add('hidden');
+       document.getElementById('main-background').style.opacity = 0; // Esconde background
+       // Reseta o modo de edição
+       isEditMode = false;
+       manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
+       document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
+       await loadProfiles(); // Carrega e renderiza os perfis
+    }
+
+    // Listener principal de mudança de estado de autenticação
+    onAuthStateChanged(auth, async (user) => {
+        document.body.classList.remove('auth-loading'); // Torna o body visível
+        if (user) { // Se o usuário está logado
+            userId = user.uid; // Define o userId global
+            userEmail = user.email; // Guarda email
+            userDisplayName = user.displayName; // Guarda nome do Google (se houver)
+
+            // Inicia listeners do Firestore que dependem do usuário
+            listenForNotifications();
+            // listenToRequests(); // Movido para depois da seleção de perfil
+            // listenForNews(); // Movido para depois da seleção de perfil
+
+            initializePlayerUI(); // Inicializa UI do player (pode ser feito aqui)
+
+            // **LÓGICA DE PERFIL NO LOGIN:**
+            // Tenta carregar o último perfil do localStorage
+            const lastProfileId = localStorage.getItem(`starlight-lastProfile-${userId}`);
+            let autoSelectedProfile = false;
+            if (lastProfileId) {
+                await loadProfiles(); // Carrega perfis para verificar se o ID salvo é válido
+                const foundProfile = profiles.find(p => p.id === lastProfileId);
+                if (foundProfile) {
+                    // Se encontrou, seleciona automaticamente e PULA a tela de seleção
+                    selectAndEnterProfile(foundProfile);
+                    autoSelectedProfile = true;
+                }
+            }
+
+            // Se nenhum perfil foi selecionado automaticamente, mostra a tela de seleção
+            if (!autoSelectedProfile) {
+                currentProfile = null; // Garante que currentProfile esteja nulo
+                if (window.location.hash !== '#manage-profile-view') {
+                    history.replaceState(null, '', '#manage-profile-view');
+                }
+                handleNavigation(); // Roda o roteador (vai cair na condição !currentProfile)
+            }
+             // Se um perfil foi selecionado (autoSelectedProfile = true),
+             // selectAndEnterProfile já chamou handleNavigation, então não precisa chamar de novo.
+
+        } else { // Se o usuário NÃO está logado
+            userId = null;
+            userEmail = null;
+            userDisplayName = null;
+            currentProfile = null;
+            // Garante que o hash seja #login-view
+            if (window.location.hash !== '#login-view') {
+                history.replaceState(null, '', '#login-view');
+            }
+            handleNavigation(); // Roda o roteador (vai cair na condição !userId)
+        }
+    });
+
+    // --- Inicialização ---
+    attachGlassButtonListeners(); // Adiciona listeners visuais iniciais
+    window.addEventListener('resize', () => { // Listener para resize
+        updateMobileNavIndicator(); // Atualiza nav mobile
+        // Re-avalia qual listener de clique do player adicionar (mobile vs desktop)
+        addPlayerEventListeners();
+    });
+
+}); // Fim do DOMContentLoaded
