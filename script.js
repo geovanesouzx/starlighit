@@ -279,7 +279,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const progressData = {
             currentTime: videoPlayer.currentTime, // Tempo atual
             duration: videoPlayer.duration,       // Duração total
-            lastWatched: Date.now(),             // Timestamp da última atualização
+            lastWatched: Date.now(),              // Timestamp da última atualização
             item: currentPlayerContext.itemData, // Dados do filme/série geral
             // Dados do episódio específico (se for uma série)
             episode: currentPlayerContext.episodes ? currentPlayerContext.episodes[currentPlayerContext.currentIndex] : null,
@@ -551,9 +551,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Carrossel "Adicionado Recentemente"
         const recentlyAdded = [...firestoreContent]
-          // Ordena por data de adição (mais recente primeiro)
-          .sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0))
-          .slice(0, 20); // Pega os 20 mais recentes
+         // Ordena por data de adição (mais recente primeiro)
+        .sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0))
+        .slice(0, 20); // Pega os 20 mais recentes
         createCarousel(carouselsContainer, "Adicionado Recentemente", recentlyAdded);
 
       // Carrosséis por Gênero
@@ -823,10 +823,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="glass-specular"></div>
                         <div class="glass-content flex items-start p-3 gap-4">
                              <div class="relative flex-shrink-0">
-                                <img src="${stillPath}" alt="Cena do episódio" class="w-32 sm:w-40 rounded-md aspect-video object-cover">
-                                <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <i data-lucide="play-circle" class="w-8 h-8 text-white"></i> <!-- Ícone de play ao passar o mouse -->
-                                </div>
+                                 <img src="${stillPath}" alt="Cena do episódio" class="w-32 sm:w-40 rounded-md aspect-video object-cover">
+                                 <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                     <i data-lucide="play-circle" class="w-8 h-8 text-white"></i> <!-- Ícone de play ao passar o mouse -->
+                                 </div>
                              </div>
                             <div class="flex-1">
                                 <h4 class="font-semibold text-white">${index + 1}. ${epTitle}</h4>
@@ -894,8 +894,47 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateMobileNavIndicator() { const indicator = document.getElementById('mobile-nav-indicator'); const activeItem = document.querySelector('#mobile-nav .mobile-nav-item.active'); if (indicator && activeItem) { const left = activeItem.offsetLeft; const width = activeItem.offsetWidth; indicator.style.width = `${width}px`; indicator.style.transform = `translateX(${left}px)`; }}
     /** Mostra ou esconde o overlay de busca */
     function toggleSearchOverlay(show) { if (show) { searchOverlay.classList.remove('hidden'); searchInput.focus(); document.body.style.overflow = 'hidden'; } else { searchOverlay.classList.add('hidden'); searchInput.value = ''; searchResultsContainer.innerHTML = ''; document.body.style.overflow = 'auto'; }}
-    /** Realiza a busca na API TMDB e exibe os resultados */
-    async function performSearch(query) { if(query.length < 2) { searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Digite pelo menos 2 caracteres.</p>`; return; } searchResultsContainer.innerHTML = `<div class="col-span-full">${glassSpinnerHTML.replace('min-h-screen', '')}</div>`; /* Mostra spinner */ const data = await fetchFromTMDB('search/multi', `query=${encodeURIComponent(query)}`); if(data && data.results) { const filteredResults = data.results.filter(item => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path); /* Filtra filmes/séries com pôster */ if(filteredResults.length > 0) { searchResultsContainer.innerHTML = filteredResults.map(item => createContentCard(item, true)).join(''); } else { searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum resultado para "${query}".</p>`; }} else { searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Ocorreu um erro na busca.</p>`; }}
+    
+    // -----------------------------------------------------------------
+    // --- FUNÇÃO DE BUSCA CORRIGIDA ---
+    // -----------------------------------------------------------------
+    /**
+     * Realiza a busca no CATÁLOGO LOCAL (firestoreContent) e exibe os resultados.
+     */
+    function performSearch(query) {
+        if (query.length < 2) {
+            searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Digite pelo menos 2 caracteres.</p>`;
+            return;
+        }
+
+        // Garante que firestoreContent está disponível
+        if (!firestoreContent || firestoreContent.length === 0) {
+             searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">O catálogo está carregando. Tente novamente em alguns segundos.</p>`;
+             return;
+        }
+
+        const lowerCaseQuery = query.toLowerCase();
+        // Filtra o array firestoreContent local
+        const results = firestoreContent.filter(item => {
+            const title = (item.title || item.name || '').toLowerCase();
+            return title.includes(lowerCaseQuery);
+        });
+
+        if (results.length > 0) {
+            // Usa createGridCard para exibir os resultados na grid
+            // createGridCard usa 'item.docId' para criar o link correto
+            searchResultsContainer.innerHTML = results.map(item => createGridCard(item)).join('');
+        } else {
+            searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum resultado para "${query}" em nosso catálogo.</p>`;
+        }
+        
+        // Re-anexa listeners para os cards de vidro recém-criados
+        attachGlassButtonListeners();
+    }
+    // -----------------------------------------------------------------
+    // --- FIM DA CORREÇÃO ---
+    // -----------------------------------------------------------------
+
 
     // --- Funções do Player ---
 
@@ -1175,10 +1214,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const episode = currentPlayerContext.episodes[newIndex]; // Pega dados do novo episódio
             // Cria novo contexto com índice atualizado e novo título
             const newContext = {
-                ...currentPlayerContext,
-                currentIndex: newIndex,
-                title: `${currentPlayerContext.itemData.name} - T${episode.season_number} E${episode.episode_number}`,
-                videoUrl: episode.url // IMPORTANTE: Atualizar a URL do vídeo
+                 ...currentPlayerContext,
+                 currentIndex: newIndex,
+                 title: `${currentPlayerContext.itemData.name} - T${episode.season_number} E${episode.episode_number}`,
+                 videoUrl: episode.url // IMPORTANTE: Atualizar a URL do vídeo
              };
             showPlayer(newContext); // Mostra o player com o novo episódio
         }
@@ -1318,8 +1357,16 @@ document.addEventListener('DOMContentLoaded', function() {
     searchIconBtn.addEventListener('click', () => toggleSearchOverlay(true)); // Abrir busca (desktop)
     closeSearchBtn.addEventListener('click', () => toggleSearchOverlay(false)); // Fechar busca
     document.getElementById('search-overlay-bg').addEventListener('click', () => toggleSearchOverlay(false)); // Fechar ao clicar no fundo
-    // Realizar busca com debounce ao digitar
-    searchInput.addEventListener('input', () => { clearTimeout(debounceTimer); debounceTimer = setTimeout(() => { performSearch(searchInput.value); }, 400); });
+    
+    // Listener de busca com debounce (CORRIGIDO)
+    searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            // Chama a nova função performSearch (que agora é síncrona)
+            performSearch(searchInput.value); 
+        }, 400); // 400ms de debounce
+    });
+
 
     // Botão de busca mobile
     const mobileSearchBtn = document.getElementById('mobile-search-btn');
@@ -1383,7 +1430,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (lastProfileId) {
                 // Carrega os perfis do Firestore APENAS se precisar verificar o último perfil
                  if (!profiles || profiles.length === 0) { // Evita recarregar se já tiver
-                    await loadProfiles(); // loadProfiles() também chama renderProfiles()
+                     await loadProfiles(); // loadProfiles() também chama renderProfiles()
                  }
                 const foundProfile = profiles.find(p => p.id === lastProfileId);
                 if (foundProfile) {
@@ -1938,12 +1985,12 @@ document.addEventListener('DOMContentLoaded', function() {
         createUserWithEmailAndPassword(auth, email, password)
             .then(async (userCredential) => {
                  // **NOVO:** Cria um perfil padrão após registro bem-sucedido
-                const user = userCredential.user;
-                if (user) {
-                    const colRef = collection(db, 'users', user.uid, 'profiles');
-                    await addDoc(colRef, { name: "Usuário", avatar: AVATARS[0] }); // Cria perfil inicial
+                 const user = userCredential.user;
+                 if (user) {
+                     const colRef = collection(db, 'users', user.uid, 'profiles');
+                     await addDoc(colRef, { name: "Usuário", avatar: AVATARS[0] }); // Cria perfil inicial
                      // Não precisa fazer mais nada aqui, o onAuthStateChanged vai lidar com a navegação
-                }
+                 }
             })
             .catch((error) => { // Trata erros de registro
                 console.error("Erro de registro:", error);
@@ -1956,16 +2003,16 @@ document.addEventListener('DOMContentLoaded', function() {
         signInWithPopup(auth, googleProvider)
              .then(async (result) => {
                  // **NOVO:** Verifica se é o primeiro login com Google e cria perfil se necessário
-                const user = result.user;
-                if (user) {
-                    const profilesCol = collection(db, 'users', user.uid, 'profiles');
-                    const snapshot = await getDocs(profilesCol);
-                    if (snapshot.empty) { // Se não existem perfis, cria um
-                         await addDoc(profilesCol, { name: user.displayName || "Usuário", avatar: user.photoURL || AVATARS[0] });
-                    }
-                     // onAuthStateChanged cuidará da navegação
-                }
-            })
+                 const user = result.user;
+                 if (user) {
+                     const profilesCol = collection(db, 'users', user.uid, 'profiles');
+                     const snapshot = await getDocs(profilesCol);
+                     if (snapshot.empty) { // Se não existem perfis, cria um
+                          await addDoc(profilesCol, { name: user.displayName || "Usuário", avatar: user.photoURL || AVATARS[0] });
+                     }
+                      // onAuthStateChanged cuidará da navegação
+                 }
+             })
             .catch((error) => { // Trata erros de login com Google
                 console.error("Erro de login com Google:", error);
                 showToast(`Erro: ${error.message}`, true);
@@ -2230,4 +2277,3 @@ document.addEventListener('DOMContentLoaded', function() {
     // handleNavigation(); << Removido - onAuthStateChanged cuidará da chamada inicial.
 
 });
-
