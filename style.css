@@ -6,7 +6,7 @@
 
 body {
     font-family: 'Inter', sans-serif;
-    background-color: #0c0a09;
+    background-color: #0c0a09; /* Cor base do body */
     color: #ffffff;
     overflow-x: hidden;
 }
@@ -37,8 +37,7 @@ body.auth-loading {
     background-position: center;
     transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in-out;
     z-index: -2;
-    /* Imagem horizontal padrão (será sobrescrita pelo JS) */
-    background-image: url('https://placehold.co/1920x1080/0c0a09/ffffff?text=Fundo+Horizontal');
+    /* Removido background-image daqui, será definido pelo JS */
 }
 
 /* Sobreposição de gradiente no fundo principal */
@@ -50,9 +49,6 @@ body.auth-loading {
                 linear-gradient(to right, #0c0a09 2%, transparent 50%);
 }
 
-/* Fundo vertical para #main-background em telas menores */
-/* REMOVIDO DAQUI - O JavaScript agora controla a imagem de fundo */
-/* @media (max-width: 768px) { ... } */
 
 /* Ajusta o gradiente para telas menores */
 @media (max-width: 768px) {
@@ -152,6 +148,11 @@ body.auth-loading {
 .content-view { padding-top: 100px; min-height: 100vh; }
 #home-view { padding-top: 0; }
 
+/* Fundo para a tela de detalhes */
+#details-background {
+    transition: background-image 0.5s ease-in-out; /* Suaviza a troca de imagem */
+}
+
 .details-gradient-overlay {
     background: linear-gradient(to top, #0c0a09 20%, rgba(12,10,9,0.7) 50%, transparent 100%);
 }
@@ -178,6 +179,8 @@ body.auth-loading {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+.spinner-lg { width: 40px; height: 40px; } /* Mantido spinner-lg para admin */
+
 
 .carousel-container { position: relative; }
 .carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; }

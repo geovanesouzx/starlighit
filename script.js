@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentPlayerContext = {};
     let lastProgressSaveTime = 0;
     const detailsView = document.getElementById('details-view');
-    const detailsBackground = document.getElementById('details-background'); // NOVO: Elemento de fundo dos detalhes
+    const detailsBackground = document.getElementById('details-background'); // Elemento de fundo dos detalhes
 
     let heroCarouselInterval;
     let featuredItemIds = [];
@@ -347,7 +347,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function createContentCard(item) {
         if (!item || !item.poster) return ''; // Retorna vazio se não houver item ou pôster
         // Define o caminho do pôster, com fallback para placeholder
-        const posterPath = item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
+        const posterPath = item.poster && item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
         // Retorna o HTML do card como um link para a tela de detalhes
         return `
         <a href="#details/${item.docId}" class="carousel-item w-36 sm:w-48 cursor-pointer group block flex-shrink-0">
@@ -364,13 +364,13 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     /**
-     * Cria o HTML para um card de conteúdo em grid (usado em Séries, Filmes, Minha Lista).
+     * Cria o HTML para um card de conteúdo em grid (usado em Séries, Filmes, Minha Lista, Busca).
      * @param {object} item - O objeto do item.
      * @returns {string} - O HTML do card.
      */
     function createGridCard(item) {
         if (!item || !item.poster) return '';
-        const posterPath = item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
+        const posterPath = item.poster && item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
         // Inclui o título abaixo da imagem
         return `
         <a href="#details/${item.docId}" class="group block cursor-pointer">
@@ -458,7 +458,11 @@ document.addEventListener('DOMContentLoaded', function() {
             currentHeroItem = item; // Define o item atual do hero
 
             // Escolhe a URL do backdrop (vertical se mobile e disponível, senão horizontal)
-            const backgroundUrl = (isMobile && item.backdrop_vertical) ? item.backdrop_vertical : item.backdrop;
+            const backgroundUrl = (isMobile && item.backdrop_vertical && item.backdrop_vertical.startsWith('http'))
+                ? item.backdrop_vertical
+                : (item.backdrop && item.backdrop.startsWith('http'))
+                    ? item.backdrop
+                    : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight'; // Fallback final
 
             // Define a imagem de fundo principal
             mainBackground.style.backgroundImage = `url('${backgroundUrl}')`;
@@ -606,6 +610,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if(featuredItems.length > 0) {
                 updateHero(featuredItems[0]); // Mostra o primeiro item
                 startHeroRotation(); // Inicia a rotação
+            } else if (firestoreContent.length > 0) {
+                 updateHero(firestoreContent[0]); // Fallback para o primeiro item do catálogo se não houver destaques
+                 if (heroCarouselInterval) clearInterval(heroCarouselInterval); // Para rotação se não houver múltiplos destaques
             }
             populateAllViews(); // Popula os carrosséis da home
         } else if (screenId === 'series-view') {
@@ -647,7 +654,7 @@ document.addEventListener('DOMContentLoaded', function() {
         detailsView.classList.remove('hidden'); // Mostra a view de detalhes
         // Limpa o conteúdo anterior enquanto carrega
         detailsView.querySelector('.relative')?.remove(); // Remove o container antigo se existir
-        detailsView.innerHTML = '<div class="spinner mx-auto mt-20"></div>'; // Mostra spinner
+        detailsView.innerHTML = '<div class="spinner-lg mx-auto mt-20"></div>'; // Mostra spinner
         window.scrollTo(0, 0); // Rola para o topo
 
         // Busca os dados do item no cache local do Firestore
@@ -661,12 +668,16 @@ document.addEventListener('DOMContentLoaded', function() {
         currentDetailsItem = data; // Define o item atual dos detalhes
         const isMobile = window.innerWidth < 768; // Verifica se é mobile
 
-        // Escolhe a URL do backdrop (vertical se mobile e disponível, senão horizontal)
-        const backgroundUrl = (isMobile && data.backdrop_vertical) ? data.backdrop_vertical : data.backdrop;
-        const finalImageUrl = backgroundUrl && backgroundUrl.startsWith('http') ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
+        // Escolhe a URL do backdrop (vertical se mobile e disponível, senão horizontal, senão placeholder)
+        const backgroundUrl = (isMobile && data.backdrop_vertical && data.backdrop_vertical.startsWith('http'))
+            ? data.backdrop_vertical
+            : (data.backdrop && data.backdrop.startsWith('http'))
+                ? data.backdrop
+                : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight'; // Fallback final
+
 
         // Define o fundo na div separada
-        detailsBackground.style.backgroundImage = `url('${finalImageUrl}')`;
+        detailsBackground.style.backgroundImage = `url('${backgroundUrl}')`;
 
         // Limpa o spinner e recria a estrutura interna da view de detalhes
         detailsView.innerHTML = `
@@ -702,9 +713,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const genres = data.genres ? data.genres.map(g => `<span class="bg-white/10 text-xs font-semibold px-2 py-1 rounded-full text-white">${g}</span>`).join('') : '';
         let duration = '';
         if (data.type === 'movie' && data.duration) {
-             duration = data.duration;
+             // Formata a duração em horas e minutos se for um número
+             if (!isNaN(data.duration)) {
+                const hours = Math.floor(data.duration / 60);
+                const minutes = data.duration % 60;
+                duration = `${hours > 0 ? hours + 'h ' : ''}${minutes}min`;
+             } else {
+                 duration = data.duration; // Usa o valor como está se não for número
+             }
         } else if (data.type === 'tv' && data.seasons) {
-            duration = `${Object.keys(data.seasons).length} Temporada(s)`;
+            const seasonCount = Object.keys(data.seasons).length;
+            duration = `${seasonCount} Temporada${seasonCount !== 1 ? 's' : ''}`;
         }
         const posterUrl = data.poster && data.poster.startsWith('http') ? data.poster : 'https://placehold.co/500x750/1a1a1a/ffffff?text=Capa';
 
@@ -1172,9 +1191,11 @@ document.addEventListener('DOMContentLoaded', function() {
         videoPlayer.addEventListener('timeupdate', () => {
             if(isNaN(videoPlayer.currentTime)) return; // Ignora se currentTime for NaN
             seekBar.value = videoPlayer.currentTime; // Atualiza valor do slider
-            if (videoPlayer.duration) { // Atualiza a barra visual
+            if (videoPlayer.duration && isFinite(videoPlayer.duration)) { // Verifica se duration é finito
                 const progressPercent = (videoPlayer.currentTime / videoPlayer.duration) * 100;
                 seekProgressBar.style.width = `${progressPercent}%`;
+            } else {
+                 seekProgressBar.style.width = `0%`; // Reseta se a duração for inválida
             }
             currentTimeEl.textContent = formatTime(videoPlayer.currentTime); // Atualiza tempo atual formatado
 
@@ -1188,10 +1209,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Quando metadados carregam (obtém duração)
         videoPlayer.addEventListener('loadedmetadata', () => {
-            if(isNaN(videoPlayer.duration)) return; // Ignora se duration for NaN
-            seekBar.max = videoPlayer.duration; // Define o máximo do slider
-            durationEl.textContent = formatTime(videoPlayer.duration); // Mostra duração total formatada
+            // Verifica se duration é um número finito antes de usar
+            if(!isNaN(videoPlayer.duration) && isFinite(videoPlayer.duration)) {
+                seekBar.max = videoPlayer.duration; // Define o máximo do slider
+                durationEl.textContent = formatTime(videoPlayer.duration); // Mostra duração total formatada
+            } else {
+                seekBar.max = 0; // Define como 0 se inválido
+                durationEl.textContent = "00:00";
+                console.warn("Duração do vídeo inválida:", videoPlayer.duration);
+            }
         });
+
 
         // Atualiza ícone de volume e valor do slider de volume
         videoPlayer.addEventListener('volumechange', () => {
@@ -1343,11 +1371,29 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('hero-watch-btn').addEventListener('click', () => {
         if (!currentHeroItem) return; // Sai se não houver item no hero
         // Pega a URL do item no Firestore e inicia o player
-        showPlayer({
-            videoUrl: currentHeroItem.url, // Usa a URL do item do Firestore
-            title: currentHeroItem.title || currentHeroItem.name,
-            itemData: currentHeroItem
-        });
+        // Verifica se é filme ou série para determinar a URL a ser usada
+        let watchContext = {
+             title: currentHeroItem.title || currentHeroItem.name,
+             itemData: currentHeroItem
+        };
+        if(currentHeroItem.type === 'movie' && currentHeroItem.url) {
+            watchContext.videoUrl = currentHeroItem.url;
+        } else if (currentHeroItem.type === 'tv' && currentHeroItem.seasons) {
+             const firstSeasonKey = Object.keys(currentHeroItem.seasons).sort((a,b) => parseInt(a) - parseInt(b))[0];
+             const firstEpisode = currentHeroItem.seasons[firstSeasonKey]?.episodes?.[0];
+             if (firstEpisode) {
+                 watchContext.videoUrl = firstEpisode.url;
+                 watchContext.episodes = currentHeroItem.seasons[firstSeasonKey].episodes;
+                 watchContext.currentIndex = 0;
+                 watchContext.title = `${watchContext.title} - T${firstSeasonKey} E${firstEpisode.episode_number || 1}`;
+             } else {
+                 showToast("Nenhum episódio encontrado para iniciar.", true); return;
+             }
+        } else {
+             showToast("URL de vídeo não encontrada.", true); return;
+        }
+
+        showPlayer(watchContext);
     });
 
     /** Inicializa a UI do player (define ícones iniciais, adiciona listeners) */
@@ -1447,23 +1493,23 @@ document.addEventListener('DOMContentLoaded', function() {
                  }
                 const foundProfile = profiles.find(p => p.id === lastProfileId);
                 if (foundProfile) {
-                    // Se encontrou um perfil válido salvo, seleciona-o automaticamente
+                    // Se encontrou, seleciona automaticamente e PULA a tela de seleção
                     selectAndEnterProfile(foundProfile);
-                    autoSelectedProfile = true; // Marca que um perfil foi selecionado
-                    // Não retorna aqui, continua para o roteamento do app
+                    autoSelectedProfile = true;
                 }
             }
 
-            // Se NENHUM perfil foi selecionado automaticamente
+            // Se nenhum perfil foi selecionado automaticamente, mostra a tela de seleção
             if (!autoSelectedProfile) {
-                // Garante que a view de seleção de perfil seja exibida
-                if (hash !== '#manage-profile-view') {
+                currentProfile = null; // Garante que currentProfile esteja nulo
+                if (window.location.hash !== '#manage-profile-view') {
                     history.replaceState(null, '', '#manage-profile-view');
                 }
-                showProfileScreen(); // Mostra a tela de seleção de perfil
-                return; // Interrompe a função aqui
+                handleNavigation(); // Roda o roteador (vai cair na condição !currentProfile)
+                return; // Importante retornar aqui para evitar processamento duplicado
             }
-             // Se um perfil foi auto-selecionado, a função continua para o roteamento do app abaixo
+             // Se um perfil foi selecionado (autoSelectedProfile = true),
+             // selectAndEnterProfile já chamou handleNavigation se necessário.
         }
 
 
@@ -1540,9 +1586,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (targetId !== 'home-view' && heroCarouselInterval) {
                 clearInterval(heroCarouselInterval);
                 heroCarouselInterval = null;
+            } else if (targetId === 'home-view' && !heroCarouselInterval && featuredItemIds.length > 1) {
+                startHeroRotation(); // Reinicia se voltar para home e houver itens
             }
         }
     }
+
 
     // Adiciona os listeners de navegação do navegador (botão voltar/avançar, mudança de hash)
     window.addEventListener('popstate', handleNavigation);
@@ -2269,7 +2318,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 handleNavigation(); // Roda o roteador (vai cair na condição !currentProfile)
             }
              // Se um perfil foi selecionado (autoSelectedProfile = true),
-             // selectAndEnterProfile já chamou handleNavigation, então não precisa chamar de novo.
+             // selectAndEnterProfile já chamou handleNavigation se necessário.
 
         } else { // Se o usuário NÃO está logado
             userId = null;
