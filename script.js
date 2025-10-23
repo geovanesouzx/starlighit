@@ -20,11 +20,12 @@ import {
     deleteDoc,
     query,
     where,
-    orderBy, // Re-adicionado para novidades e notificações
+    orderBy,
     onSnapshot,
-    arrayUnion,
     serverTimestamp,
-    arrayRemove
+    arrayUnion,
+    arrayRemove,
+    runTransaction // Necessário para contadores de likes/comentários
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -76,7 +77,16 @@ document.addEventListener('DOMContentLoaded', function() {
     let notifications = []; // Cache de notificações
     let lastNotificationCheck = localStorage.getItem('starlight-lastNotificationCheck') || 0;
     let dismissedNotifications = JSON.parse(localStorage.getItem('starlight-dismissedNotifications')) || [];
-    let newsItems = []; // NOVO: Cache para novidades
+
+    // NOVO: Caches para Novidades
+    let newsItems = [];
+    let newsLikes = new Map(); // Armazena likes por newsId -> Set[profileId]
+    let newsComments = new Map(); // Armazena comentários por newsId -> Array[comment]
+    let unsubscribeNewsLikes = () => {}; // Função para parar listener de likes
+    let unsubscribeNewsComments = () => {}; // Função para parar listener de comentários
+    let currentNewsCommentsModalId = null; // ID do post que está no modal de comentários
+    let replyToCommentId = null; // ID do comentário sendo respondido
+    let replyToCommentAuthor = null; // Nome do autor do comentário sendo respondido
 
     let firestoreContent = []; // Cache do conteúdo principal
     let pendingRequests = []; // Cache de pedidos pendentes
@@ -92,7 +102,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const notificationPanel = document.getElementById('notification-panel');
     let debounceTimer; // Timer para debounce de busca
 
-    // Elementos do Player
+    // Elementos do Player (Filmes/Séries)
     const playerView = document.getElementById('player-view');
     let videoPlayer = document.getElementById('video-player');
     const playerTitle = document.getElementById('player-title');
@@ -113,6 +123,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const playerBackBtn = document.getElementById('player-back-btn');
     const aspectRatioBtn = document.getElementById('player-aspect-ratio-btn');
     let currentAspectRatio = 'contain';
+
+    // NOVO: Elementos do Player (Novidades)
+    const newsPlayerView = document.getElementById('news-player-view');
+    const newsPlayerVideo = document.getElementById('news-video-player');
+    const newsPlayerTitle = document.getElementById('news-player-title');
+    const newsPlayerCloseBtn = document.getElementById('news-player-close-btn');
+
+    // NOVO: Elementos do Modal de Comentários
+    const commentsModal = document.getElementById('comments-modal');
+    const commentsModalTitle = document.getElementById('comments-modal-title');
+    const commentsModalList = document.getElementById('comments-list');
+    const commentsModalCloseBtn = document.getElementById('comments-modal-close-btn');
+    const commentForm = document.getElementById('comment-form');
+    const commentInput = document.getElementById('comment-input');
+    const replyIndicator = document.getElementById('reply-indicator'); // Elemento para mostrar a quem está respondendo
+    const cancelReplyBtn = document.getElementById('cancel-reply-btn'); // Botão para cancelar resposta
 
     // Elementos de Gerenciamento de Perfil
     const manageProfileView = document.getElementById('manage-profile-view');
@@ -142,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
         'https://pbs.twimg.com/media/EcGdw6uXgAEpGA-.jpg'
     ];
 
-    // Ícones SVG para os controles do player
+    // Ícones SVG para os controles do player e novidades
     const ICONS = {
         play: `<svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>`,
         pause: `<svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>`,
@@ -158,6 +184,11 @@ document.addEventListener('DOMContentLoaded', function() {
         back: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>`,
         aspectContain: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M2 5h2v14H2V5zm20 0h-2v14h2V5zM6 7h12v10H6V7z"></path></svg>`, // Ícone para 'contain'
         aspectCover: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 5h16v14H4V5z"></path></svg>` // Ícone para 'cover'
+        , // NOVO: Ícones para Novidades
+        heartOutline: `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>`,
+        heartFilled: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>`,
+        comment: `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 5.523-4.477 10-10 10S1 17.523 1 12 5.477 2 11 2s10 4.477 10 10z"></path></svg>`,
+        reply: `<svg fill="currentColor" viewBox="0 0 24 24" class="w-4 h-4"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"></path></svg>`
     };
 
     // HTML para o spinner de carregamento
@@ -284,7 +315,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const progressData = {
             currentTime: videoPlayer.currentTime, // Tempo atual
             duration: videoPlayer.duration,       // Duração total
-            lastWatched: Date.now(),             // Timestamp da última atualização
+            lastWatched: Date.now(),            // Timestamp da última atualização
             item: currentPlayerContext.itemData, // Dados do filme/série geral
             // Dados do episódio específico (se for uma série)
             episode: currentPlayerContext.episodes ? currentPlayerContext.episodes[currentPlayerContext.currentIndex] : null,
@@ -524,6 +555,35 @@ document.addEventListener('DOMContentLoaded', function() {
         attachGlassButtonListeners(); // Reatacha listeners para efeitos visuais
     }
 
+
+    // --- NOVO: Lógica Player de Vídeo (Novidades) ---
+    function showNewsPlayer(url, title) {
+        if (!newsPlayerView || !newsPlayerVideo) return;
+        newsPlayerTitle.textContent = title || 'Vídeo';
+        newsPlayerVideo.src = url;
+        newsPlayerView.classList.remove('hidden');
+        document.body.style.overflow = 'hidden'; // Impede scroll do fundo
+        newsPlayerVideo.play().catch(e => console.error("Erro ao iniciar player de novidades:", e));
+    }
+
+    function hideNewsPlayer() {
+        if (!newsPlayerView || !newsPlayerVideo) return;
+        newsPlayerVideo.pause();
+        newsPlayerVideo.removeAttribute('src'); // Remove a fonte para parar o carregamento
+        newsPlayerVideo.load();
+        newsPlayerView.classList.add('hidden');
+        // Só restaura o scroll se o player principal também não estiver ativo
+        if (playerView.classList.contains('hidden')) {
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    // Listener para fechar o player de novidades
+    if (newsPlayerCloseBtn) {
+        newsPlayerCloseBtn.addEventListener('click', hideNewsPlayer);
+    }
+    // --- FIM: Lógica Player de Vídeo (Novidades) ---
+
     /**
      * Escuta por atualizações na coleção 'content' do Firestore e atualiza a UI.
      */
@@ -599,6 +659,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const screenElement = document.getElementById(screenId);
         if (!screenElement ) return; // Sai se a tela não for encontrada
 
+        // Para iframes e player de novidades se sair da tela de novidades
+        if (screenId !== 'news-view') {
+            stopNewsViewMedia(); // NOVO
+        }
+
         // Lógica de renderização específica para cada tela
         if (screenId === 'home-view') {
             // Pega os itens em destaque e atualiza o hero
@@ -622,6 +687,15 @@ document.addEventListener('DOMContentLoaded', function() {
             renderPendingRequests(); // Renderiza os pedidos pendentes
         } else if (screenId === 'news-view') { // NOVO
             renderNewsView(); // Renderiza a seção de novidades
+            // Inicia listeners de likes e comentários específicos para novidades
+            listenForNewsLikes();
+            listenForNewsComments();
+        } else {
+            // Se saiu da tela de novidades, para os listeners
+            if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
+            if (typeof unsubscribeNewsComments === 'function') unsubscribeNewsComments();
+            newsLikes.clear(); // Limpa caches
+            newsComments.clear();
         }
         lucide.createIcons(); // Recria ícones
         attachGlassButtonListeners(); // Reatacha listeners visuais
@@ -829,16 +903,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.3);"></div>
                         <div class="glass-specular"></div>
                         <div class="glass-content flex items-start p-3 gap-4">
-                             <div class="relative flex-shrink-0">
-                                 <img src="${stillPath}" alt="Cena do episódio" class="w-32 sm:w-40 rounded-md aspect-video object-cover">
-                                 <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                     <i data-lucide="play-circle" class="w-8 h-8 text-white"></i> <!-- Ícone de play ao passar o mouse -->
-                                 </div>
-                             </div>
-                             <div class="flex-1">
-                                 <h4 class="font-semibold text-white">${index + 1}. ${epTitle}</h4>
-                                 <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden">${epOverview}</p> <!-- Limita altura da sinopse -->
-                             </div>
+                            <div class="relative flex-shrink-0">
+                                <img src="${stillPath}" alt="Cena do episódio" class="w-32 sm:w-40 rounded-md aspect-video object-cover">
+                                <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <i data-lucide="play-circle" class="w-8 h-8 text-white"></i> <!-- Ícone de play ao passar o mouse -->
+                                </div>
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-white">${index + 1}. ${epTitle}</h4>
+                                <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden">${epOverview}</p> <!-- Limita altura da sinopse -->
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1002,7 +1076,7 @@ document.addEventListener('DOMContentLoaded', function() {
             hls = new Hls({
                 maxBufferLength: 30,    // Segundos de buffer
                 maxBufferSize: 60 * 1000 * 1000, // 60MB de buffer
-                startLevel: -1          // Começa na qualidade automática
+                startLevel: -1           // Começa na qualidade automática
             });
             hls.loadSource(urlToLoad); // Carrega a fonte
             hls.attachMedia(videoPlayer); // Anexa ao elemento <video>
@@ -1027,11 +1101,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.innerWidth < 768) { // Se for tela pequena (considerado mobile)
              // MUDANÇA: Lógica ajustada para (re)tentar bloquear a orientação
              if (!document.fullscreenElement) { // Só tenta entrar em fullscreen se já não estiver
-                try {
-                    await playerView.requestFullscreen();
-                } catch (err) {
-                     console.error("Não foi possível ativar tela cheia:", err);
-                }
+                 try {
+                     await playerView.requestFullscreen();
+                 } catch (err) {
+                      console.error("Não foi possível ativar tela cheia:", err);
+                 }
              }
              // Tenta (re)travar a orientação.
              // Se foi um clique (nextBtn), funciona.
@@ -1039,10 +1113,10 @@ document.addEventListener('DOMContentLoaded', function() {
              // a orientação anterior (landscape) deve ser mantida.
              try {
                  if (screen.orientation && typeof screen.orientation.lock === 'function') {
-                     await screen.orientation.lock('landscape');
+                      await screen.orientation.lock('landscape');
                  }
              } catch (err) {
-                console.error("Não foi possível bloquear orientação:", err);
+                 console.error("Não foi possível bloquear orientação:", err);
              }
         }
 
@@ -1081,7 +1155,10 @@ document.addEventListener('DOMContentLoaded', function() {
         videoPlayer.load();
 
         playerView.classList.add('hidden'); // Esconde a view do player
-        document.body.style.overflow = 'auto'; // Restaura a rolagem do body
+        // Só restaura o scroll se o player de novidades também não estiver ativo
+        if (newsPlayerView.classList.contains('hidden')) {
+             document.body.style.overflow = 'auto'; // Restaura a rolagem do body
+        }
         currentPlayerContext = {}; // Limpa o contexto do player
 
         // 3. Sai da tela cheia e desbloqueia a orientação
@@ -1351,18 +1428,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Listener global para fechar painéis (configurações, notificações, seletor de temporada) ao clicar fora
     document.addEventListener('click', (e) => {
-         // Fecha painel de configurações
-         if (!settingsPanel.classList.contains('hidden') && !settingsBtn.contains(e.target) && !settingsPanel.contains(e.target)) { settingsPanel.classList.add('hidden'); }
-         // Fecha painel de notificações
-         if (!notificationPanel.classList.contains('hidden') && !notificationPanel.contains(e.target) && !notificationBtn.contains(e.target)) {
-             notificationPanel.classList.remove('animate-fade-in-down');
-             notificationPanel.classList.add('animate-fade-out-up');
-             setTimeout(() => notificationPanel.classList.add('hidden'), 250); // Adiciona 'hidden' após animação
-         }
+        // Fecha painel de configurações
+        if (!settingsPanel.classList.contains('hidden') && !settingsBtn.contains(e.target) && !settingsPanel.contains(e.target)) { settingsPanel.classList.add('hidden'); }
+        // Fecha painel de notificações
+        if (!notificationPanel.classList.contains('hidden') && !notificationPanel.contains(e.target) && !notificationBtn.contains(e.target)) {
+            notificationPanel.classList.remove('animate-fade-in-down');
+            notificationPanel.classList.add('animate-fade-out-up');
+            setTimeout(() => notificationPanel.classList.add('hidden'), 250); // Adiciona 'hidden' após animação
+        }
         // Fecha seletor de temporada
-        const openSelectPanel = document.querySelector('#season-options:not(.hidden)');
-        if (openSelectPanel && !openSelectPanel.closest('.custom-select-container').contains(e.target)) {
+        const openSeasonSelectPanel = document.querySelector('#season-options:not(.hidden)');
+        if (openSeasonSelectPanel && !openSeasonSelectPanel.closest('.custom-select-container').contains(e.target)) {
             document.getElementById('season-selector-button')?.click(); // Simula clique no botão para fechar
+        }
+
+        // NOVO: Fecha modal de comentários
+        if (!commentsModal.classList.contains('hidden') && !commentsModal.querySelector('.liquid-glass-card').contains(e.target)) {
+            // Verifica se o clique foi fora do card interno do modal
+            closeCommentsModal();
         }
     });
 
@@ -1660,9 +1743,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 : '';
             const cursorClass = notif.link ? 'cursor-pointer' : '';
 
+            // CORREÇÃO: Remover o comentário incorreto
             return `
                 <div class="notification-item flex items-start gap-2 p-2 rounded-md transition-colors hover:bg-white/5 ${cursorClass}" ${linkDataAttrs}>
-                    <div class="flex-grow pointer-events-none"> {/* Evita que o texto capture o clique */}
+                    <div class="flex-grow">
                         <p class="font-bold text-white">${notif.title}</p>
                         <p class="text-stone-300 text-sm notification-message">${notif.message}</p>
                     </div>
@@ -1745,6 +1829,113 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Escuta por mudanças nos likes de TODOS os posts de novidades
+    function listenForNewsLikes() {
+        // Para listener anterior, se houver
+        if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
+
+        const q = query(collection(db, "news"));
+        unsubscribeNewsLikes = onSnapshot(q, (snapshot) => {
+            newsLikes.clear(); // Limpa o cache local de likes
+            let needsUIRefresh = false;
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                // Armazena os IDs dos perfis que curtiram em um Set para fácil verificação
+                newsLikes.set(doc.id, new Set(data.likedBy || []));
+                needsUIRefresh = true; // Marca que a UI precisa ser atualizada
+            });
+            // Atualiza a UI se a view de novidades estiver ativa
+            if (needsUIRefresh && window.location.hash === '#news-view') {
+                updateNewsItemsUI(); // Função separada para apenas atualizar likes/comentários na UI
+            }
+        }, (error) => {
+            console.error("Erro ao escutar likes de novidades:", error);
+        });
+    }
+
+    // Escuta por mudanças nos comentários de TODOS os posts de novidades
+    function listenForNewsComments() {
+        // Para listener anterior
+        if (typeof unsubscribeNewsComments === 'function') unsubscribeNewsComments();
+
+        // Listener para a coleção principal 'news' para detectar novos posts
+        const qNews = query(collection(db, "news"));
+        const unsubscribeMain = onSnapshot(qNews, (newsSnapshot) => {
+            const currentNewsIds = new Set();
+            newsSnapshot.forEach(newsDoc => currentNewsIds.add(newsDoc.id));
+
+            // Array para guardar funções de unsubscribe de cada subcoleção
+            let commentUnsubscribers = [];
+
+            // Limpa comentários antigos
+            newsComments.clear();
+
+            // Itera sobre os posts de novidades atuais e escuta suas subcoleções de comentários
+            currentNewsIds.forEach(newsId => {
+                const commentsQuery = query(collection(db, "news", newsId, "comments"), orderBy("createdAt", "asc"));
+                const unsubscribe = onSnapshot(commentsQuery, (commentsSnapshot) => {
+                    const commentsList = [];
+                    commentsSnapshot.forEach((commentDoc) => {
+                        commentsList.push({ id: commentDoc.id, ...commentDoc.data() });
+                    });
+                    newsComments.set(newsId, commentsList); // Atualiza o cache de comentários para este post
+
+                    // Atualiza a UI se a view de novidades estiver ativa
+                    if (window.location.hash === '#news-view') {
+                        updateNewsItemsUI();
+                    }
+                    // Se o modal de comentários estiver aberto para ESTE post, atualiza a lista
+                    if (currentNewsCommentsModalId === newsId && !commentsModal.classList.contains('hidden')) {
+                        renderComments(newsId);
+                    }
+                }, (error) => {
+                    console.error(`Erro ao escutar comentários para news ${newsId}:`, error);
+                });
+                commentUnsubscribers.push(unsubscribe); // Guarda a função de unsubscribe
+            });
+
+            // Define a função global de unsubscribe para parar todos os listeners de comentários
+            unsubscribeNewsComments = () => {
+                unsubscribeMain(); // Para o listener principal
+                commentUnsubscribers.forEach(unsub => unsub()); // Para todos os listeners de subcoleção
+            };
+
+        }, (error) => {
+            console.error("Erro ao escutar coleção 'news':", error);
+        });
+    }
+
+    // Atualiza apenas os contadores e estado dos botões na UI de Novidades
+    function updateNewsItemsUI() {
+        const container = document.getElementById('news-items-container');
+        if (!container) return;
+
+        container.querySelectorAll('.news-item-card').forEach(card => {
+            const newsId = card.dataset.newsId;
+            const likeButton = card.querySelector('.like-button');
+            const likeCountSpan = card.querySelector('.like-count');
+            const commentCountSpan = card.querySelector('.comment-count');
+
+            if (!newsId || !likeButton || !likeCountSpan || !commentCountSpan) return;
+
+            // Atualiza Likes
+            const likesSet = newsLikes.get(newsId) || new Set();
+            const likeCount = likesSet.size;
+            const userLiked = currentProfile && likesSet.has(currentProfile.id);
+
+            likeCountSpan.textContent = likeCount;
+            likeButton.innerHTML = userLiked ? ICONS.heartFilled : ICONS.heartOutline;
+            likeButton.classList.toggle('text-red-500', userLiked); // Pinta de vermelho se curtiu
+            likeButton.classList.toggle('text-slate-400', !userLiked); // Cinza se não curtiu
+
+            // Atualiza Comentários
+            const commentsList = newsComments.get(newsId) || [];
+            const commentCount = commentsList.length; // Contagem simples por enquanto
+            commentCountSpan.textContent = commentCount;
+        });
+    }
+
+
     function renderNewsView() {
         const container = document.getElementById('news-items-container');
         if (!container) return;
@@ -1755,7 +1946,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         container.innerHTML = newsItems.map(item => createNewsItemCard(item)).join('');
+        lucide.createIcons(); // Recria ícones para os cards
         initializeGlassEffects(); // Aplica efeitos, se houver botões futuros
+        updateNewsItemsUI(); // Aplica estado inicial de likes/comentários
+
+        // Adiciona listeners para os novos elementos da news view
+        addNewsViewListeners();
     }
 
     function createNewsItemCard(item) {
@@ -1772,28 +1968,144 @@ document.addEventListener('DOMContentLoaded', function() {
                 contentHTML = `<img src="${item.content}" alt="${item.title || 'Imagem da novidade'}" class="mt-3 rounded-lg max-w-full h-auto shadow-lg">`;
                 typeClass = 'news-item-image';
                 break;
-            case 'video':
-                // Tenta detectar embed do YouTube para aspect-ratio
+            case 'video': // Para iframes (YouTube, etc.)
                 const isYoutube = item.content.includes('youtube.com/embed');
                 const aspectClass = isYoutube ? 'aspect-video' : '';
-                contentHTML = `<div class="${aspectClass} mt-3"><iframe src="${item.content}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="w-full h-full rounded-lg shadow-lg ${isYoutube ? '' : 'min-h-[300px]'}"></iframe></div>`;
+                // Adicionado sandbox para segurança e controle
+                contentHTML = `<div class="${aspectClass} mt-3"><iframe src="${item.content}" frameborder="0" sandbox="allow-scripts allow-same-origin allow-presentation" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="w-full h-full rounded-lg shadow-lg ${isYoutube ? '' : 'min-h-[300px]'}"></iframe></div>`;
                 typeClass = 'news-item-video';
                 break;
+            case 'video_direct': // Para URLs de vídeo diretas
+                contentHTML = `
+                    <div class="relative mt-3 rounded-lg overflow-hidden cursor-pointer news-video-thumbnail" data-video-url="${item.content}" data-video-title="${item.title || 'Vídeo'}">
+                        <img src="${item.thumbnail || 'https://placehold.co/600x338/1f2937/a3a3a3?text=Video'}" alt="Thumbnail do vídeo" class="w-full h-auto aspect-video object-cover">
+                        <div class="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/60 transition-colors">
+                            <i data-lucide="play-circle" class="w-16 h-16 text-white opacity-80 group-hover:opacity-100 transition-opacity"></i>
+                        </div>
+                    </div>`;
+                typeClass = 'news-item-video-direct';
+                break;
             // Adicionar cases para 'upcoming' e 'poll' depois
-            default:
+            default: // Mantém o default anterior
                 contentHTML = `<p class="text-slate-500 mt-2">[Tipo ${item.type}] ${item.content || ''}</p>`;
         }
 
+        // Recupera likes e comentários (contagem inicial)
+        const likesSet = newsLikes.get(item.id) || new Set();
+        const likeCount = likesSet.size;
+        const userLiked = currentProfile && likesSet.has(currentProfile.id);
+        const commentsList = newsComments.get(item.id) || [];
+        const commentCount = commentsList.length;
+
         return `
-            <div class="liquid-glass-card news-item ${typeClass}" style="--bg-color: rgba(15, 23, 42, 0.5);">
+            <div class="liquid-glass-card news-item-card ${typeClass}" data-news-id="${item.id}" style="--bg-color: rgba(15, 23, 42, 0.5);">
                 <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                <div class="glass-content p-5">
+                <div class="glass-content p-5 flex flex-col">
                     ${item.title ? `<h3 class="text-xl font-semibold text-white">${item.title}</h3>` : ''}
                     <p class="text-xs text-slate-400 mb-2">${date}</p>
-                    ${contentHTML}
+                    <div class="flex-grow">${contentHTML}</div>
+                    <div class="mt-4 pt-3 border-t border-slate-700/50 flex items-center gap-4">
+                        <button class="like-button glass-container glass-button rounded-full px-3 py-1.5 flex items-center gap-1.5 text-sm ${userLiked ? 'text-red-500' : 'text-slate-400 hover:text-white'}">
+                            <div class="glass-filter"></div><div class="glass-overlay !bg-opacity-10 hover:!bg-opacity-20"></div><div class="glass-specular"></div>
+                            <div class="glass-content flex items-center gap-1.5">
+                                ${userLiked ? ICONS.heartFilled : ICONS.heartOutline}
+                                <span class="like-count">${likeCount}</span>
+                            </div>
+                        </button>
+                        <button class="comment-button glass-container glass-button rounded-full px-3 py-1.5 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white">
+                             <div class="glass-filter"></div><div class="glass-overlay !bg-opacity-10 hover:!bg-opacity-20"></div><div class="glass-specular"></div>
+                             <div class="glass-content flex items-center gap-1.5">
+                                ${ICONS.comment}
+                                <span class="comment-count">${commentCount}</span>
+                            </div>
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
+    }
+
+    // Adiciona listeners para botões de like, comment e play de vídeo na view de novidades
+    function addNewsViewListeners() {
+        const container = document.getElementById('news-items-container');
+        if (!container) return;
+
+        container.querySelectorAll('.like-button').forEach(button => {
+            // Remove listener antigo para evitar duplicação
+            button.replaceWith(button.cloneNode(true));
+        });
+        container.querySelectorAll('.comment-button').forEach(button => {
+            button.replaceWith(button.cloneNode(true));
+        });
+         container.querySelectorAll('.news-video-thumbnail').forEach(thumb => {
+            thumb.replaceWith(thumb.cloneNode(true));
+        });
+
+
+        // Novos Listeners
+        container.addEventListener('click', (e) => {
+            const likeButton = e.target.closest('.like-button');
+            const commentButton = e.target.closest('.comment-button');
+            const videoThumbnail = e.target.closest('.news-video-thumbnail');
+
+            if (likeButton) {
+                const card = likeButton.closest('.news-item-card');
+                const newsId = card?.dataset.newsId;
+                if (newsId) {
+                    handleNewsLike(newsId);
+                }
+            } else if (commentButton) {
+                const card = commentButton.closest('.news-item-card');
+                const newsId = card?.dataset.newsId;
+                if (newsId) {
+                    openCommentsModal(newsId);
+                }
+            } else if (videoThumbnail) {
+                const url = videoThumbnail.dataset.videoUrl;
+                const title = videoThumbnail.dataset.videoTitle;
+                if (url) {
+                    showNewsPlayer(url, title);
+                }
+            }
+        });
+    }
+
+    // Lida com o clique no botão de like
+    async function handleNewsLike(newsId) {
+        if (!userId || !currentProfile?.id) {
+            showToast("Você precisa estar logado e ter um perfil selecionado para curtir.", true);
+            return;
+        }
+
+        const newsDocRef = doc(db, "news", newsId);
+        const profileId = currentProfile.id;
+
+        try {
+            await runTransaction(db, async (transaction) => {
+                const newsDoc = await transaction.get(newsDocRef);
+                if (!newsDoc.exists()) {
+                    throw "Post não encontrado!";
+                }
+
+                const data = newsDoc.data();
+                const likedBy = data.likedBy || []; // Array de profile IDs que curtiram
+                const userIndex = likedBy.indexOf(profileId);
+
+                if (userIndex > -1) {
+                    // Usuário já curtiu -> Descurtir
+                    likedBy.splice(userIndex, 1); // Remove do array
+                    transaction.update(newsDocRef, { likedBy: likedBy });
+                } else {
+                    // Usuário não curtiu -> Curtir
+                    likedBy.push(profileId); // Adiciona ao array
+                    transaction.update(newsDocRef, { likedBy: likedBy });
+                }
+            });
+            // A UI será atualizada automaticamente pelo listener onSnapshot
+        } catch (error) {
+            console.error("Erro ao curtir/descurtir:", error);
+            showToast("Erro ao processar o like.", true);
+        }
     }
     // --- Fim da Lógica de Novidades ---
 
@@ -2395,22 +2707,26 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelector('header').classList.add('hidden');
         document.querySelector('footer').classList.add('hidden');
         document.getElementById('main-background').style.opacity = 0; // Esconde background
+        stopNewsViewMedia(); // Garante que mídia de novidades pare
+        hideNewsPlayer(); // Garante que o player de novidades feche
     }
 
     /** Mostra a tela de seleção/gerenciamento de perfil */
     async function showProfileScreen() {
-         // Esconde outras views, header e footer
-         document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
-         loginView.classList.add('hidden');
-         manageProfileView.classList.remove('hidden'); // Mostra gerenciamento de perfil
-         document.querySelector('header').classList.add('hidden');
-         document.querySelector('footer').classList.add('hidden');
-         document.getElementById('main-background').style.opacity = 0; // Esconde background
-         // Reseta o modo de edição
-         isEditMode = false;
-         manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
-         document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
-         await loadProfiles(); // Carrega e renderiza os perfis
+        // Esconde outras views, header e footer
+        document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
+        loginView.classList.add('hidden');
+        manageProfileView.classList.remove('hidden'); // Mostra gerenciamento de perfil
+        document.querySelector('header').classList.add('hidden');
+        document.querySelector('footer').classList.add('hidden');
+        document.getElementById('main-background').style.opacity = 0; // Esconde background
+        // Reseta o modo de edição
+        isEditMode = false;
+        manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
+        document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
+        await loadProfiles(); // Carrega e renderiza os perfis
+        stopNewsViewMedia(); // Garante que mídia de novidades pare
+        hideNewsPlayer(); // Garante que o player de novidades feche
     }
 
     // Listener principal de mudança de estado de autenticação
@@ -2472,5 +2788,174 @@ document.addEventListener('DOMContentLoaded', function() {
     // O onAuthStateChanged pode chamar handleNavigation novamente, mas é seguro.
     // handleNavigation(); << Removido - onAuthStateChanged cuidará da chamada inicial.
 
-});
+    // --- NOVO: Funções e Listeners de Comentários ---
 
+    function openCommentsModal(newsId) {
+        if (!newsId) return;
+        const newsItem = newsItems.find(item => item.id === newsId);
+        currentNewsCommentsModalId = newsId;
+
+        commentsModalTitle.textContent = `Comentários em: ${newsItem?.title || 'Post'}`;
+        renderComments(newsId); // Renderiza os comentários existentes
+        commentsModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden'; // Impede scroll do fundo
+        commentInput.focus();
+        cancelReply(); // Garante que não está respondendo a ninguém ao abrir
+    }
+
+    function closeCommentsModal() {
+        commentsModal.classList.add('hidden');
+        currentNewsCommentsModalId = null;
+        // Só restaura o scroll se nenhum player estiver ativo
+        if (playerView.classList.contains('hidden') && newsPlayerView.classList.contains('hidden')) {
+            document.body.style.overflow = 'auto';
+        }
+        cancelReply(); // Limpa estado de resposta ao fechar
+    }
+
+    async function handleCommentSubmit(event) {
+        event.preventDefault();
+        if (!userId || !currentProfile || !currentNewsCommentsModalId) return;
+
+        const commentText = commentInput.value.trim();
+        if (!commentText) return; // Não envia comentário vazio
+
+        const commentData = {
+            profileId: currentProfile.id,
+            profileName: currentProfile.name,
+            profileAvatar: currentProfile.avatar,
+            text: commentText,
+            createdAt: serverTimestamp(),
+            replyTo: replyToCommentId || null // Adiciona ID do comentário pai se for uma resposta
+        };
+
+        try {
+            const commentsColRef = collection(db, "news", currentNewsCommentsModalId, "comments");
+            await addDoc(commentsColRef, commentData);
+            commentInput.value = ''; // Limpa o input
+            cancelReply(); // Limpa o estado de resposta
+            // O listener onSnapshot atualizará a lista
+        } catch (error) {
+            console.error("Erro ao adicionar comentário:", error);
+            showToast("Erro ao enviar comentário.", true);
+        }
+    }
+
+    function renderComments(newsId) {
+        const comments = newsComments.get(newsId) || [];
+        commentsModalList.innerHTML = ''; // Limpa lista
+
+        if (comments.length === 0) {
+            commentsModalList.innerHTML = '<p class="text-slate-400 text-center py-4">Nenhum comentário ainda.</p>';
+            return;
+        }
+
+        // Agrupa respostas sob comentários pais
+        const commentTree = {};
+        const topLevelComments = [];
+
+        comments.forEach(comment => {
+            if (comment.replyTo) {
+                if (!commentTree[comment.replyTo]) {
+                    commentTree[comment.replyTo] = [];
+                }
+                commentTree[comment.replyTo].push(comment);
+            } else {
+                topLevelComments.push(comment);
+            }
+        });
+
+        // Função recursiva para renderizar comentários e suas respostas
+        const renderCommentNode = (comment, level = 0) => {
+            const commentDate = comment.createdAt?.toDate ? comment.createdAt.toDate().toLocaleString('pt-BR') : '';
+            const replies = commentTree[comment.id] || [];
+            const isReplyingToThis = replyToCommentId === comment.id;
+
+            let replyHTML = '';
+            if (replies.length > 0) {
+                replyHTML = `<div class="ml-8 mt-2 space-y-2 border-l-2 border-slate-700 pl-4">
+                                ${replies.map(reply => renderCommentNode(reply, level + 1)).join('')}
+                             </div>`;
+            }
+
+            return `
+                <div class="comment-item py-3 ${level > 0 ? '' : 'border-b border-slate-700/50'}">
+                    <div class="flex items-start gap-3">
+                        <img src="${comment.profileAvatar || AVATARS[0]}" alt="${comment.profileName}" class="w-8 h-8 rounded-full flex-shrink-0">
+                        <div class="flex-1">
+                            <p class="font-semibold text-sm text-white">${comment.profileName}
+                                <span class="text-xs text-slate-400 font-normal ml-2">${commentDate}</span>
+                            </p>
+                            <p class="text-slate-300 text-sm mt-1 whitespace-pre-wrap">${comment.text}</p>
+                            <button class="reply-button text-xs text-blue-400 hover:underline mt-1" data-comment-id="${comment.id}" data-author-name="${comment.profileName}">Responder</button>
+                             ${isReplyingToThis ? '<span class="text-xs text-blue-400 ml-2">(Respondendo...)</span>' : ''}
+                        </div>
+                    </div>
+                    ${replyHTML}
+                </div>
+            `;
+        };
+
+        commentsModalList.innerHTML = topLevelComments.map(comment => renderCommentNode(comment)).join('');
+    }
+
+
+    // Listener para o form de comentário
+    commentForm.addEventListener('submit', handleCommentSubmit);
+    commentsModalCloseBtn.addEventListener('click', closeCommentsModal);
+
+    // Listener para botões de responder dentro do modal
+    commentsModalList.addEventListener('click', (e) => {
+        const replyButton = e.target.closest('.reply-button');
+        if (replyButton) {
+            const commentId = replyButton.dataset.commentId;
+            const authorName = replyButton.dataset.authorName;
+            startReply(commentId, authorName);
+        }
+    });
+
+    // Inicia o modo de resposta
+    function startReply(commentId, authorName) {
+        replyToCommentId = commentId;
+        replyToCommentAuthor = authorName;
+        replyIndicator.textContent = `Respondendo a ${authorName}`;
+        replyIndicator.classList.remove('hidden');
+        cancelReplyBtn.classList.remove('hidden');
+        commentInput.focus();
+        // Re-renderiza para mostrar "(Respondendo...)"
+        if(currentNewsCommentsModalId) renderComments(currentNewsCommentsModalId);
+    }
+
+    // Cancela o modo de resposta
+    function cancelReply() {
+        replyToCommentId = null;
+        replyToCommentAuthor = null;
+        replyIndicator.classList.add('hidden');
+        cancelReplyBtn.classList.add('hidden');
+        replyIndicator.textContent = '';
+         // Re-renderiza para remover "(Respondendo...)"
+        if(currentNewsCommentsModalId && !commentsModal.classList.contains('hidden')) {
+             renderComments(currentNewsCommentsModalId);
+        }
+    }
+
+    // Listener para o botão de cancelar resposta
+    cancelReplyBtn.addEventListener('click', cancelReply);
+
+    // --- FIM: Funções e Listeners de Comentários ---
+
+    // NOVO: Função para parar iframes e player de novidades
+    function stopNewsViewMedia() {
+        // Para player de novidades
+        hideNewsPlayer();
+
+        // Para iframes na tela de novidades
+        const newsIframes = document.querySelectorAll('#news-items-container iframe');
+        newsIframes.forEach(iframe => {
+            const src = iframe.src;
+            iframe.src = ''; // Remove src para parar
+            iframe.src = src; // Readiciona src (opcional, pode deixar vazio se preferir)
+        });
+    }
+
+});
