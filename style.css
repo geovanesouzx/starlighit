@@ -6,15 +6,16 @@
 
 body {
     font-family: 'Inter', sans-serif;
-    background-color: #0c0a09;
+    background-color: #0c0a09; /* stone-950 */
     color: #ffffff;
-    overflow-x: hidden; 
+    overflow-x: hidden;
 }
 
 body.auth-loading {
-    visibility: hidden;
+    visibility: hidden; /* Hide until auth state is known */
 }
 
+/* Specific background for login */
 #login-view {
     background-image: url('https://image.tmdb.org/t/p/original/c2dPK558peXs9QzacwzHYQqqS2r.jpg');
 }
@@ -25,6 +26,7 @@ body.auth-loading {
 }
 
 
+/* Main background for home screen */
 .main-background {
     position: absolute;
     top: 0;
@@ -34,88 +36,102 @@ body.auth-loading {
     background-size: cover;
     background-position: center;
     transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in-out;
-    z-index: -2;
+    z-index: -2; /* Behind content */
+    opacity: 0; /* Initially hidden */
 }
 
+/* Gradient overlay for main background */
 .main-background::after {
     content: '';
     position: absolute;
     inset: 0;
     background: linear-gradient(to top, #0c0a09 15%, transparent 50%),
                 linear-gradient(to right, #0c0a09 2%, transparent 50%);
+    pointer-events: none;
 }
 
+/* Base Glassmorphism Container */
 .glass-container {
     position: relative;
     overflow: hidden;
-    background: transparent;
+    background: transparent; /* Base is transparent */
 }
 
+/* Layers for the glass effect */
 .glass-container .glass-filter,
 .glass-container .glass-overlay,
 .glass-container .glass-specular {
     position: absolute;
     inset: 0;
-    border-radius: inherit;
-    pointer-events: none;
+    border-radius: inherit; /* Inherit rounding from parent */
+    pointer-events: none; /* Don't interfere with clicks */
 }
 
 .glass-container .glass-filter {
     z-index: 1;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px); /* The blur effect */
+    /* Apply SVG distortion filter and color adjustments */
     filter: url(#glass-distortion) saturate(120%) brightness(1.15);
 }
 
 .glass-container .glass-overlay {
     z-index: 2;
-    background: var(--glass-bg-color);
+    background: var(--glass-bg-color); /* Semi-transparent background */
 }
 
 .glass-container .glass-specular {
     z-index: 3;
+    /* Inner shadow for subtle edge highlight */
     box-shadow: inset 1px 1px 1px var(--glass-highlight);
+    /* Dynamic radial gradient based on mouse position (added via JS) */
 }
 
+/* Content sits on top of glass layers */
 .glass-container .glass-content {
     position: relative;
     z-index: 4;
 }
 
+/* Glass Button Styles */
 .glass-button {
     border: none;
     cursor: pointer;
     transition: transform 0.2s ease;
     outline: none;
 }
-.glass-button:hover { transform: scale(1.05); }
-.glass-button:active { transform: scale(0.95); }
+.glass-button:hover:not(:disabled) { transform: scale(1.05); } /* Added :not(:disabled) */
+.glass-button:active:not(:disabled) { transform: scale(0.95); } /* Added :not(:disabled) */
+.glass-button:disabled { cursor: not-allowed; opacity: 0.6; } /* Style for disabled */
 .glass-button .glass-content { color: var(--glass-text); font-weight: 500; }
 
-.nav-item { position: relative; transition: color 0.3s ease; }
+/* Desktop Navigation Item Styles */
+.nav-item { position: relative; transition: color 0.3s ease; color: #a1a1aa; /* stone-400 */ }
+.nav-item:hover { color: #ffffff; }
 .nav-item::after {
-    content: ''; 
-    position: absolute; 
-    bottom: -6px; 
-    left: 20%; 
-    right: 20%; 
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 20%;
+    right: 20%;
     height: 2px;
-    background-image: linear-gradient(to right, #a855f7, #ec4899);
+    background-image: linear-gradient(to right, #a855f7, #ec4899); /* purple-500 to pink-500 */
     transform: scaleX(0);
-    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     transform-origin: center;
 }
-.nav-item.active::after { transform: scaleX(1); }
 .nav-item.active { color: #ffffff; font-weight: 700; }
+.nav-item.active::after { transform: scaleX(1); }
 
+/* Mobile Navigation Styles */
 #mobile-nav-container { border: 1px solid rgba(255, 255, 255, 0.2); }
-#mobile-nav-container::before {
-    content: ''; 
-    position: absolute; 
-    inset: -2px; 
-    border-radius: inherit; 
+#mobile-nav-container::before { /* Pulsing border effect */
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
     border: 2px solid white;
-    opacity: 0; 
-    animation: float-pulse 6s ease-in-out infinite; 
+    opacity: 0;
+    animation: float-pulse 6s ease-in-out infinite;
     pointer-events: none;
 }
 
@@ -128,24 +144,35 @@ body.auth-loading {
     100% { transform: translateY(0) scale(1.02); opacity: 0; }
 }
 
+/* Utility to hide scrollbars */
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-.content-view { padding-top: 100px; min-height: 100vh; }
-#home-view { padding-top: 0; }
-
-.details-gradient-overlay {
-    background: linear-gradient(to top, #0c0a09 20%, rgba(12,10,9,0.7) 50%, transparent 100%);
+/* Base styling for content views */
+.content-view {
+    padding-top: 100px; /* Space for fixed header */
+    min-height: 100vh;
+}
+#home-view, #login-view, #manage-profile-view {
+    padding-top: 0; /* These views don't need top padding */
 }
 
+/* Gradient overlay for details view background */
+.details-gradient-overlay {
+    background: linear-gradient(to top, #0c0a09 20%, rgba(12,10,9,0.7) 50%, transparent 100%);
+    pointer-events: none;
+}
+
+/* Hero content fade animation */
 #hero-content-wrapper {
     transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
 }
 #hero-content-wrapper.hero-fade-out {
-    opacity: 0;
+    opacity: 0 !important; /* Use !important to ensure override */
     transform: translateY(-20px);
 }
 
+/* Simple loading spinner */
 .spinner {
     width: 40px;
     height: 40px;
@@ -161,29 +188,28 @@ body.auth-loading {
     100% { transform: rotate(360deg); }
 }
 
+/* Carousel Styles (Basic horizontal scroll) */
 .carousel-container { position: relative; }
 .carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; }
 .carousel-item { scroll-snap-align: start; flex-shrink: 0; }
-.carousel-btn { position: absolute; top: 50%; transform: translateY(-50%); z-index: 10; background-color: rgba(0,0,0,0.5); border-radius: 50%; padding: 0.5rem; color: white; transition: background-color 0.2s; }
-.carousel-btn:hover:not(:disabled) { background-color: rgba(0,0,0,0.8); }
-.carousel-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-.carousel-btn.prev { left: 0.5rem; }
-.carousel-btn.next { right: 0.5rem; }
+/* Removed .carousel-btn styles as they weren't used */
 
-/* Liquid Glass Effect & Profile Card styles*/
+/* Liquid Glass Card Effect (Used for carousels, grids, requests, profiles) */
 .liquid-glass-card {
-    --bg-color: rgba(0, 0, 0, 0.25);
-    --highlight: rgba(255, 255, 255, 0.15);
-    --text: #ffffff;
+    --bg-color: rgba(0, 0, 0, 0.25); /* Default background */
+    --highlight: rgba(255, 255, 255, 0.15); /* Default highlight */
+    --text: #ffffff; /* Default text color */
     position: relative;
-    border-radius: 20px;
+    border-radius: 20px; /* Default rounding */
     overflow: hidden;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s ease;
 }
+/* Hover effect - scale up slightly */
 .liquid-glass-card:hover {
-    transform: scale(1.05);
+    transform: scale(1.03); /* Reduced scale slightly */
 }
+/* Glass effect layers for liquid card */
 .liquid-glass-card .glass-filter,
 .liquid-glass-card .glass-overlay,
 .liquid-glass-card .glass-specular,
@@ -204,19 +230,22 @@ body.auth-loading {
     position: relative;
     z-index: 4;
     color: var(--text);
-    height: 100%;
+    height: 100%; /* Ensure content fills the card */
 }
 
+/* Animated distortion overlay for liquid effect */
 .glass-distortion-overlay {
-    position: absolute; 
+    position: absolute;
     inset: 0;
+    /* Two radial gradients moving around */
     background: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.05) 0%, transparent 80%),
                 radial-gradient(circle at 80% 70%, rgba(255,255,255,0.05) 0%, transparent 80%);
-    background-size: 300% 300%;
+    background-size: 300% 300%; /* Allow gradients to move */
     animation: floatDistort 10s infinite ease-in-out;
-    mix-blend-mode: overlay;
+    mix-blend-mode: overlay; /* Blend with layers below */
     z-index: 2;
     pointer-events: none;
+    border-radius: inherit; /* Ensure it follows card rounding */
 }
 
 @keyframes floatDistort {
@@ -225,7 +254,7 @@ body.auth-loading {
     100% { background-position: 0% 0%; }
 }
 
-/* Animation for episode list & panels */
+/* Animations for panel transitions (fade + slight move) */
 @keyframes fade-in-down {
     from { opacity: 0; transform: translateY(-15px) scale(0.95); }
     to { opacity: 1; transform: translateY(0) scale(1); }
@@ -238,52 +267,44 @@ body.auth-loading {
 }
 .animate-fade-out-up { animation: fade-out-up 0.3s ease-out forwards; }
 
-@keyframes fade-in {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-.animate-fade-in { animation: fade-in 0.4s ease-out forwards; }
-
+/* Request Vote Button Styles */
 .vote-btn .glass-overlay {
     --glass-bg-color: rgba(79, 70, 229, 0.3); /* indigo-600 */
     transition: background-color 0.2s;
 }
-.vote-btn:hover .glass-overlay {
+.vote-btn:hover:not(:disabled) .glass-overlay {
     --glass-bg-color: rgba(79, 70, 229, 0.4);
 }
 .vote-btn.voted .glass-overlay {
     --glass-bg-color: rgba(219, 39, 119, 0.3); /* pink-600 */
 }
-.vote-btn.voted:hover .glass-overlay {
+.vote-btn.voted:hover:not(:disabled) .glass-overlay {
     --glass-bg-color: rgba(219, 39, 119, 0.4);
 }
 
-
-/* Custom Select Styles */
+/* Custom Select Dropdown Styles (for TV Seasons) */
 .custom-select-container { position: relative; }
 .custom-select-options {
     position: absolute;
-    top: 100%;
+    top: calc(100% + 8px); /* Position below button with gap */
     left: 0;
     right: 0;
     z-index: 10;
-    margin-top: 8px;
     max-height: 250px;
     overflow-y: auto;
-    transform-origin: top;
+    transform-origin: top; /* Animation origin */
 }
-.custom-select-option:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-}
+/* Removed hover style from options base, added directly in JS render */
 
+/* Episode Item Hover Effect */
 .episode-item .glass-overlay {
      transition: background-color 0.2s;
 }
 .episode-item:hover .glass-overlay {
-    --glass-bg-color: rgba(255, 255, 255, 0.1) !important;
+    --glass-bg-color: rgba(255, 255, 255, 0.1) !important; /* Use important if needed */
 }
 
-/* Age Rating Styles */
+/* Age Rating Box Styles */
 .rating-box {
     width: 32px;
     height: 32px;
@@ -296,8 +317,11 @@ body.auth-loading {
     font-size: 14px;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
     line-height: 1;
+    flex-shrink: 0; /* Prevent shrinking in flex layouts */
 }
+/* Smaller rating box for hero section */
 #hero-meta .rating-box { width: 28px; height: 28px; font-size: 12px; }
+/* Background colors based on rating */
 .rating-L { --glass-bg-color: rgba(34, 197, 94, 0.5); } /* green-500 */
 .rating-10 { --glass-bg-color: rgba(59, 130, 246, 0.5); } /* blue-500 */
 .rating-12 { --glass-bg-color: rgba(234, 179, 8, 0.5); } /* yellow-500 */
@@ -305,218 +329,248 @@ body.auth-loading {
 .rating-16 { --glass-bg-color: rgba(239, 68, 68, 0.5); } /* red-500 */
 .rating-18 { --glass-bg-color: rgba(17, 24, 39, 0.6); } /* gray-900 */
 
-.episode-list-glass-card {
-    --glass-bg-color: rgba(25, 25, 25, 0.5);
-    --glass-highlight: rgba(255, 255, 255, 0.1);
-}
 
-/* Video Player Styles */
+/* Video Player Specific Styles */
 #player-view { background-color: #000; }
 #player-view video { width: 100%; height: 100%; object-fit: contain; }
+
 .player-controls-wrapper {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    /* Cover entire player for click/tap detection */
+    inset: 0;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0.3s ease;
-    pointer-events: none;
-    background: linear-gradient(to top, rgba(0,0,0,0.6), transparent 50%);
+    pointer-events: none; /* Allow clicks through when hidden */
+    /* Gradient only at the bottom for controls background */
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.5) 25%, transparent 60%);
+    /* Ensure flex layout works correctly */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 1rem; /* Base padding */
 }
+@media (min-width: 640px) {
+     .player-controls-wrapper { padding: 1.5rem; }
+}
+@media (min-width: 1024px) {
+     .player-controls-wrapper { padding: 2rem; }
+}
+
+
 #player-view.controls-active .player-controls-wrapper {
     opacity: 1;
     visibility: visible;
-    pointer-events: auto;
+    pointer-events: auto; /* Allow interaction when visible */
 }
+
+/* Individual Player Control Buttons */
 .player-control-btn {
     --glass-bg-color: rgba(30, 30, 30, 0.3);
     --glass-highlight: rgba(255, 255, 255, 0.1);
-    width: 44px;
+    width: 44px; /* Consistent size */
     height: 44px;
-    padding:0;
+    padding: 0; /* Remove default padding */
 }
-.player-control-btn .glass-content {
+.player-control-btn .glass-content { /* Center icon */
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100%;
     height: 100%;
 }
-.player-control-btn svg { width: 24px; height: 24px; }
+.player-control-btn svg { width: 24px; height: 24px; } /* Consistent icon size */
+
+/* Seek Bar Container and Styling */
 .player-seek-bar-container {
     position: relative;
     width: 100%;
-    height: 16px;
+    height: 16px; /* Increased height for easier interaction */
     display: flex;
     align-items: center;
+    cursor: pointer; /* Indicate interactivity */
+    margin-bottom: 0.25rem; /* Space below bar */
 }
-input[type="range"].player-seek-bar {
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-    cursor: pointer;
-    width: 100%;
-    position: absolute;
-    left:0;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 2;
-    margin:0;
-}
-.seek-track {
-    position: absolute;
-    left:0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 100%;
-    height: 4px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 4px;
-    z-index: 1;
-    overflow: hidden;
-}
-.seek-progress {
-    background: #e50914;
-    height: 100%;
-    width: 0;
-}
-input[type="range"].player-seek-bar::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    background-color: #fff;
-    height: 16px;
-    width: 16px;
-    border-radius: 50%;
-    border: none;
-    box-shadow: 0 0 5px rgba(0,0,0,0.5);
-}
+/* Base range input reset */
+input[type="range"].player-seek-bar,
 input[type="range"].player-volume-slider {
     -webkit-appearance: none;
     appearance: none;
     background: transparent;
     cursor: pointer;
+    width: 100%;
+    margin: 0;
+    padding: 0;
 }
- input[type="range"].player-volume-slider::-webkit-slider-runnable-track {
+/* Seek bar specific absolute positioning */
+input[type="range"].player-seek-bar {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2; /* Thumb above track */
+    height: 100%; /* Make full height clickable */
+}
+
+/* Track background */
+.seek-track {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    height: 4px; /* Track height */
+    background: rgba(255,255,255,0.2);
+    border-radius: 4px;
+    z-index: 1; /* Below thumb */
+    overflow: hidden; /* Clip progress bar */
+    pointer-events: none; /* Don't block thumb */
+}
+/* Progress fill */
+.seek-progress {
+    background: #a855f7; /* Purple to match theme */
+    height: 100%;
+    width: 0%; /* Updated by JS */
+    border-radius: 4px; /* Match track rounding */
+}
+/* Thumb (handle) styling for Webkit (Chrome, Safari) */
+input[type="range"].player-seek-bar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    background-color: #fff;
+    height: 14px; /* Thumb size */
+    width: 14px;
+    border-radius: 50%;
+    border: none;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    margin-top: -5px; /* Center thumb vertically on track */
+}
+/* Thumb styling for Firefox */
+input[type="range"].player-seek-bar::-moz-range-thumb {
+    background-color: #fff;
+    height: 14px;
+    width: 14px;
+    border-radius: 50%;
+    border: none;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+
+/* Volume Slider Styling */
+/* Track for Webkit */
+input[type="range"].player-volume-slider::-webkit-slider-runnable-track {
     background: rgba(255,255,255,0.3);
     height: 4px;
     border-radius: 2px;
 }
- input[type="range"].player-volume-slider::-webkit-slider-thumb {
+/* Track for Firefox */
+input[type="range"].player-volume-slider::-moz-range-track {
+    background: rgba(255,255,255,0.3);
+    height: 4px;
+    border-radius: 2px;
+}
+/* Thumb for Webkit */
+input[type="range"].player-volume-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    margin-top: -5px;
+    margin-top: -5px; /* Center thumb */
     background-color: #fff;
     height: 14px;
     width: 14px;
     border-radius: 50%;
 }
-#player-volume-container { opacity: 0; width: 0; transition: all 0.3s ease; }
-#player-volume-container:hover, .volume-btn-container:hover + #player-volume-container {
+/* Thumb for Firefox */
+input[type="range"].player-volume-slider::-moz-range-thumb {
+    background-color: #fff;
+    height: 14px;
+    width: 14px;
+    border-radius: 50%;
+    border: none; /* Remove default border */
+}
+
+/* Volume slider container animation */
+#player-volume-container { opacity: 0; width: 0; transition: all 0.3s ease; overflow: hidden;}
+/* Show slider on hover of button OR slider itself */
+.volume-btn-container:hover + #player-volume-container,
+#player-volume-container:hover {
     opacity: 1; width: 112px; /* 7rem */
 }
+
+/* Settings Panel Positioning and Styling */
 #player-settings-panel {
     position: absolute;
-    bottom: 100%;
+    bottom: calc(100% + 1rem); /* Position above buttons */
     right: 0;
-    margin-bottom: 1rem;
     width: 200px;
-    --glass-bg-color: rgba(30,30,30,0.5);
+    --glass-bg-color: rgba(30,30,30,0.7); /* Darker background */
+    z-index: 10; /* Ensure it's above other controls */
+    transform-origin: bottom right; /* Animation origin */
 }
+/* Individual Settings Option Buttons */
 .settings-option-btn {
     width: 100%;
     text-align: left;
     padding: 0.75rem 1rem;
-    font-size: 0.875rem;
+    font-size: 0.875rem; /* text-sm */
+    color: #e5e7eb; /* gray-200 */
+    background: transparent;
+    border: none;
+    cursor: pointer;
     transition: background-color 0.2s;
+    border-radius: 0.375rem; /* rounded-md */
 }
 .settings-option-btn:hover { background-color: rgba(255,255,255,0.1); }
-.settings-option-btn.active { background-color: rgba(229,9,20,0.5); font-weight: bold; }
-
-/* Progress Bar for Continue Watching */
-.progress-bar-container {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 5px;
-    background-color: rgba(255, 255, 255, 0.3);
-    z-index: 4;
-}
-.progress-bar-fill {
-    height: 100%;
-    background-color: #e50914;
-    width: 0%;
-}
-.episode-item .progress-bar-container {
-    height: 4px;
-    border-radius: 99px;
-    overflow: hidden;
+.settings-option-btn.active {
+     background-color: rgba(168, 85, 247, 0.5); /* purple-500/50 */
+     font-weight: 600;
+     color: #ffffff;
 }
 
-/* LOGIN FORM STYLES */
+/* Removed redundant progress bar styles */
+
+/* LOGIN FORM STYLES (adapted from original) */
 .glass-form {
+    /* Variables specific to the login form appearance */
     --bg-color: rgba(0, 0, 0, 0.25);
     --highlight: rgba(255, 255, 255, 0.15);
     --text: #ffffff;
     --input-bg: rgba(0, 0, 0, 0.2);
     --input-border: rgba(255, 255, 255, 0.1);
     --input-focus: rgba(0, 0, 0, 0.3);
-    
+
     position: relative;
-    width: 400px;
+    width: 90%; /* Responsive width */
+    max-width: 400px; /* Max width */
     border-radius: 20px;
     overflow: hidden;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+    margin: auto; /* Center form */
 }
 
+/* Glass effect layers specific to login form */
 .glass-form .glass-filter,
 .glass-form .glass-overlay,
 .glass-form .glass-specular {
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
+    position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
 }
-
-.glass-form .glass-filter {
-    z-index: 1;
-    backdrop-filter: blur(4px);
-    filter: url(#glass-distortion) saturate(120%) brightness(1.15);
-}
-
+.glass-form .glass-filter { z-index: 1; backdrop-filter: blur(4px); filter: url(#glass-distortion) saturate(120%) brightness(1.15); }
 .glass-form .glass-overlay { z-index: 2; background: var(--bg-color); }
 .glass-form .glass-specular { z-index: 3; box-shadow: inset 1px 1px 1px var(--highlight); }
 
-.glass-form .glass-content {
-    position: relative;
-    z-index: 4;
-    padding: 30px;
-    color: var(--text);
-    height: 100%;
-}
+/* Form content padding and text color */
+.glass-form .glass-content { position: relative; z-index: 4; padding: 30px; color: var(--text); }
 
+/* Login/Register form container switching */
 .form-container { display: none; opacity: 0; transition: opacity 0.3s ease; }
 .form-container.active { display: block; opacity: 1; }
 
-.form-container h3 {
-    margin: 0 0 20px 0;
-    font-size: 28px;
-    font-weight: 600;
-    text-align: center;
-}
+.form-container h3 { margin: 0 0 20px 0; font-size: 28px; font-weight: 600; text-align: center; }
 
+/* Input field group styling */
 .form-group { position: relative; margin-bottom: 20px; }
-.form-group i {
-    position: absolute;
-    left: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text);
-    opacity: 0.8;
-}
+.form-group i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text); opacity: 0.8; }
 .form-group input {
     width: 100%;
-    padding: 12px 15px 12px 45px;
+    padding: 12px 15px 12px 45px; /* Padding for icon */
     background: var(--input-bg);
     border: 1px solid var(--input-border);
     border-radius: 10px;
@@ -524,18 +578,15 @@ input[type="range"].player-volume-slider {
     font-size: 16px;
     transition: border-color 0.3s ease, background 0.3s ease;
 }
-.form-group input:focus {
-    outline: none;
-    background: var(--input-focus);
-    border-color: var(--highlight);
-}
+.form-group input:focus { outline: none; background: var(--input-focus); border-color: var(--highlight); }
 .form-group input::placeholder { color: rgba(255, 255, 255, 0.6); }
 
+/* Submit button styling */
 .submit-btn {
     width: 100%;
     padding: 12px;
-    background: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(168, 85, 247, 0.4); /* Purple theme */
+    border: 1px solid rgba(168, 85, 247, 0.6);
     border-radius: 10px;
     color: var(--text);
     font-size: 16px;
@@ -544,105 +595,93 @@ input[type="range"].player-volume-slider {
     transition: all 0.3s ease;
     margin-top: 10px;
 }
-
-.submit-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    border-color: rgba(255, 255, 255, 0.4);
+.submit-btn:hover:not(:disabled) {
+    background: rgba(168, 85, 247, 0.6); /* Darker purple on hover */
+    border-color: rgba(168, 85, 247, 0.8);
 }
+.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.form-switch {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 14px;
-    opacity: 0.8;
-}
-
-.form-switch a {
-    color: var(--text);
-    text-decoration: none;
-    font-weight: 600;
-    opacity: 1;
-}
+/* Link to switch between Login/Register */
+.form-switch { text-align: center; margin-top: 20px; font-size: 14px; opacity: 0.8; }
+.form-switch a { color: #f9a8d4; /* pink-300 */ text-decoration: none; font-weight: 600; } /* Pink link */
 .form-switch a:hover { text-decoration: underline; }
 
-.divider {
-    display: flex;
-    align-items: center;
-    text-align: center;
-    margin: 20px 0;
-    color: rgba(255,255,255,0.6);
-}
-.divider::before, .divider::after {
-    content: '';
-    flex: 1;
-    border-bottom: 1px solid rgba(255,255,255,0.2);
-}
+/* "OR" divider styling */
+.divider { display: flex; align-items: center; text-align: center; margin: 20px 0; color: rgba(255,255,255,0.6); font-size: 0.8em; }
+.divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid rgba(255,255,255,0.2); }
 .divider:not(:empty)::before { margin-right: .5em; }
 .divider:not(:empty)::after { margin-left: .5em; }
 
-.google-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-}
-.google-btn i {
-    font-size: 1.2rem;
-}
+/* Google Sign-in button specific styles */
+.google-btn { display: flex; align-items: center; justify-content: center; gap: 10px; background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); } /* Lighter background */
+.google-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.3); }
+.google-btn i { font-size: 1.2rem; color: #db4437; /* Google Red */ }
 
-/* Notification styles */
+/* Notification Bell Animation and Styles */
 #notification-btn.has-new svg {
     color: #ec4899; /* pink-500 */
     animation: ring-bell 0.8s ease-in-out;
 }
-
+/* Keyframes for bell ringing animation */
 @keyframes ring-bell {
     0%, 100% { transform: rotate(0); }
     10%, 30%, 50%, 70%, 90% { transform: rotate(-10deg); }
     20%, 40%, 60%, 80% { transform: rotate(10deg); }
 }
 
-.notification-tab {
-    transition: all 0.2s ease-in-out;
-    color: #a1a1aa; /* stone-400 */
-}
+/* Notification Panel Tabs */
+.notification-tab { transition: all 0.2s ease-in-out; color: #a1a1aa; /* stone-400 */ }
 .notification-tab.active {
     color: #ffffff;
     font-weight: 600;
-    border-bottom-color: transparent;
+    border-bottom-color: transparent; /* Remove default border */
     position: relative;
 }
+/* Active tab underline with gradient */
 .notification-tab.active::after {
     content: '';
     position: absolute;
     left: 0;
     right: 0;
-    bottom: -1px;
+    bottom: -1px; /* Align with parent border */
     height: 2px;
-    background-image: linear-gradient(to right, #a855f7, #ec4899);
+    background-image: linear-gradient(to right, #a855f7, #ec4899); /* Theme gradient */
 }
-.notification-content {
-    display: none;
-}
-.notification-content.active {
-    display: block;
-}
+/* Show/hide notification content based on active tab */
+.notification-content { display: none; }
+.notification-content.active { display: block; }
+/* Allow text wrapping in notification messages */
+.notification-message { white-space: pre-wrap; word-break: break-word; }
 
-.notification-message {
-    white-space: pre-wrap;
-    word-break: break-word;
-}
-
-
+/* Responsive adjustments for smaller screens */
 @media (max-width: 640px) {
+    /* Adjust player settings panel position and size */
     #player-settings-panel {
         width: 160px;
-        right: 0.5rem;
-        bottom: calc(100% + 0.5rem);
+        right: 0.5rem; /* Closer to edge */
+        bottom: calc(100% + 0.5rem); /* Smaller gap */
     }
-    .settings-option-btn {
-        padding: 0.5rem 0.75rem;
-        font-size: 0.75rem;
-    }
+    .settings-option-btn { padding: 0.5rem 0.75rem; font-size: 0.75rem; } /* Smaller padding/font */
+
+     /* Reduce padding in player controls */
+     .player-controls-wrapper { padding: 0.75rem; }
+     /* Reduce size of main play/pause button */
+     #player-play-pause-btn { width: 56px; height: 56px; }
+     #player-play-pause-btn svg { width: 28px; height: 28px;}
+     /* Reduce size of other control buttons */
+     .player-control-btn { width: 40px; height: 40px; }
+     .player-control-btn svg { width: 20px; height: 20px; }
+     /* Hide volume slider by default on mobile, rely on button toggle/system volume */
+     #player-volume-container { display: none; } /* Hide slider */
+
+     /* Adjust login form width */
+     .glass-form { width: 95%; max-width: 360px; }
+     .glass-form .glass-content { padding: 20px; }
+     .form-container h3 { font-size: 24px;}
+     .form-group input, .submit-btn { font-size: 15px; padding-top: 10px; padding-bottom: 10px;}
+     .submit-btn { padding: 10px;}
+
+     /* Adjust notification panel width */
+     #notification-panel .glass-form { width: calc(100vw - 2rem); max-width: 320px;}
 }
 
