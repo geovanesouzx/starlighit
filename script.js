@@ -20,7 +20,7 @@ import {
     deleteDoc,
     query,
     where,
-    // orderBy, // REMOVIDO - NÃO USAR
+    orderBy, // Re-adicionado para novidades e notificações
     onSnapshot,
     arrayUnion,
     serverTimestamp,
@@ -76,6 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let notifications = []; // Cache de notificações
     let lastNotificationCheck = localStorage.getItem('starlight-lastNotificationCheck') || 0;
     let dismissedNotifications = JSON.parse(localStorage.getItem('starlight-dismissedNotifications')) || [];
+    let newsItems = []; // NOVO: Cache para novidades
 
     let firestoreContent = []; // Cache do conteúdo principal
     let pendingRequests = []; // Cache de pedidos pendentes
@@ -110,8 +111,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const settingsBtn = document.getElementById('player-settings-btn');
     const settingsPanel = document.getElementById('player-settings-panel');
     const playerBackBtn = document.getElementById('player-back-btn');
-    const aspectRatioBtn = document.getElementById('player-aspect-ratio-btn'); // NOVO
-    let currentAspectRatio = 'contain'; // NOVO: 'contain' ou 'cover'
+    const aspectRatioBtn = document.getElementById('player-aspect-ratio-btn');
+    let currentAspectRatio = 'contain';
 
     // Elementos de Gerenciamento de Perfil
     const manageProfileView = document.getElementById('manage-profile-view');
@@ -155,9 +156,8 @@ document.addEventListener('DOMContentLoaded', function() {
         exitFullscreen: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"></path></svg>`,
         settings: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59 1.69.98l2.49 1c.23.09.49 0 .61.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg>`,
         back: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>`,
-        // NOVOS ÍCONES DE ASPECT RATIO
-        aspectContain: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M2 5h2v14H2V5zm20 0h-2v14h2V5zM6 7h12v10H6V7z"></path></svg>`,
-        aspectCover: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 5h16v14H4V5z"></path></svg>`
+        aspectContain: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M2 5h2v14H2V5zm20 0h-2v14h2V5zM6 7h12v10H6V7z"></path></svg>`, // Ícone para 'contain'
+        aspectCover: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 5h16v14H4V5z"></path></svg>` // Ícone para 'cover'
     };
 
     // HTML para o spinner de carregamento
@@ -583,7 +583,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const targetId = link.getAttribute('data-target'); // Pega o ID da view alvo
             if (!targetId) return; // Sai se não houver alvo
 
-            // Muda o hash da URL. O listener 'hashchange' cuidará da lógica de mostrar/esconder.
+            // Muda o hash da URL. O listener 'popstate' cuidará da lógica de mostrar/esconder.
             if (window.location.hash !== `#${targetId}`) {
                 window.location.hash = targetId;
             }
@@ -620,6 +620,8 @@ document.addEventListener('DOMContentLoaded', function() {
             populateMyList(); // Popula a grid da "Minha Lista"
         } else if (screenId === 'requests-view') {
             renderPendingRequests(); // Renderiza os pedidos pendentes
+        } else if (screenId === 'news-view') { // NOVO
+            renderNewsView(); // Renderiza a seção de novidades
         }
         lucide.createIcons(); // Recria ícones
         attachGlassButtonListeners(); // Reatacha listeners visuais
@@ -1262,7 +1264,7 @@ document.addEventListener('DOMContentLoaded', function() {
     rewindBtn.addEventListener('click', () => { videoPlayer.currentTime -= 10; }); // Voltar 10s
     forwardBtn.addEventListener('click', () => { videoPlayer.currentTime += 10; }); // Avançar 10s
 
-    // NOVO: Listener do botão de Aspect Ratio
+    // Listener do botão de Aspect Ratio
     aspectRatioBtn.addEventListener('click', () => {
         if (currentAspectRatio === 'contain') {
             currentAspectRatio = 'cover';
@@ -1485,7 +1487,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- NOVO: Roteador Central ---
+    // --- Roteador Central ---
     /** Função principal que lida com a navegação baseada no hash da URL */
     async function handleNavigation() {
         const hash = window.location.hash; // Pega o hash atual (ex: #home-view, #details/123)
@@ -1613,16 +1615,15 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('popstate', handleNavigation);
     // window.addEventListener('hashchange', handleNavigation); // Não precisamos mais do hashchange, popstate cobre tudo
 
-    // --- Lógica de Notificações --- (sem alterações significativas)
+    // --- Lógica de Notificações ---
     function listenForNotifications() {
-        const q = query(collection(db, "notifications")); // Query sem orderBy
+        const q = query(collection(db, "notifications"), orderBy("createdAt", "desc")); // Usa orderBy
         onSnapshot(q, (snapshot) => {
             notifications = [];
             snapshot.forEach((doc) => {
                 notifications.push({ id: doc.id, ...doc.data() });
             });
-            // Ordena no cliente
-            notifications.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+            // Ordenação não é mais necessária aqui, pois orderBy é usado na query
             updateNotificationBell(); // Atualiza indicador
         });
     }
@@ -1653,9 +1654,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const createNotifHTML = (notif, isDismissable) => {
             // Adiciona botão de dispensar apenas se for 'Novidade'
             const dismissBtn = isDismissable ? `<button class="remove-notification-btn text-stone-500 hover:text-white" data-notif-id="${notif.id}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>` : '';
+            // CORREÇÃO: Adiciona data attributes para o link
+            const linkDataAttrs = notif.link
+                ? `data-link-type="${notif.link.type}" data-link-target="${notif.link.type === 'internal' ? notif.link.docId : notif.link.url}"`
+                : '';
+            const cursorClass = notif.link ? 'cursor-pointer' : '';
+
             return `
-                <div class="notification-item flex items-start gap-2 p-2 rounded-md transition-colors hover:bg-white/5">
-                    <div class="flex-grow">
+                <div class="notification-item flex items-start gap-2 p-2 rounded-md transition-colors hover:bg-white/5 ${cursorClass}" ${linkDataAttrs}>
+                    <div class="flex-grow pointer-events-none"> {/* Evita que o texto capture o clique */}
                         <p class="font-bold text-white">${notif.title}</p>
                         <p class="text-stone-300 text-sm notification-message">${notif.message}</p>
                     </div>
@@ -1668,7 +1675,7 @@ document.addEventListener('DOMContentLoaded', function() {
         novidadesContainer.innerHTML = novidades.length > 0 ? novidades.map(n => createNotifHTML(n, true)).join('') : '<p class="text-stone-400 text-center p-4">Nenhuma novidade.</p>';
     }
 
-    // Listener para o painel de notificações (troca de abas, dispensar)
+    // Listener para o painel de notificações (troca de abas, dispensar, CLIQUE NO ITEM)
     notificationPanel.addEventListener('click', (e) => {
         // Troca de abas
         const tab = e.target.closest('.notification-tab');
@@ -1677,6 +1684,7 @@ document.addEventListener('DOMContentLoaded', function() {
             notificationPanel.querySelectorAll('.notification-content').forEach(c => c.classList.remove('active'));
             tab.classList.add('active');
             document.getElementById(`notifications-${tab.dataset.tab}`).classList.add('active');
+            return; // Impede que o clique na aba acione o clique no item
         }
 
         // Dispensar notificação (tipo Novidade)
@@ -1689,11 +1697,108 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateNotificationBell(); // Atualiza indicador
             }
             removeBtn.closest('.notification-item').remove(); // Remove o item da UI
+            return; // Impede que o clique no botão acione o clique no item
+        }
+
+        // CORREÇÃO: Lidar com cliques nos itens de notificação
+        const notificationItem = e.target.closest('.notification-item[data-link-type]');
+        if (notificationItem) {
+            const linkType = notificationItem.dataset.linkType;
+            const linkTarget = notificationItem.dataset.linkTarget;
+
+            if (linkType === 'internal' && linkTarget) {
+                // Fecha o painel antes de navegar
+                notificationPanel.classList.remove('animate-fade-in-down');
+                notificationPanel.classList.add('animate-fade-out-up');
+                setTimeout(() => notificationPanel.classList.add('hidden'), 250);
+                // Navega para a página de detalhes
+                window.location.hash = `#details/${linkTarget}`;
+            } else if (linkType === 'external' && linkTarget) {
+                // Abre link externo em nova aba
+                window.open(linkTarget, '_blank');
+                // Fecha o painel
+                 notificationPanel.classList.remove('animate-fade-in-down');
+                 notificationPanel.classList.add('animate-fade-out-up');
+                 setTimeout(() => notificationPanel.classList.add('hidden'), 250);
+            }
         }
     });
 
+    // --- NOVO: Lógica de Novidades ---
+    function listenForNewsItems() {
+        const q = query(collection(db, "news"), orderBy("createdAt", "desc"));
+        onSnapshot(q, (snapshot) => {
+            newsItems = [];
+            snapshot.forEach((doc) => {
+                newsItems.push({ id: doc.id, ...doc.data() });
+            });
+            // Re-renderiza a view de novidades se ela estiver ativa
+            if (window.location.hash === '#news-view') {
+                renderNewsView();
+            }
+        }, (error) => {
+            console.error("Erro ao escutar novidades: ", error);
+            // Poderia mostrar erro na UI se a view estiver ativa
+            if (window.location.hash === '#news-view') {
+                 document.getElementById('news-items-container').innerHTML = '<p class="text-red-400">Erro ao carregar novidades.</p>';
+            }
+        });
+    }
 
-    // --- Lógica de Pedidos --- (sem alterações significativas)
+    function renderNewsView() {
+        const container = document.getElementById('news-items-container');
+        if (!container) return;
+
+        if (newsItems.length === 0) {
+            container.innerHTML = '<p class="text-slate-400 text-center py-10">Nenhuma novidade publicada ainda.</p>';
+            return;
+        }
+
+        container.innerHTML = newsItems.map(item => createNewsItemCard(item)).join('');
+        initializeGlassEffects(); // Aplica efeitos, se houver botões futuros
+    }
+
+    function createNewsItemCard(item) {
+        const date = item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric'}) : 'Data indisponível';
+        let contentHTML = '';
+        let typeClass = '';
+
+        switch (item.type) {
+            case 'text':
+                contentHTML = `<p class="text-slate-300 mt-2 whitespace-pre-wrap">${item.content}</p>`;
+                typeClass = 'news-item-text';
+                break;
+            case 'image':
+                contentHTML = `<img src="${item.content}" alt="${item.title || 'Imagem da novidade'}" class="mt-3 rounded-lg max-w-full h-auto shadow-lg">`;
+                typeClass = 'news-item-image';
+                break;
+            case 'video':
+                // Tenta detectar embed do YouTube para aspect-ratio
+                const isYoutube = item.content.includes('youtube.com/embed');
+                const aspectClass = isYoutube ? 'aspect-video' : '';
+                contentHTML = `<div class="${aspectClass} mt-3"><iframe src="${item.content}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="w-full h-full rounded-lg shadow-lg ${isYoutube ? '' : 'min-h-[300px]'}"></iframe></div>`;
+                typeClass = 'news-item-video';
+                break;
+            // Adicionar cases para 'upcoming' e 'poll' depois
+            default:
+                contentHTML = `<p class="text-slate-500 mt-2">[Tipo ${item.type}] ${item.content || ''}</p>`;
+        }
+
+        return `
+            <div class="liquid-glass-card news-item ${typeClass}" style="--bg-color: rgba(15, 23, 42, 0.5);">
+                <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
+                <div class="glass-content p-5">
+                    ${item.title ? `<h3 class="text-xl font-semibold text-white">${item.title}</h3>` : ''}
+                    <p class="text-xs text-slate-400 mb-2">${date}</p>
+                    ${contentHTML}
+                </div>
+            </div>
+        `;
+    }
+    // --- Fim da Lógica de Novidades ---
+
+
+    // --- Lógica de Pedidos ---
     function listenToRequests() {
         const q = query(collection(db, "pedidos"), where("status", "==", "pending"));
         onSnapshot(q, (snapshot) => {
@@ -1701,8 +1806,15 @@ document.addEventListener('DOMContentLoaded', function() {
             snapshot.forEach((doc) => {
                 pendingRequests.push({ id: doc.id, ...doc.data() });
             });
-             // Ordena no cliente
-             pendingRequests.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+             // Ordena no cliente por contagem de votos (desc) e depois por data (asc)
+             pendingRequests.sort((a, b) => {
+                 const votesA = (a.requesters || []).length;
+                 const votesB = (b.requesters || []).length;
+                 if (votesB !== votesA) {
+                     return votesB - votesA; // Mais votados primeiro
+                 }
+                 return (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0); // Mais antigos primeiro (desempate)
+             });
             // Re-renderiza se a view de pedidos estiver ativa
             if (window.location.hash === '#requests-view') {
                  renderPendingRequests();
@@ -1893,6 +2005,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Inicia o carregamento do conteúdo do Firestore (necessário após selecionar perfil)
         listenToFirestoreContent();
         listenToRequests(); // Escuta pedidos após selecionar perfil
+        listenForNewsItems(); // Escuta novidades após selecionar perfil
     }
 
     /**
@@ -2307,7 +2420,7 @@ document.addEventListener('DOMContentLoaded', function() {
             userId = user.uid; // Define o userId global
             // Inicia listeners do Firestore que dependem do usuário
             listenForNotifications();
-            // listenToRequests(); // Movido para depois da seleção de perfil
+            listenForNewsItems(); // NOVO
 
             initializeUI(); // Inicializa UI do player (pode ser feito aqui)
 
