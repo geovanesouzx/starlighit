@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let lastNotificationCheck = localStorage.getItem('starlight-lastNotificationCheck') || 0;
     let dismissedNotifications = JSON.parse(localStorage.getItem('starlight-dismissedNotifications')) || [];
 
-    // NOVO: Caches para Novidades
+    // Caches para Novidades
     let newsItems = [];
     let newsLikes = new Map(); // Armazena likes por newsId -> Set[profileId]
     let newsComments = new Map(); // Armazena comentários por newsId -> Array[comment]
@@ -124,13 +124,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const aspectRatioBtn = document.getElementById('player-aspect-ratio-btn');
     let currentAspectRatio = 'contain';
 
-    // NOVO: Elementos do Player (Novidades)
+    // Elementos do Player (Novidades)
     const newsPlayerView = document.getElementById('news-player-view');
     const newsPlayerVideo = document.getElementById('news-video-player');
     const newsPlayerTitle = document.getElementById('news-player-title');
     const newsPlayerCloseBtn = document.getElementById('news-player-close-btn');
 
-    // NOVO: Elementos do Modal de Comentários
+    // Elementos do Modal de Comentários
     const commentsModal = document.getElementById('comments-modal');
     const commentsModalTitle = document.getElementById('comments-modal-title');
     const commentsModalList = document.getElementById('comments-list');
@@ -184,7 +184,7 @@ document.addEventListener('DOMContentLoaded', function() {
         back: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>`,
         aspectContain: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M2 5h2v14H2V5zm20 0h-2v14h2V5zM6 7h12v10H6V7z"></path></svg>`, // Ícone para 'contain'
         aspectCover: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 5h16v14H4V5z"></path></svg>` // Ícone para 'cover'
-        , // NOVO: Ícones para Novidades
+        , // Ícones para Novidades
         heartOutline: `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>`,
         heartFilled: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>`,
         comment: `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 5.523-4.477 10-10 10S1 17.523 1 12 5.477 2 11 2s10 4.477 10 10z"></path></svg>`,
@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', function() {
             await deleteDoc(docRef); // Remove se já estiver na lista
         } else {
             // Adiciona se não estiver, garantindo que 'media_type' esteja presente
-            const itemToAdd = { ...item, media_type: item.media_type || (item.title ? 'movie' : 'tv')};
+            const itemToAdd = { ...item, media_type: item.media_type || (item.title ? 'movie' : 'tv') };
             await setDoc(docRef, itemToAdd);
         }
 
@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateListButtons(item) {
         // Verifica se o item modificado é o que está no hero
         if (currentHeroItem?.docId === item.docId) {
-             updateListButton(document.getElementById('hero-add-to-list'), currentHeroItem);
+            updateListButton(document.getElementById('hero-add-to-list'), currentHeroItem);
         }
         // Verifica se o item modificado é o que está na tela de detalhes
         if (currentDetailsItem?.docId === item.docId) {
@@ -556,7 +556,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
 
-    // --- NOVO: Lógica Player de Vídeo (Novidades) ---
+    // --- Lógica Player de Vídeo (Novidades) ---
     function showNewsPlayer(url, title) {
         if (!newsPlayerView || !newsPlayerVideo) return;
         newsPlayerTitle.textContent = title || 'Vídeo';
@@ -616,20 +616,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Carrossel "Adicionado Recentemente"
         const recentlyAdded = [...firestoreContent]
-         // Ordena por data de adição (mais recente primeiro)
-        .sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0))
-        .slice(0, 20); // Pega os 20 mais recentes
+            // Ordena por data de adição (mais recente primeiro)
+            .sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0))
+            .slice(0, 20); // Pega os 20 mais recentes
         createCarousel(carouselsContainer, "Adicionado Recentemente", recentlyAdded);
 
-      // Carrosséis por Gênero
-      // Pega todos os gêneros únicos de todos os itens
-      const allGenres = [...new Set(firestoreContent.flatMap(item => item.genres || []))];
-      for (const genre of allGenres) {
-          // Filtra os itens que contêm o gênero atual
-          const filteredContent = firestoreContent.filter(item => item.genres && item.genres.includes(genre));
-          // Cria um carrossel para o gênero
-          createCarousel(carouselsContainer, genre, filteredContent);
-      }
+        // Carrosséis por Gênero
+        // Pega todos os gêneros únicos de todos os itens
+        const allGenres = [...new Set(firestoreContent.flatMap(item => item.genres || []))];
+        for (const genre of allGenres) {
+            // Filtra os itens que contêm o gênero atual
+            const filteredContent = firestoreContent.filter(item => item.genres && item.genres.includes(genre));
+            // Cria um carrossel para o gênero
+            createCarousel(carouselsContainer, genre, filteredContent);
+        }
         attachGlassButtonListeners(); // Reatacha listeners visuais
     }
 
@@ -646,6 +646,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Muda o hash da URL. O listener 'popstate' cuidará da lógica de mostrar/esconder.
             if (window.location.hash !== `#${targetId}`) {
                 window.location.hash = targetId;
+            } else {
+                // Se já estiver na página, força a renderização (útil se dados mudaram)
+                handleNavigation();
             }
         });
     });
@@ -657,49 +660,59 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function renderScreenContent(screenId, forceReload = false) {
         const screenElement = document.getElementById(screenId);
-        if (!screenElement ) return; // Sai se a tela não for encontrada
+        if (!screenElement) return; // Sai se a tela não for encontrada
 
-        // Para iframes e player de novidades se sair da tela de novidades
+        // Garante que mídia de outras seções pare
+        if (screenId !== 'player-view') {
+            if (!playerView.classList.contains('hidden')) {
+                hidePlayer(false, false);
+            }
+        }
         if (screenId !== 'news-view') {
-            stopNewsViewMedia(); // NOVO
+            stopNewsViewMedia();
         }
 
         // Lógica de renderização específica para cada tela
         if (screenId === 'home-view') {
             // Pega os itens em destaque e atualiza o hero
             const featuredItems = featuredItemIds.map(id => firestoreContent.find(item => item.docId === id)).filter(Boolean);
-            if(featuredItems.length > 0) {
+            if (featuredItems.length > 0) {
                 updateHero(featuredItems[0]); // Mostra o primeiro item
                 startHeroRotation(); // Inicia a rotação
+            } else if (firestoreContent.length > 0) {
+                // Fallback se não houver featured, mostra o mais recente
+                const mostRecent = [...firestoreContent].sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0))[0];
+                updateHero(mostRecent);
             }
             populateAllViews(); // Popula os carrosséis da home
         } else if (screenId === 'series-view') {
             const grid = document.getElementById('series-grid');
             const series = firestoreContent.filter(item => item.type === 'tv'); // Filtra apenas séries
-            grid.innerHTML = series.map(createGridCard).join(''); // Cria a grid de séries
+            grid.innerHTML = series.length > 0 ? series.map(createGridCard).join('') : '<p class="col-span-full text-center text-gray-400">Nenhuma série encontrada.</p>'; // Cria a grid de séries
         } else if (screenId === 'movies-view') {
             const grid = document.getElementById('movies-grid');
             const movies = firestoreContent.filter(item => item.type === 'movie'); // Filtra apenas filmes
-            grid.innerHTML = movies.map(createGridCard).join(''); // Cria a grid de filmes
+            grid.innerHTML = movies.length > 0 ? movies.map(createGridCard).join('') : '<p class="col-span-full text-center text-gray-400">Nenhum filme encontrado.</p>'; // Cria a grid de filmes
         } else if (screenId === 'mylist-view') {
             populateMyList(); // Popula a grid da "Minha Lista"
         } else if (screenId === 'requests-view') {
             renderPendingRequests(); // Renderiza os pedidos pendentes
-        } else if (screenId === 'news-view') { // NOVO
-            renderNewsView(); // Renderiza a seção de novidades
-            // Inicia listeners de likes e comentários específicos para novidades
-            listenForNewsLikes();
-            listenForNewsComments();
+        } else if (screenId === 'news-view') { // Seção Novidades
+            renderNewsView(); // Renderiza a seção
+            listenForNewsLikes(); // (Re)inicia listener de likes
+            listenForNewsComments(); // (Re)inicia listener de comentários
         } else {
-            // Se saiu da tela de novidades, para os listeners
+            // Se saiu de uma view que tinha listeners específicos (como novidades), para eles
             if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
             if (typeof unsubscribeNewsComments === 'function') unsubscribeNewsComments();
-            newsLikes.clear(); // Limpa caches
-            newsComments.clear();
+            // newsLikes.clear(); // Não limpar aqui, pode ser necessário para a UI
+            // newsComments.clear();
         }
+
         lucide.createIcons(); // Recria ícones
         attachGlassButtonListeners(); // Reatacha listeners visuais
     }
+
 
     // Listener global para cliques em links de detalhes (cards de conteúdo)
     document.body.addEventListener('click', (e) => {
@@ -738,15 +751,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const genres = data.genres ? data.genres.map(g => `<span class="bg-white/10 text-xs font-semibold px-2 py-1 rounded-full text-white">${g}</span>`).join('') : '';
         let duration = '';
         if (data.type === 'movie' && data.duration) {
-             duration = data.duration;
+            duration = data.duration;
         } else if (data.type === 'tv' && data.seasons) {
             duration = `${Object.keys(data.seasons).length} Temporada(s)`;
         }
 
         // Define URLs de imagem com fallback
         let backgroundUrl = data.backdrop;
-        const finalImageUrl = backgroundUrl.startsWith('http') ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
-        const posterUrl = data.poster.startsWith('http') ? data.poster : 'https://placehold.co/500x750/1a1a1a/ffffff?text=Capa';
+        const finalImageUrl = backgroundUrl && backgroundUrl.startsWith('http') ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
+        const posterUrl = data.poster && data.poster.startsWith('http') ? data.poster : 'https://placehold.co/500x750/1a1a1a/ffffff?text=Capa';
 
         // Define o HTML da tela de detalhes
         detailsView.innerHTML = `
@@ -803,7 +816,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 showPlayer({ videoUrl: data.url, title: title, itemData: data });
             } else if (data.type === 'tv' && data.seasons) {
                 // Se for série, encontra o primeiro episódio da primeira temporada
-                const firstSeasonKey = Object.keys(data.seasons).sort((a,b) => parseInt(a) - parseInt(b))[0];
+                const firstSeasonKey = Object.keys(data.seasons).sort((a, b) => parseInt(a) - parseInt(b))[0];
                 const firstEpisode = data.seasons[firstSeasonKey]?.episodes?.[0];
 
                 if (firstEpisode) {
@@ -864,14 +877,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </button>
                 <div id="season-options" class="hidden custom-select-options glass-container rounded-lg animate-fade-in-down">
-                     <!-- Opções do seletor (inicialmente escondido) -->
-                     <div class="glass-filter"></div>
-                     <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.7);"></div>
-                     <div class="glass-specular"></div>
-                     <div id="season-options-content" class="glass-content p-2">
-                         <!-- Mapeia as chaves das temporadas para criar as opções -->
-                         ${seasonKeys.map(key => `<div class="custom-select-option p-3 rounded-md cursor-pointer" data-season="${key}">${data.seasons[key]?.title || `Temporada ${key}`}</div>`).join('')}
-                     </div>
+                      <!-- Opções do seletor (inicialmente escondido) -->
+                      <div class="glass-filter"></div>
+                      <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.7);"></div>
+                      <div class="glass-specular"></div>
+                      <div id="season-options-content" class="glass-content p-2">
+                          <!-- Mapeia as chaves das temporadas para criar as opções -->
+                          ${seasonKeys.map(key => `<div class="custom-select-option p-3 rounded-md cursor-pointer" data-season="${key}">${data.seasons[key]?.title || `Temporada ${key}`}</div>`).join('')}
+                      </div>
                 </div>
             </div>
             <div id="episode-list-container" class="space-y-3"></div> <!-- Container para a lista de episódios -->
@@ -895,7 +908,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const epTitle = ep.title || `Episódio ${ep.episode_number || index + 1}`;
                 const epOverview = ep.overview || 'Sem descrição.';
                 // Define a imagem do episódio com fallback
-                const stillPath = ep.still_path ? (ep.still_path.startsWith('/') ? `https://image.tmdb.org/t/p/w300${ep.still_path}`: ep.still_path) : 'https://placehold.co/300x168/1c1917/FFFFFF?text=Starlight';
+                const stillPath = ep.still_path ? (ep.still_path.startsWith('/') ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : ep.still_path) : 'https://placehold.co/300x168/1c1917/FFFFFF?text=Starlight';
 
                 return `
                     <div class="episode-item glass-container glass-button rounded-lg overflow-hidden cursor-pointer" data-index="${index}" data-season="${seasonKey}">
@@ -946,21 +959,21 @@ document.addEventListener('DOMContentLoaded', function() {
         // Listener para cliques nos itens de episódio
         document.getElementById('episode-list-container').addEventListener('click', (e) => {
             const episodeItem = e.target.closest('.episode-item');
-            if(episodeItem){ // Se clicou em um episódio
-                 const seasonKey = episodeItem.dataset.season; // Pega a temporada
-                 const episodeIndex = parseInt(episodeItem.dataset.index, 10); // Pega o índice do episódio
-                 const allEpisodesOfSeason = data.seasons[seasonKey].episodes;
-                 const episode = allEpisodesOfSeason[episodeIndex]; // Pega os dados do episódio
+            if (episodeItem) { // Se clicou em um episódio
+                const seasonKey = episodeItem.dataset.season; // Pega a temporada
+                const episodeIndex = parseInt(episodeItem.dataset.index, 10); // Pega o índice do episódio
+                const allEpisodesOfSeason = data.seasons[seasonKey].episodes;
+                const episode = allEpisodesOfSeason[episodeIndex]; // Pega os dados do episódio
 
-                 // Prepara o contexto para o player
-                 const context = {
-                     videoUrl: episode.url, // URL do vídeo do episódio
-                     title: `${data.name} - T${seasonKey} E${episode.episode_number || episodeIndex + 1}`, // Título para o player
-                     itemData: data, // Dados gerais da série
-                     episodes: allEpisodesOfSeason, // Lista de todos os episódios da temporada
-                     currentIndex: episodeIndex // Índice do episódio clicado
-                 };
-                 showPlayer(context); // Inicia o player
+                // Prepara o contexto para o player
+                const context = {
+                    videoUrl: episode.url, // URL do vídeo do episódio
+                    title: `${data.name} - T${seasonKey} E${episode.episode_number || episodeIndex + 1}`, // Título para o player
+                    itemData: data, // Dados gerais da série
+                    episodes: allEpisodesOfSeason, // Lista de todos os episódios da temporada
+                    currentIndex: episodeIndex // Índice do episódio clicado
+                };
+                showPlayer(context); // Inicia o player
             }
         });
     }
@@ -970,11 +983,11 @@ document.addEventListener('DOMContentLoaded', function() {
     /** Efeito visual: Remove gradiente especular ao tirar o mouse */
     function handleMouseLeave() { const specular = this.querySelector('.glass-specular'); if (specular) specular.style.background = 'none'; }
     /** Adiciona listeners para os efeitos visuais 'glass' a todos os elementos relevantes */
-    function attachGlassButtonListeners() { document.querySelectorAll('.glass-button, .liquid-glass-card, .player-control-btn, .glass-container[style*="--bg-color"], .glass-form').forEach(element => { if (!element.hasGlassListener) { element.addEventListener('mousemove', handleMouseMove); element.addEventListener('mouseleave', handleMouseLeave); element.hasGlassListener = true; }}); } // 'hasGlassListener' evita adicionar múltiplos listeners
+    function attachGlassButtonListeners() { document.querySelectorAll('.glass-button, .liquid-glass-card, .player-control-btn, .glass-container[style*="--bg-color"], .glass-form').forEach(element => { if (!element.hasGlassListener) { element.addEventListener('mousemove', handleMouseMove); element.addEventListener('mouseleave', handleMouseLeave); element.hasGlassListener = true; } }); } // 'hasGlassListener' evita adicionar múltiplos listeners
     /** Atualiza a posição e tamanho do indicador da navegação mobile */
-    function updateMobileNavIndicator() { const indicator = document.getElementById('mobile-nav-indicator'); const activeItem = document.querySelector('#mobile-nav .mobile-nav-item.active'); if (indicator && activeItem) { const left = activeItem.offsetLeft; const width = activeItem.offsetWidth; indicator.style.width = `${width}px`; indicator.style.transform = `translateX(${left}px)`; }}
+    function updateMobileNavIndicator() { const indicator = document.getElementById('mobile-nav-indicator'); const activeItem = document.querySelector('#mobile-nav .mobile-nav-item.active'); if (indicator && activeItem) { const left = activeItem.offsetLeft; const width = activeItem.offsetWidth; indicator.style.width = `${width}px`; indicator.style.transform = `translateX(${left}px)`; } }
     /** Mostra ou esconde o overlay de busca */
-    function toggleSearchOverlay(show) { if (show) { searchOverlay.classList.remove('hidden'); searchInput.focus(); document.body.style.overflow = 'hidden'; } else { searchOverlay.classList.add('hidden'); searchInput.value = ''; searchResultsContainer.innerHTML = ''; document.body.style.overflow = 'auto'; }}
+    function toggleSearchOverlay(show) { if (show) { searchOverlay.classList.remove('hidden'); searchInput.focus(); document.body.style.overflow = 'hidden'; } else { searchOverlay.classList.add('hidden'); searchInput.value = ''; searchResultsContainer.innerHTML = ''; document.body.style.overflow = 'auto'; } }
 
     // -----------------------------------------------------------------
     // --- FUNÇÃO DE BUSCA CORRIGIDA ---
@@ -990,8 +1003,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Garante que firestoreContent está disponível
         if (!firestoreContent || firestoreContent.length === 0) {
-             searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">O catálogo está carregando. Tente novamente em alguns segundos.</p>`;
-             return;
+            searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">O catálogo está carregando. Tente novamente em alguns segundos.</p>`;
+            return;
         }
 
         const lowerCaseQuery = query.toLowerCase();
@@ -1048,7 +1061,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Adiciona #player ao histórico do navegador se ainda não estiver lá
         if (window.location.hash !== '#player') {
-            history.pushState({view: 'player'}, '', '#player');
+            history.pushState({ view: 'player' }, '', '#player');
         }
 
         // Mostra a view do player e esconde a barra de rolagem do body
@@ -1058,25 +1071,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Processa a URL do vídeo (caso especial para api.anivideo.net)
         let urlToLoad = context.videoUrl;
-         try {
-             const urlObject = new URL(urlToLoad);
-             if (urlObject.hostname.includes('api.anivideo.net') && urlObject.pathname.includes('videohls.php')) {
-                 const videoSrc = urlObject.searchParams.get('d');
-                 if (videoSrc) {
-                     urlToLoad = videoSrc; // Usa a URL extraída do parâmetro 'd'
-                 }
-             }
-         } catch (e) {
-             // URL inválida, usa a original
-         }
+        try {
+            const urlObject = new URL(urlToLoad);
+            if (urlObject.hostname.includes('api.anivideo.net') && urlObject.pathname.includes('videohls.php')) {
+                const videoSrc = urlObject.searchParams.get('d');
+                if (videoSrc) {
+                    urlToLoad = videoSrc; // Usa a URL extraída do parâmetro 'd'
+                }
+            }
+        } catch (e) {
+            // URL inválida, usa a original
+        }
 
         // Configura HLS.js se for um stream .m3u8 e o navegador suportar
         if (Hls.isSupported() && urlToLoad.includes('.m3u8')) {
-            // MUDANÇA: Adiciona configuração de buffer para tentar reduzir travamentos
             hls = new Hls({
-                maxBufferLength: 30,    // Segundos de buffer
+                maxBufferLength: 30,       // Segundos de buffer
                 maxBufferSize: 60 * 1000 * 1000, // 60MB de buffer
-                startLevel: -1           // Começa na qualidade automática
+                startLevel: -1             // Começa na qualidade automática
             });
             hls.loadSource(urlToLoad); // Carrega a fonte
             hls.attachMedia(videoPlayer); // Anexa ao elemento <video>
@@ -1085,7 +1097,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (context.startTime && context.startTime > 5) { // Só pula se for maior que 5s
                     videoPlayer.currentTime = context.startTime;
                 }
-               videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo HLS:", e)); // Tenta iniciar a reprodução
+                videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo HLS:", e)); // Tenta iniciar a reprodução
             });
         } else { // Se não for HLS ou não for suportado, usa a tag <video> nativa
             videoPlayer.src = urlToLoad; // Define a fonte do vídeo
@@ -1093,35 +1105,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (context.startTime && context.startTime > 5) {
                     videoPlayer.currentTime = context.startTime; // Pula se necessário
                 }
-               videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo:", e)); // Tenta iniciar
+                videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo:", e)); // Tenta iniciar
             }, { once: true }); // Executa este listener apenas uma vez
         }
 
         // 2. Lógica de orientação e tela cheia para mobile
         if (window.innerWidth < 768) { // Se for tela pequena (considerado mobile)
-             // MUDANÇA: Lógica ajustada para (re)tentar bloquear a orientação
-             if (!document.fullscreenElement) { // Só tenta entrar em fullscreen se já não estiver
-                 try {
-                     await playerView.requestFullscreen();
-                 } catch (err) {
-                      console.error("Não foi possível ativar tela cheia:", err);
-                 }
-             }
-             // Tenta (re)travar a orientação.
-             // Se foi um clique (nextBtn), funciona.
-             // Se foi 'ended', pode falhar, mas como não demos unlock,
-             // a orientação anterior (landscape) deve ser mantida.
-             try {
-                 if (screen.orientation && typeof screen.orientation.lock === 'function') {
-                      await screen.orientation.lock('landscape');
-                 }
-             } catch (err) {
-                 console.error("Não foi possível bloquear orientação:", err);
-             }
+            if (!document.fullscreenElement) { // Só tenta entrar em fullscreen se já não estiver
+                try {
+                    await playerView.requestFullscreen();
+                } catch (err) {
+                    console.error("Não foi possível ativar tela cheia:", err);
+                }
+            }
+            try {
+                if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                    await screen.orientation.lock('landscape');
+                }
+            } catch (err) {
+                console.error("Não foi possível bloquear orientação:", err);
+            }
         }
 
         // Mostra/Esconde botões de episódio anterior/próximo
-        if(context.episodes && context.episodes.length > 1) {
+        if (context.episodes && context.episodes.length > 1) {
             nextEpisodeBtn.classList.remove('hidden');
             prevEpisodeBtn.classList.remove('hidden');
         } else {
@@ -1137,9 +1144,9 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {boolean} [updateHistory=true] - Se true, salva o progresso e volta no histórico.
      * @param {boolean} [isChangingEpisode=false] - Se true, não desbloqueia a orientação (mobile).
      */
-    async function hidePlayer(updateHistory = true, isChangingEpisode = false) { // MUDANÇA: Adicionado isChangingEpisode
+    async function hidePlayer(updateHistory = true, isChangingEpisode = false) {
         // Salva o progresso se updateHistory for true e houver um contexto válido
-        if(updateHistory && currentPlayerContext.key){
+        if (updateHistory && currentPlayerContext.key) {
             await savePlayerProgress();
         }
 
@@ -1157,12 +1164,11 @@ document.addEventListener('DOMContentLoaded', function() {
         playerView.classList.add('hidden'); // Esconde a view do player
         // Só restaura o scroll se o player de novidades também não estiver ativo
         if (newsPlayerView.classList.contains('hidden')) {
-             document.body.style.overflow = 'auto'; // Restaura a rolagem do body
+            document.body.style.overflow = 'auto'; // Restaura a rolagem do body
         }
         currentPlayerContext = {}; // Limpa o contexto do player
 
-        // 3. Sai da tela cheia e desbloqueia a orientação
-        // MUDANÇA: Só executa se NÃO estiver trocando de episódio
+        // Sai da tela cheia e desbloqueia a orientação, a menos que esteja trocando de episódio
         if (!isChangingEpisode) {
             if (document.fullscreenElement) {
                 document.exitFullscreen().catch(err => console.error("Erro ao sair da tela cheia:", err));
@@ -1172,13 +1178,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // MUDANÇA: Reseta o aspect ratio para o padrão
+        // Reseta o aspect ratio para o padrão
         videoPlayer.style.objectFit = 'contain';
         currentAspectRatio = 'contain';
-        if(aspectRatioBtn) aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectContain;
+        if (aspectRatioBtn) aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectContain;
 
-        // NÃO chama history.back() aqui. O roteador (`handleNavigation`) fará isso
-        // quando o evento 'popstate' for disparado pelo clique no botão voltar do navegador.
+        // O roteador (`handleNavigation`) cuidará do history.back() se necessário.
     }
 
     /**
@@ -1236,7 +1241,7 @@ document.addEventListener('DOMContentLoaded', function() {
         clearTimeout(controlsTimeout); // Limpa timeout
 
         if (!playerView.classList.contains('controls-active')) {
-             playerView.classList.add('controls-active'); // Se escondidos, apenas mostra
+            playerView.classList.add('controls-active'); // Se escondidos, apenas mostra
         } else {
             togglePlay(); // Se controles visíveis, alterna play/pause
         }
@@ -1252,94 +1257,94 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /** Adiciona listeners de evento ao elemento <video> */
     function addPlayerEventListeners() {
-        // Remove listeners antigos antes de adicionar novos para evitar duplicidade
-        // Garantir que a referência da função é a mesma
+        // Remove listeners antigos para evitar duplicidade
+        videoPlayer.removeEventListener('click', handlePlayerClick);
+        videoPlayer.removeEventListener('click', handleMobilePlayerClick);
+        videoPlayer.removeEventListener('play', handlePlayEvent);
+        videoPlayer.removeEventListener('pause', handlePauseEvent);
+        videoPlayer.removeEventListener('ended', handleEndedEvent);
+        videoPlayer.removeEventListener('timeupdate', handleTimeUpdateEvent);
+        videoPlayer.removeEventListener('loadedmetadata', handleLoadedMetadataEvent);
+        videoPlayer.removeEventListener('volumechange', handleVolumeChangeEvent);
+
+        // Adiciona novos listeners
         const isMobile = window.innerWidth < 768;
         if (isMobile) {
-            videoPlayer.removeEventListener('click', handlePlayerClick); // Remove listener desktop se existir
-            videoPlayer.removeEventListener('click', handleMobilePlayerClick); // Remove listener mobile antigo
-            videoPlayer.addEventListener('click', handleMobilePlayerClick); // Adiciona listener mobile correto
+            videoPlayer.addEventListener('click', handleMobilePlayerClick);
         } else {
-            videoPlayer.removeEventListener('click', handleMobilePlayerClick); // Remove listener mobile se existir
-            videoPlayer.removeEventListener('click', handlePlayerClick); // Remove listener desktop antigo
-            videoPlayer.addEventListener('click', handlePlayerClick); // Adiciona listener desktop correto
+            videoPlayer.addEventListener('click', handlePlayerClick);
         }
-
-
-        // Listener para o evento 'play'
-        videoPlayer.addEventListener('play', () => {
-             playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.pause;
-             clearTimeout(controlsTimeout); // Limpa timeout ao dar play
-             // Agenda para esconder controles se estiverem visíveis
-             if (playerView.classList.contains('controls-active')) {
-                 controlsTimeout = setTimeout(() => {
-                     playerView.classList.remove('controls-active');
-                 }, 3000);
-             }
-         });
-         // Listener para o evento 'pause'
-        videoPlayer.addEventListener('pause', () => {
-            playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
-            clearTimeout(controlsTimeout); // Cancela o timeout ao pausar
-            // Garante que os controles fiquem visíveis ao pausar manualmente
-            if (!videoPlayer.ended) {
-                 playerView.classList.add('controls-active');
-            }
-        });
-
-        // Quando o vídeo/episódio termina
-        videoPlayer.addEventListener('ended', () => {
-            // Se for série e houver próximo episódio, avança
-            if (currentPlayerContext.episodes && currentPlayerContext.currentIndex < currentPlayerContext.episodes.length - 1) {
-                changeEpisode(1); // Vai para o próximo
-            } else {
-                // Senão, apenas mostra o ícone de play e mantém controles visíveis
-                playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
-                playerView.classList.add('controls-active'); // Garante que controles fiquem visíveis no final
-                clearTimeout(controlsTimeout); // Cancela qualquer timeout pendente
-            }
-        });
-
-        // Atualiza a barra de progresso e salva progresso periodicamente
-        videoPlayer.addEventListener('timeupdate', () => {
-            if(isNaN(videoPlayer.currentTime)) return; // Ignora se currentTime for NaN
-            seekBar.value = videoPlayer.currentTime; // Atualiza valor do slider
-            if (videoPlayer.duration) { // Atualiza a barra visual
-                const progressPercent = (videoPlayer.currentTime / videoPlayer.duration) * 100;
-                seekProgressBar.style.width = `${progressPercent}%`;
-            }
-            currentTimeEl.textContent = formatTime(videoPlayer.currentTime); // Atualiza tempo atual formatado
-
-            // Salva progresso a cada 5 segundos
-            const now = Date.now();
-            if (now - lastProgressSaveTime > 5000) {
-                savePlayerProgress();
-                lastProgressSaveTime = now;
-            }
-        });
-
-        // Quando metadados carregam (obtém duração)
-        videoPlayer.addEventListener('loadedmetadata', () => {
-            if(isNaN(videoPlayer.duration)) return; // Ignora se duration for NaN
-            seekBar.max = videoPlayer.duration; // Define o máximo do slider
-            durationEl.textContent = formatTime(videoPlayer.duration); // Mostra duração total formatada
-        });
-
-        // Atualiza ícone de volume e valor do slider de volume
-        videoPlayer.addEventListener('volumechange', () => {
-            volumeSlider.value = videoPlayer.volume;
-            volumeBtn.querySelector('.glass-content').innerHTML = (videoPlayer.muted || videoPlayer.volume === 0) ? ICONS.volumeMute : ICONS.volumeHigh;
-        });
-
-        // --- Listener de clique já está sendo adicionado no início da função ---
+        videoPlayer.addEventListener('play', handlePlayEvent);
+        videoPlayer.addEventListener('pause', handlePauseEvent);
+        videoPlayer.addEventListener('ended', handleEndedEvent);
+        videoPlayer.addEventListener('timeupdate', handleTimeUpdateEvent);
+        videoPlayer.addEventListener('loadedmetadata', handleLoadedMetadataEvent);
+        videoPlayer.addEventListener('volumechange', handleVolumeChangeEvent);
     }
 
+    // Funções de handler separadas para os listeners do player
+    function handlePlayEvent() {
+        playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.pause;
+        clearTimeout(controlsTimeout);
+        if (playerView.classList.contains('controls-active')) {
+            controlsTimeout = setTimeout(() => {
+                playerView.classList.remove('controls-active');
+            }, 3000);
+        }
+    }
+
+    function handlePauseEvent() {
+        playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
+        clearTimeout(controlsTimeout);
+        if (!videoPlayer.ended) {
+            playerView.classList.add('controls-active');
+        }
+    }
+
+    function handleEndedEvent() {
+        if (currentPlayerContext.episodes && currentPlayerContext.currentIndex < currentPlayerContext.episodes.length - 1) {
+            changeEpisode(1);
+        } else {
+            playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
+            playerView.classList.add('controls-active');
+            clearTimeout(controlsTimeout);
+        }
+    }
+
+    function handleTimeUpdateEvent() {
+        if (isNaN(videoPlayer.currentTime)) return;
+        seekBar.value = videoPlayer.currentTime;
+        if (videoPlayer.duration) {
+            const progressPercent = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+            seekProgressBar.style.width = `${progressPercent}%`;
+        }
+        currentTimeEl.textContent = formatTime(videoPlayer.currentTime);
+
+        const now = Date.now();
+        if (now - lastProgressSaveTime > 5000) {
+            savePlayerProgress();
+            lastProgressSaveTime = now;
+        }
+    }
+
+    function handleLoadedMetadataEvent() {
+        if (isNaN(videoPlayer.duration)) return;
+        seekBar.max = videoPlayer.duration;
+        durationEl.textContent = formatTime(videoPlayer.duration);
+    }
+
+    function handleVolumeChangeEvent() {
+        volumeSlider.value = videoPlayer.volume;
+        volumeBtn.querySelector('.glass-content').innerHTML = (videoPlayer.muted || videoPlayer.volume === 0) ? ICONS.volumeMute : ICONS.volumeHigh;
+    }
+
+
     // --- Listeners dos Controles do Player ---
-    seekBar.addEventListener('input', () => { videoPlayer.currentTime = seekBar.value; }); // Pular ao arrastar barra
+    seekBar.addEventListener('input', () => { if(!isNaN(seekBar.value)) videoPlayer.currentTime = seekBar.value; }); // Pular ao arrastar barra
     volumeSlider.addEventListener('input', (e) => { videoPlayer.volume = e.target.value; videoPlayer.muted = e.target.value == 0; }); // Ajustar volume
     volumeBtn.addEventListener('click', () => { videoPlayer.muted = !videoPlayer.muted; }); // Mutar/Desmutar
-    rewindBtn.addEventListener('click', () => { videoPlayer.currentTime -= 10; }); // Voltar 10s
-    forwardBtn.addEventListener('click', () => { videoPlayer.currentTime += 10; }); // Avançar 10s
+    rewindBtn.addEventListener('click', () => { if(!isNaN(videoPlayer.currentTime)) videoPlayer.currentTime -= 10; }); // Voltar 10s
+    forwardBtn.addEventListener('click', () => { if(!isNaN(videoPlayer.currentTime)) videoPlayer.currentTime += 10; }); // Avançar 10s
 
     // Listener do botão de Aspect Ratio
     aspectRatioBtn.addEventListener('click', () => {
@@ -1368,11 +1373,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const episode = currentPlayerContext.episodes[newIndex]; // Pega dados do novo episódio
             // Cria novo contexto com índice atualizado e novo título
             const newContext = {
-                 ...currentPlayerContext,
-                 currentIndex: newIndex,
-                 title: `${currentPlayerContext.itemData.name} - T${episode.season_number} E${episode.episode_number}`,
-                 videoUrl: episode.url // IMPORTANTE: Atualizar a URL do vídeo
-             };
+                ...currentPlayerContext,
+                currentIndex: newIndex,
+                title: `${currentPlayerContext.itemData.name} - T${episode.season_number} E${episode.episode_number}`,
+                videoUrl: episode.url // IMPORTANTE: Atualizar a URL do vídeo
+            };
             showPlayer(newContext); // Mostra o player com o novo episódio
         }
     }
@@ -1396,12 +1401,18 @@ document.addEventListener('DOMContentLoaded', function() {
         // Atualiza o ícone do botão
         fullscreenBtn.querySelector('.glass-content').innerHTML = isFullscreen ? ICONS.exitFullscreen : ICONS.fullscreen;
 
-        // Se saiu da tela cheia E o player ainda deveria estar visível
-        if (!isFullscreen && !playerView.classList.contains('hidden')) {
-             // Força a volta no histórico (provavelmente para a tela de detalhes)
-             history.back();
+        // Se saiu da tela cheia E o player ainda deveria estar visível E não estamos trocando de episódio
+        // (A verificação do currentPlayerContext ajuda a evitar voltar se o player foi fechado por outro motivo)
+        if (!isFullscreen && !playerView.classList.contains('hidden') && currentPlayerContext.key) {
+             // Apenas desbloqueia a orientação se saiu do fullscreen e não estava trocando de episódio
+            if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+                 screen.orientation.unlock();
+            }
+            // Não força history.back() aqui, pois o usuário pode ter saído do fullscreen intencionalmente.
+            // O botão voltar do player ainda funciona com history.back().
         }
     });
+
 
     // Listener botão play/pause principal
     playPauseBtn.addEventListener('click', togglePlay);
@@ -1410,8 +1421,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Listener para mostrar controles ao mover o mouse sobre o player (desktop)
     playerView.addEventListener('mousemove', () => {
-        // MUDANÇA: Não executar esta lógica em mobile
-        if (window.innerWidth >= 768) {
+        if (window.innerWidth >= 768) { // Apenas Desktop
             playerView.classList.add('controls-active'); // Mostra controles
             clearTimeout(controlsTimeout); // Limpa timeout anterior
             // Define novo timeout para esconder (se não estiver pausado)
@@ -1422,6 +1432,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
 
     // Listener para botão de configurações (abre/fecha painel)
     settingsBtn.addEventListener('click', (e) => { e.stopPropagation(); settingsPanel.classList.toggle('hidden'); });
@@ -1442,9 +1453,8 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('season-selector-button')?.click(); // Simula clique no botão para fechar
         }
 
-        // NOVO: Fecha modal de comentários
+        // Fecha modal de comentários se clicar fora do card interno
         if (!commentsModal.classList.contains('hidden') && !commentsModal.querySelector('.liquid-glass-card').contains(e.target)) {
-            // Verifica se o clique foi fora do card interno do modal
             closeCommentsModal();
         }
     });
@@ -1454,40 +1464,47 @@ document.addEventListener('DOMContentLoaded', function() {
         const speedContainer = document.getElementById('settings-speed-options');
         const qualityContainer = document.getElementById('settings-quality-options');
         // Só cria se ainda não existirem (evita duplicação)
-        if(speedContainer.childElementCount > 1) return;
+        if (speedContainer.childElementCount > 1) return;
+
+        // Limpa containers antes de adicionar (garantia extra)
+        speedContainer.innerHTML = '<h4 class="text-xs text-gray-300 px-3 pt-1 pb-2">Velocidade</h4>';
+        qualityContainer.innerHTML = '<h4 class="text-xs text-gray-300 px-3 pt-1 pb-2">Qualidade</h4>';
+
 
         // Opções de velocidade
         const speeds = [0.5, 1, 1.5, 2];
         speeds.forEach(speed => {
             const button = document.createElement('button');
-            button.className = 'settings-option-btn';
+            button.className = 'settings-option-btn w-full text-left p-2 rounded hover:bg-white/10 text-sm';
             button.textContent = `${speed}x`;
-            if (speed === 1) button.classList.add('active'); // Marca 1x como padrão
+            if (speed === 1) button.classList.add('active', 'bg-white/5', 'font-semibold'); // Marca 1x como padrão
             button.onclick = () => { // Ao clicar
                 videoPlayer.playbackRate = speed; // Muda velocidade do vídeo
                 // Atualiza qual botão está ativo
-                speedContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
+                speedContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active', 'bg-white/5', 'font-semibold'));
+                button.classList.add('active', 'bg-white/5', 'font-semibold');
             };
             speedContainer.appendChild(button);
         });
 
         // Opções de qualidade (Placeholder - HLS.js pode gerenciar isso dinamicamente)
-        const qualities = ["Auto", "1080p", "720p", "480p"];
+        // Adicionar lógica real de HLS.js aqui se necessário
+        const qualities = ["Auto"]; // Simplificado para Auto por enquanto
         qualities.forEach(quality => {
-             const button = document.createElement('button');
-            button.className = 'settings-option-btn';
+            const button = document.createElement('button');
+            button.className = 'settings-option-btn w-full text-left p-2 rounded hover:bg-white/10 text-sm';
             button.textContent = quality;
-            if (quality === "Auto") button.classList.add('active'); // Marca Auto como padrão
+            if (quality === "Auto") button.classList.add('active', 'bg-white/5', 'font-semibold'); // Marca Auto como padrão
             button.onclick = () => { // Ao clicar (ação placeholder)
-                qualityContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                console.log(`Qualidade definida para ${quality}. (Funcionalidade de troca manual não implementada)`);
-                // NOTA: A troca real de qualidade com HLS.js é mais complexa
+                qualityContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active', 'bg-white/5', 'font-semibold'));
+                button.classList.add('active', 'bg-white/5', 'font-semibold');
+                console.log(`Qualidade definida para ${quality}. (Funcionalidade de troca manual não implementada para HLS)`);
+                // NOTA: A troca real de qualidade com HLS.js é mais complexa (hls.currentLevel = index)
             };
             qualityContainer.appendChild(button);
         });
     }
+
 
     // Listener para o botão "Assistir" na seção hero
     document.getElementById('hero-watch-btn').addEventListener('click', () => {
@@ -1512,7 +1529,7 @@ document.addEventListener('DOMContentLoaded', function() {
         fullscreenBtn.querySelector('.glass-content').innerHTML = ICONS.fullscreen;
         settingsBtn.querySelector('.glass-content').innerHTML = ICONS.settings;
         playerBackBtn.querySelector('.glass-content').innerHTML = ICONS.back;
-        aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectContain; // NOVO
+        aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectContain;
         createSettingsOptions(); // Cria opções de velocidade/qualidade
         addPlayerEventListeners(); // Adiciona listeners ao <video>
     }
@@ -1522,11 +1539,10 @@ document.addEventListener('DOMContentLoaded', function() {
     closeSearchBtn.addEventListener('click', () => toggleSearchOverlay(false)); // Fechar busca
     document.getElementById('search-overlay-bg').addEventListener('click', () => toggleSearchOverlay(false)); // Fechar ao clicar no fundo
 
-    // Listener de busca com debounce (CORRIGIDO)
+    // Listener de busca com debounce
     searchInput.addEventListener('input', () => {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-            // Chama a nova função performSearch (que agora é síncrona)
             performSearch(searchInput.value);
         }, 400); // 400ms de debounce
     });
@@ -1574,178 +1590,177 @@ document.addEventListener('DOMContentLoaded', function() {
     /** Função principal que lida com a navegação baseada no hash da URL */
     async function handleNavigation() {
         const hash = window.location.hash; // Pega o hash atual (ex: #home-view, #details/123)
+        const previousHash = sessionStorage.getItem('starlight-previousHash') || '#home-view'; // Pega hash anterior
 
         // --- Rota de Autenticação ---
         if (!userId) { // Se o usuário NÃO está logado
-            // Garante que a view de login seja exibida
             if (hash !== '#login-view') {
-                // Força o hash para #login-view sem adicionar ao histórico
                 history.replaceState(null, '', '#login-view');
             }
-            showLoginScreen(); // Mostra a tela de login
-            return; // Interrompe a função aqui
+            showLoginScreen();
+            sessionStorage.setItem('starlight-previousHash', '#login-view'); // Atualiza hash anterior
+            return;
         }
 
         // --- Rota de Seleção de Perfil ---
-        if (!currentProfile) { // Se o usuário está logado, MAS NENHUM perfil foi selecionado ainda
-             // Tenta carregar o último perfil usado do localStorage
+        if (!currentProfile) { // Se o usuário está logado, MAS NENHUM perfil foi selecionado
             const lastProfileId = localStorage.getItem(`starlight-lastProfile-${userId}`);
             let autoSelectedProfile = false;
             if (lastProfileId) {
-                // Carrega os perfis do Firestore APENAS se precisar verificar o último perfil
-                 if (!profiles || profiles.length === 0) { // Evita recarregar se já tiver
-                     await loadProfiles(); // loadProfiles() também chama renderProfiles()
-                 }
+                if (!profiles || profiles.length === 0) {
+                    await loadProfiles();
+                }
                 const foundProfile = profiles.find(p => p.id === lastProfileId);
                 if (foundProfile) {
-                    // Se encontrou um perfil válido salvo, seleciona-o automaticamente
-                    selectAndEnterProfile(foundProfile);
-                    autoSelectedProfile = true; // Marca que um perfil foi selecionado
-                    // Não retorna aqui, continua para o roteamento do app
+                    await selectAndEnterProfile(foundProfile); // selectAndEnterProfile chama handleNavigation de novo implicitamente via hash change
+                    autoSelectedProfile = true;
+                    // Não precisa mais nada aqui, selectAndEnterProfile já tratou a navegação
+                    sessionStorage.setItem('starlight-previousHash', window.location.hash); // Atualiza hash anterior
+                    return; // Importante retornar para evitar execução duplicada
                 }
             }
-
-            // Se NENHUM perfil foi selecionado automaticamente
             if (!autoSelectedProfile) {
-                // Garante que a view de seleção de perfil seja exibida
                 if (hash !== '#manage-profile-view') {
                     history.replaceState(null, '', '#manage-profile-view');
                 }
-                showProfileScreen(); // Mostra a tela de seleção de perfil
-                return; // Interrompe a função aqui
+                showProfileScreen();
+                sessionStorage.setItem('starlight-previousHash', '#manage-profile-view'); // Atualiza hash anterior
+                return;
             }
-             // Se um perfil foi auto-selecionado, a função continua para o roteamento do app abaixo
         }
-
 
         // --- Roteamento do Aplicativo (Usuário Logado e com Perfil Selecionado) ---
 
-        // Garante que overlays especiais (busca) sejam fechados ao navegar
+        // Garante que overlays especiais sejam fechados
         if (!searchOverlay.classList.contains('hidden')) {
             toggleSearchOverlay(false);
         }
 
-        // Esconde header/footer para views especiais (detalhes, player)
-        if (hash.startsWith('#details/') || hash === '#player') {
-            document.querySelector('header').classList.add('hidden');
-            document.querySelector('footer').classList.add('hidden');
-        } else {
-            // Mostra header/footer para views normais
-            document.querySelector('header').classList.remove('hidden');
-            document.querySelector('footer').classList.remove('hidden');
+        // Esconde header/footer para views especiais
+        const isSpecialView = hash.startsWith('#details/') || hash === '#player';
+        document.querySelector('header').classList.toggle('hidden', isSpecialView);
+        document.querySelector('footer').classList.toggle('hidden', isSpecialView);
+
+        // Garante que views especiais sejam escondidas ao navegar para views normais
+        if (!hash.startsWith('#details/')) detailsView.classList.add('hidden');
+        if (hash !== '#player' && !playerView.classList.contains('hidden')) hidePlayer(false, false);
+
+        // **CORREÇÃO: Para mídia de novidades se saiu dessa view**
+        if (previousHash === '#news-view' && hash !== '#news-view') {
+            stopNewsViewMedia();
         }
 
-        // Garante que views especiais (detalhes, player) sejam escondidas ao navegar para views normais
-        if (!hash.startsWith('#details/')) {
-             detailsView.classList.add('hidden'); // Esconde detalhes
-        }
-         if (hash !== '#player') {
-             if (!playerView.classList.contains('hidden')) {
-                 hidePlayer(false, false); // Esconde player (NÃO está trocando de ep)
-             }
-         }
-
-        // Esconde todas as views principais antes de mostrar a correta
+        // Esconde todas as views principais
         document.querySelectorAll('#view-container > .content-view').forEach(view => view.classList.add('hidden'));
 
         // --- Lógica de Roteamento ---
-        if (hash.startsWith('#details/')) { // Se for uma rota de detalhes
-            const docId = hash.split('/')[1]; // Extrai o ID do item do hash
-            showDetailsView({ docId }); // Chama a função para renderizar detalhes
-        } else if (hash === '#player') { // Se for a rota do player
-            // O player é mostrado pela função showPlayer(). O roteador apenas garante
-            // que outras views estejam escondidas. Se o usuário recarregar em #player,
-            // não há contexto, então voltamos.
-            if (playerView.classList.contains('hidden')) {
-                history.back(); // Volta para a tela anterior (provavelmente detalhes)
-            }
-        } else { // Navegação para uma view principal (home, series, filmes, etc.)
-            const targetId = hash.substring(1) || 'home-view'; // Pega o ID do hash, ou usa 'home-view' como padrão
-            const targetView = document.getElementById(targetId); // Encontra o elemento da view
+        let targetId = 'home-view'; // Default
+        let targetView = null;
 
-            if (targetView && targetView.classList.contains('content-view')) { // Se a view existe e é válida
-                targetView.classList.remove('hidden'); // Mostra a view
-                renderScreenContent(targetId); // Renderiza o conteúdo específico da view
-            } else { // Se a view não existe ou hash é inválido
-                // Fallback para a tela inicial
-                document.getElementById('home-view').classList.remove('hidden');
-                renderScreenContent('home-view');
-                // Corrige o hash na URL se ele era inválido
-                if(window.location.hash !== '#home-view') {
-                    history.replaceState(null, '', '#home-view');
-                }
-            }
-
-            // --- Atualiza UI de Navegação ---
-            // Remove 'active' de todos os links
-            document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(l => l.classList.remove('active'));
-            // Adiciona 'active' aos links correspondentes à view atual
-            document.querySelectorAll(`[data-target="${targetId}"]`).forEach(l => l.classList.add('active'));
-            updateMobileNavIndicator(); // Atualiza indicador da nav mobile
-
-            // --- Atualiza Background e Rotação do Hero ---
-            // Mostra/Esconde background principal (só visível na home)
-            document.getElementById('main-background').style.opacity = (targetId === 'home-view' && currentHeroItem) ? 1 : 0;
-            // Para a rotação do hero se sair da home
-            if (targetId !== 'home-view' && heroCarouselInterval) {
-                clearInterval(heroCarouselInterval);
-                heroCarouselInterval = null;
+        if (hash.startsWith('#details/')) {
+            const docId = hash.split('/')[1];
+            if (docId) {
+                targetId = 'details-view'; // Marcamos que é a view de detalhes
+                showDetailsView({ docId }); // Mostra e renderiza
+                targetView = detailsView; // detailsView já está visível
+            } else {
+                 history.replaceState(null, '', '#home-view'); // Hash inválido, volta pra home
+                 hash = '#home-view'; // Atualiza hash local para cair no else
             }
         }
+
+        if (targetId !== 'details-view') { // Se não for detalhes (já tratado acima)
+             if (hash === '#player') {
+                 targetId = 'player-view';
+                 // O player é tratado por showPlayer(), não fazemos nada aqui exceto marcar targetId
+                 if (playerView.classList.contains('hidden')) {
+                     // Se recarregou em #player ou tentou navegar direto, volta
+                     history.back();
+                     // A view anterior será carregada pelo popstate
+                     sessionStorage.setItem('starlight-previousHash', previousHash); // Mantém o hash anterior correto
+                     return; // Interrompe
+                 }
+                 targetView = playerView; // Marca a view ativa
+             } else {
+                 targetId = hash.substring(1) || 'home-view'; // Pega ID da view normal
+                 targetView = document.getElementById(targetId);
+
+                 if (targetView && targetView.classList.contains('content-view')) {
+                     targetView.classList.remove('hidden'); // Mostra a view correta
+                     renderScreenContent(targetId); // Renderiza conteúdo
+                 } else { // Fallback para home se view inválida
+                     targetId = 'home-view';
+                     targetView = document.getElementById(targetId);
+                     targetView.classList.remove('hidden');
+                     renderScreenContent(targetId);
+                     if (window.location.hash !== `#${targetId}`) {
+                         history.replaceState(null, '', `#${targetId}`);
+                     }
+                 }
+             }
+        }
+
+
+        // --- Atualiza UI de Navegação ---
+        document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(l => l.classList.remove('active'));
+        // **CORREÇÃO: Usar targetId que foi validado**
+        document.querySelectorAll(`[data-target="${targetId}"]`).forEach(l => l.classList.add('active'));
+        updateMobileNavIndicator();
+
+        // --- Atualiza Background e Rotação do Hero ---
+        document.getElementById('main-background').style.opacity = (targetId === 'home-view' && currentHeroItem) ? 1 : 0;
+        if (targetId !== 'home-view' && heroCarouselInterval) {
+            clearInterval(heroCarouselInterval);
+            heroCarouselInterval = null;
+        }
+
+        // Atualiza hash anterior para a próxima navegação
+        sessionStorage.setItem('starlight-previousHash', `#${targetId}`);
     }
 
-    // Adiciona os listeners de navegação do navegador (botão voltar/avançar, mudança de hash)
-    window.addEventListener('popstate', handleNavigation);
-    // window.addEventListener('hashchange', handleNavigation); // Não precisamos mais do hashchange, popstate cobre tudo
 
-    // --- Lógica de Notificações ---
+    // Adiciona os listeners de navegação do navegador
+    window.addEventListener('popstate', handleNavigation);
+
+    // --- Lógica de Notificações --- (sem alterações significativas)
     function listenForNotifications() {
-        const q = query(collection(db, "notifications"), orderBy("createdAt", "desc")); // Usa orderBy
+        const q = query(collection(db, "notifications"), orderBy("createdAt", "desc"));
         onSnapshot(q, (snapshot) => {
             notifications = [];
             snapshot.forEach((doc) => {
                 notifications.push({ id: doc.id, ...doc.data() });
             });
-            // Ordenação não é mais necessária aqui, pois orderBy é usado na query
-            updateNotificationBell(); // Atualiza indicador
+            updateNotificationBell();
         });
     }
 
     function updateNotificationBell() {
-        // Verifica se há notificações não lidas e não dispensadas
         const hasNew = notifications.some(n => {
             const notifTime = n.createdAt ? (n.createdAt.toMillis ? n.createdAt.toMillis() : new Date(n.createdAt).getTime()) : 0;
             const isNew = notifTime > lastNotificationCheck;
-            // Novidades podem ser dispensadas
             const isDismissed = n.type === 'Novidade' && dismissedNotifications.includes(n.id);
             return isNew && !isDismissed;
         });
-        // Adiciona/remove classe para mostrar o indicador visual
         notificationBtn.classList.toggle('has-new', hasNew);
     }
 
     function renderNotifications() {
         const avisosContainer = document.getElementById('notifications-avisos');
         const novidadesContainer = document.getElementById('notifications-novidades');
+        if (!avisosContainer || !novidadesContainer) return; // Adiciona verificação
 
-        // Filtra notificações por tipo
         const avisos = notifications.filter(n => n.type === 'Aviso');
-        // Filtra novidades não dispensadas
         const novidades = notifications.filter(n => n.type === 'Novidade' && !dismissedNotifications.includes(n.id));
 
-        // Função para criar o HTML de um item de notificação
         const createNotifHTML = (notif, isDismissable) => {
-            // Adiciona botão de dispensar apenas se for 'Novidade'
-            const dismissBtn = isDismissable ? `<button class="remove-notification-btn text-stone-500 hover:text-white" data-notif-id="${notif.id}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>` : '';
-            // CORREÇÃO: Adiciona data attributes para o link
+            const dismissBtn = isDismissable ? `<button class="remove-notification-btn text-stone-500 hover:text-white ml-2" data-notif-id="${notif.id}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>` : '';
             const linkDataAttrs = notif.link
                 ? `data-link-type="${notif.link.type}" data-link-target="${notif.link.type === 'internal' ? notif.link.docId : notif.link.url}"`
                 : '';
             const cursorClass = notif.link ? 'cursor-pointer' : '';
 
-            // CORREÇÃO: Remover o comentário incorreto
             return `
-                <div class="notification-item flex items-start gap-2 p-2 rounded-md transition-colors hover:bg-white/5 ${cursorClass}" ${linkDataAttrs}>
+                <div class="notification-item flex items-start justify-between gap-2 p-2 rounded-md transition-colors hover:bg-white/5 ${cursorClass}" ${linkDataAttrs}>
                     <div class="flex-grow">
                         <p class="font-bold text-white">${notif.title}</p>
                         <p class="text-stone-300 text-sm notification-message">${notif.message}</p>
@@ -1754,156 +1769,169 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>`;
         };
 
-        // Popula os containers das abas
         avisosContainer.innerHTML = avisos.length > 0 ? avisos.map(n => createNotifHTML(n, false)).join('') : '<p class="text-stone-400 text-center p-4">Nenhum aviso.</p>';
         novidadesContainer.innerHTML = novidades.length > 0 ? novidades.map(n => createNotifHTML(n, true)).join('') : '<p class="text-stone-400 text-center p-4">Nenhuma novidade.</p>';
     }
 
-    // Listener para o painel de notificações (troca de abas, dispensar, CLIQUE NO ITEM)
+    // Listener para o painel de notificações
     notificationPanel.addEventListener('click', (e) => {
-        // Troca de abas
         const tab = e.target.closest('.notification-tab');
         if (tab) {
             notificationPanel.querySelectorAll('.notification-tab').forEach(t => t.classList.remove('active'));
             notificationPanel.querySelectorAll('.notification-content').forEach(c => c.classList.remove('active'));
             tab.classList.add('active');
-            document.getElementById(`notifications-${tab.dataset.tab}`).classList.add('active');
-            return; // Impede que o clique na aba acione o clique no item
+            const targetContent = document.getElementById(`notifications-${tab.dataset.tab}`);
+            if (targetContent) targetContent.classList.add('active');
+            return;
         }
 
-        // Dispensar notificação (tipo Novidade)
         const removeBtn = e.target.closest('.remove-notification-btn');
         if (removeBtn) {
             const notifId = removeBtn.dataset.notifId;
             if (!dismissedNotifications.includes(notifId)) {
-                dismissedNotifications.push(notifId); // Adiciona ao array de dispensadas
-                localStorage.setItem('starlight-dismissedNotifications', JSON.stringify(dismissedNotifications)); // Salva no localStorage
-                updateNotificationBell(); // Atualiza indicador
+                dismissedNotifications.push(notifId);
+                localStorage.setItem('starlight-dismissedNotifications', JSON.stringify(dismissedNotifications));
+                updateNotificationBell();
             }
-            removeBtn.closest('.notification-item').remove(); // Remove o item da UI
-            return; // Impede que o clique no botão acione o clique no item
+            removeBtn.closest('.notification-item')?.remove(); // Usa optional chaining
+            // Verifica se a lista de novidades ficou vazia após remover
+             const novidadesContainer = document.getElementById('notifications-novidades');
+             if (novidadesContainer && novidadesContainer.children.length === 0) {
+                 novidadesContainer.innerHTML = '<p class="text-stone-400 text-center p-4">Nenhuma novidade.</p>';
+             }
+            return;
         }
 
-        // CORREÇÃO: Lidar com cliques nos itens de notificação
         const notificationItem = e.target.closest('.notification-item[data-link-type]');
         if (notificationItem) {
             const linkType = notificationItem.dataset.linkType;
             const linkTarget = notificationItem.dataset.linkTarget;
 
+            // Fecha o painel
+            notificationPanel.classList.remove('animate-fade-in-down');
+            notificationPanel.classList.add('animate-fade-out-up');
+            setTimeout(() => notificationPanel.classList.add('hidden'), 250);
+
             if (linkType === 'internal' && linkTarget) {
-                // Fecha o painel antes de navegar
-                notificationPanel.classList.remove('animate-fade-in-down');
-                notificationPanel.classList.add('animate-fade-out-up');
-                setTimeout(() => notificationPanel.classList.add('hidden'), 250);
-                // Navega para a página de detalhes
                 window.location.hash = `#details/${linkTarget}`;
             } else if (linkType === 'external' && linkTarget) {
-                // Abre link externo em nova aba
                 window.open(linkTarget, '_blank');
-                // Fecha o painel
-                 notificationPanel.classList.remove('animate-fade-in-down');
-                 notificationPanel.classList.add('animate-fade-out-up');
-                 setTimeout(() => notificationPanel.classList.add('hidden'), 250);
             }
         }
     });
 
-    // --- NOVO: Lógica de Novidades ---
+
+    // --- Lógica de Novidades ---
     function listenForNewsItems() {
         const q = query(collection(db, "news"), orderBy("createdAt", "desc"));
-        onSnapshot(q, (snapshot) => {
+        // Garante que o listener antigo seja removido se existir
+        if (typeof window.unsubscribeNewsItems === 'function') {
+            window.unsubscribeNewsItems();
+        }
+        window.unsubscribeNewsItems = onSnapshot(q, (snapshot) => { // Armazena o unsubscriber globalmente
             newsItems = [];
             snapshot.forEach((doc) => {
                 newsItems.push({ id: doc.id, ...doc.data() });
             });
-            // Re-renderiza a view de novidades se ela estiver ativa
             if (window.location.hash === '#news-view') {
                 renderNewsView();
             }
         }, (error) => {
             console.error("Erro ao escutar novidades: ", error);
-            // Poderia mostrar erro na UI se a view estiver ativa
             if (window.location.hash === '#news-view') {
-                 document.getElementById('news-items-container').innerHTML = '<p class="text-red-400">Erro ao carregar novidades.</p>';
+                const container = document.getElementById('news-items-container');
+                 if(container) container.innerHTML = '<p class="text-red-400">Erro ao carregar novidades.</p>';
             }
         });
     }
 
-    // Escuta por mudanças nos likes de TODOS os posts de novidades
-    function listenForNewsLikes() {
-        // Para listener anterior, se houver
-        if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
 
-        const q = query(collection(db, "news"));
+    // Escuta por mudanças nos likes
+    function listenForNewsLikes() {
+        if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
+        const q = query(collection(db, "news")); // Escuta a coleção inteira
         unsubscribeNewsLikes = onSnapshot(q, (snapshot) => {
-            newsLikes.clear(); // Limpa o cache local de likes
-            let needsUIRefresh = false;
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                // Armazena os IDs dos perfis que curtiram em um Set para fácil verificação
-                newsLikes.set(doc.id, new Set(data.likedBy || []));
-                needsUIRefresh = true; // Marca que a UI precisa ser atualizada
+            let changed = false;
+            snapshot.docChanges().forEach((change) => { // Ouve apenas as mudanças
+                 if (change.type === "added" || change.type === "modified") {
+                     const data = change.doc.data();
+                     newsLikes.set(change.doc.id, new Set(data.likedBy || []));
+                     changed = true;
+                 } else if (change.type === "removed") {
+                      newsLikes.delete(change.doc.id);
+                      changed = true;
+                 }
             });
-            // Atualiza a UI se a view de novidades estiver ativa
-            if (needsUIRefresh && window.location.hash === '#news-view') {
-                updateNewsItemsUI(); // Função separada para apenas atualizar likes/comentários na UI
+
+            if (changed && window.location.hash === '#news-view') {
+                updateNewsItemsUI(); // Atualiza apenas a UI se houver mudanças
             }
         }, (error) => {
             console.error("Erro ao escutar likes de novidades:", error);
         });
     }
 
-    // Escuta por mudanças nos comentários de TODOS os posts de novidades
+
+    // Escuta por mudanças nos comentários
     function listenForNewsComments() {
-        // Para listener anterior
         if (typeof unsubscribeNewsComments === 'function') unsubscribeNewsComments();
 
-        // Listener para a coleção principal 'news' para detectar novos posts
+        let commentUnsubscribers = {}; // Objeto para guardar unsubscribers por newsId
+
         const qNews = query(collection(db, "news"));
         const unsubscribeMain = onSnapshot(qNews, (newsSnapshot) => {
-            const currentNewsIds = new Set();
-            newsSnapshot.forEach(newsDoc => currentNewsIds.add(newsDoc.id));
+             const currentNewsIds = new Set();
+             newsSnapshot.forEach(newsDoc => currentNewsIds.add(newsDoc.id));
 
-            // Array para guardar funções de unsubscribe de cada subcoleção
-            let commentUnsubscribers = [];
+             // Cancela listeners de posts removidos
+             Object.keys(commentUnsubscribers).forEach(newsId => {
+                 if (!currentNewsIds.has(newsId)) {
+                     commentUnsubscribers[newsId](); // Chama a função de unsubscribe
+                     delete commentUnsubscribers[newsId]; // Remove do objeto
+                     newsComments.delete(newsId); // Remove do cache
+                 }
+             });
 
-            // Limpa comentários antigos
-            newsComments.clear();
+             // Adiciona listeners para posts novos ou existentes
+             currentNewsIds.forEach(newsId => {
+                 if (!commentUnsubscribers[newsId]) { // Só adiciona se não existir
+                     const commentsQuery = query(collection(db, "news", newsId, "comments"), orderBy("createdAt", "asc"));
+                     commentUnsubscribers[newsId] = onSnapshot(commentsQuery, (commentsSnapshot) => {
+                         const commentsList = [];
+                         commentsSnapshot.forEach((commentDoc) => {
+                             commentsList.push({ id: commentDoc.id, ...commentDoc.data() });
+                         });
+                         newsComments.set(newsId, commentsList); // Atualiza cache
 
-            // Itera sobre os posts de novidades atuais e escuta suas subcoleções de comentários
-            currentNewsIds.forEach(newsId => {
-                const commentsQuery = query(collection(db, "news", newsId, "comments"), orderBy("createdAt", "asc"));
-                const unsubscribe = onSnapshot(commentsQuery, (commentsSnapshot) => {
-                    const commentsList = [];
-                    commentsSnapshot.forEach((commentDoc) => {
-                        commentsList.push({ id: commentDoc.id, ...commentDoc.data() });
-                    });
-                    newsComments.set(newsId, commentsList); // Atualiza o cache de comentários para este post
+                         if (window.location.hash === '#news-view') {
+                             updateNewsItemsUI(); // Atualiza contagem na view principal
+                         }
+                         if (currentNewsCommentsModalId === newsId && !commentsModal.classList.contains('hidden')) {
+                             renderComments(newsId); // Atualiza lista no modal se aberto
+                         }
+                     }, (error) => {
+                         console.error(`Erro ao escutar comentários para news ${newsId}:`, error);
+                     });
+                 }
+             });
 
-                    // Atualiza a UI se a view de novidades estiver ativa
-                    if (window.location.hash === '#news-view') {
-                        updateNewsItemsUI();
-                    }
-                    // Se o modal de comentários estiver aberto para ESTE post, atualiza a lista
-                    if (currentNewsCommentsModalId === newsId && !commentsModal.classList.contains('hidden')) {
-                        renderComments(newsId);
-                    }
-                }, (error) => {
-                    console.error(`Erro ao escutar comentários para news ${newsId}:`, error);
-                });
-                commentUnsubscribers.push(unsubscribe); // Guarda a função de unsubscribe
-            });
-
-            // Define a função global de unsubscribe para parar todos os listeners de comentários
-            unsubscribeNewsComments = () => {
-                unsubscribeMain(); // Para o listener principal
-                commentUnsubscribers.forEach(unsub => unsub()); // Para todos os listeners de subcoleção
-            };
+            // Atualiza UI geral caso posts tenham sido removidos
+             if (window.location.hash === '#news-view') {
+                 updateNewsItemsUI();
+             }
 
         }, (error) => {
-            console.error("Erro ao escutar coleção 'news':", error);
+            console.error("Erro ao escutar coleção 'news' para comentários:", error);
         });
+
+        // Define a função global de unsubscribe
+        unsubscribeNewsComments = () => {
+            unsubscribeMain();
+            Object.values(commentUnsubscribers).forEach(unsub => unsub());
+            commentUnsubscribers = {}; // Limpa o objeto
+        };
     }
+
 
     // Atualiza apenas os contadores e estado dos botões na UI de Novidades
     function updateNewsItemsUI() {
@@ -1913,10 +1941,11 @@ document.addEventListener('DOMContentLoaded', function() {
         container.querySelectorAll('.news-item-card').forEach(card => {
             const newsId = card.dataset.newsId;
             const likeButton = card.querySelector('.like-button');
+            const likeButtonContent = likeButton?.querySelector('.glass-content'); // Pega o content div
             const likeCountSpan = card.querySelector('.like-count');
             const commentCountSpan = card.querySelector('.comment-count');
 
-            if (!newsId || !likeButton || !likeCountSpan || !commentCountSpan) return;
+            if (!newsId || !likeButton || !likeButtonContent || !likeCountSpan || !commentCountSpan) return;
 
             // Atualiza Likes
             const likesSet = newsLikes.get(newsId) || new Set();
@@ -1924,16 +1953,24 @@ document.addEventListener('DOMContentLoaded', function() {
             const userLiked = currentProfile && likesSet.has(currentProfile.id);
 
             likeCountSpan.textContent = likeCount;
-            likeButton.innerHTML = userLiked ? ICONS.heartFilled : ICONS.heartOutline;
-            likeButton.classList.toggle('text-red-500', userLiked); // Pinta de vermelho se curtiu
-            likeButton.classList.toggle('text-slate-400', !userLiked); // Cinza se não curtiu
+            // Atualiza o conteúdo HTML do botão de like (ícone + contagem)
+            likeButtonContent.innerHTML = `
+                 ${userLiked ? ICONS.heartFilled : ICONS.heartOutline}
+                 <span class="like-count">${likeCount}</span>
+            `;
+            likeButton.classList.toggle('text-red-500', userLiked);
+            likeButton.classList.toggle('text-slate-400', !userLiked);
 
             // Atualiza Comentários
             const commentsList = newsComments.get(newsId) || [];
-            const commentCount = commentsList.length; // Contagem simples por enquanto
+            const commentCount = commentsList.length;
             commentCountSpan.textContent = commentCount;
         });
+        // Garante que lucide icons sejam recriados após mudança de SVG
+        lucide.createIcons();
+        attachGlassButtonListeners(); // Reatacha listeners para glass effect nos botões atualizados
     }
+
 
 
     function renderNewsView() {
@@ -1946,16 +1983,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         container.innerHTML = newsItems.map(item => createNewsItemCard(item)).join('');
-        lucide.createIcons(); // Recria ícones para os cards
-        initializeGlassEffects(); // Aplica efeitos, se houver botões futuros
+        lucide.createIcons();
+        attachGlassButtonListeners(); // Renomeado para clareza
         updateNewsItemsUI(); // Aplica estado inicial de likes/comentários
 
-        // Adiciona listeners para os novos elementos da news view
-        addNewsViewListeners();
+        // **CORREÇÃO: Remove a chamada duplicada/incorreta de addNewsViewListeners() daqui**
+    }
+
+    // Função auxiliar para inicializar efeitos de vidro
+    function initializeGlassEffects() {
+         attachGlassButtonListeners();
     }
 
     function createNewsItemCard(item) {
-        const date = item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric'}) : 'Data indisponível';
+        const date = item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Data indisponível';
         let contentHTML = '';
         let typeClass = '';
 
@@ -1971,13 +2012,12 @@ document.addEventListener('DOMContentLoaded', function() {
             case 'video': // Para iframes (YouTube, etc.)
                 const isYoutube = item.content.includes('youtube.com/embed');
                 const aspectClass = isYoutube ? 'aspect-video' : '';
-                // Adicionado sandbox para segurança e controle
                 contentHTML = `<div class="${aspectClass} mt-3"><iframe src="${item.content}" frameborder="0" sandbox="allow-scripts allow-same-origin allow-presentation" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="w-full h-full rounded-lg shadow-lg ${isYoutube ? '' : 'min-h-[300px]'}"></iframe></div>`;
                 typeClass = 'news-item-video';
                 break;
             case 'video_direct': // Para URLs de vídeo diretas
                 contentHTML = `
-                    <div class="relative mt-3 rounded-lg overflow-hidden cursor-pointer news-video-thumbnail" data-video-url="${item.content}" data-video-title="${item.title || 'Vídeo'}">
+                    <div class="relative mt-3 rounded-lg overflow-hidden cursor-pointer news-video-thumbnail group" data-video-url="${item.content}" data-video-title="${item.title || 'Vídeo'}">
                         <img src="${item.thumbnail || 'https://placehold.co/600x338/1f2937/a3a3a3?text=Video'}" alt="Thumbnail do vídeo" class="w-full h-auto aspect-video object-cover">
                         <div class="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/60 transition-colors">
                             <i data-lucide="play-circle" class="w-16 h-16 text-white opacity-80 group-hover:opacity-100 transition-opacity"></i>
@@ -1985,12 +2025,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>`;
                 typeClass = 'news-item-video-direct';
                 break;
-            // Adicionar cases para 'upcoming' e 'poll' depois
-            default: // Mantém o default anterior
+            default:
                 contentHTML = `<p class="text-slate-500 mt-2">[Tipo ${item.type}] ${item.content || ''}</p>`;
         }
 
-        // Recupera likes e comentários (contagem inicial)
         const likesSet = newsLikes.get(item.id) || new Set();
         const likeCount = likesSet.size;
         const userLiked = currentProfile && likesSet.has(currentProfile.id);
@@ -2015,8 +2053,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         <button class="comment-button glass-container glass-button rounded-full px-3 py-1.5 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white">
                              <div class="glass-filter"></div><div class="glass-overlay !bg-opacity-10 hover:!bg-opacity-20"></div><div class="glass-specular"></div>
                              <div class="glass-content flex items-center gap-1.5">
-                                ${ICONS.comment}
-                                <span class="comment-count">${commentCount}</span>
+                                 ${ICONS.comment}
+                                 <span class="comment-count">${commentCount}</span>
                             </div>
                         </button>
                     </div>
@@ -2025,25 +2063,10 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
 
-    // Adiciona listeners para botões de like, comment e play de vídeo na view de novidades
-    function addNewsViewListeners() {
-        const container = document.getElementById('news-items-container');
-        if (!container) return;
-
-        container.querySelectorAll('.like-button').forEach(button => {
-            // Remove listener antigo para evitar duplicação
-            button.replaceWith(button.cloneNode(true));
-        });
-        container.querySelectorAll('.comment-button').forEach(button => {
-            button.replaceWith(button.cloneNode(true));
-        });
-         container.querySelectorAll('.news-video-thumbnail').forEach(thumb => {
-            thumb.replaceWith(thumb.cloneNode(true));
-        });
-
-
-        // Novos Listeners
-        container.addEventListener('click', (e) => {
+    // **CORREÇÃO: Usa delegação de eventos para a seção de novidades**
+    const newsContainer = document.getElementById('news-items-container');
+    if (newsContainer) {
+        newsContainer.addEventListener('click', (e) => {
             const likeButton = e.target.closest('.like-button');
             const commentButton = e.target.closest('.comment-button');
             const videoThumbnail = e.target.closest('.news-video-thumbnail');
@@ -2070,6 +2093,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+
     // Lida com o clique no botão de like
     async function handleNewsLike(newsId) {
         if (!userId || !currentProfile?.id) {
@@ -2088,17 +2112,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 const data = newsDoc.data();
-                const likedBy = data.likedBy || []; // Array de profile IDs que curtiram
+                const likedBy = data.likedBy || [];
                 const userIndex = likedBy.indexOf(profileId);
 
                 if (userIndex > -1) {
-                    // Usuário já curtiu -> Descurtir
-                    likedBy.splice(userIndex, 1); // Remove do array
-                    transaction.update(newsDocRef, { likedBy: likedBy });
+                    // Descurtir: Usa arrayRemove para garantir atomicidade
+                     transaction.update(newsDocRef, { likedBy: arrayRemove(profileId) });
                 } else {
-                    // Usuário não curtiu -> Curtir
-                    likedBy.push(profileId); // Adiciona ao array
-                    transaction.update(newsDocRef, { likedBy: likedBy });
+                    // Curtir: Usa arrayUnion para garantir atomicidade e evitar duplicatas
+                     transaction.update(newsDocRef, { likedBy: arrayUnion(profileId) });
                 }
             });
             // A UI será atualizada automaticamente pelo listener onSnapshot
@@ -2110,31 +2132,36 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Fim da Lógica de Novidades ---
 
 
-    // --- Lógica de Pedidos ---
+    // --- Lógica de Pedidos --- (sem alterações significativas)
     function listenToRequests() {
         const q = query(collection(db, "pedidos"), where("status", "==", "pending"));
-        onSnapshot(q, (snapshot) => {
+         // Garante que o listener antigo seja removido
+         if (typeof window.unsubscribeRequests === 'function') {
+            window.unsubscribeRequests();
+        }
+        window.unsubscribeRequests = onSnapshot(q, (snapshot) => {
             pendingRequests = [];
             snapshot.forEach((doc) => {
                 pendingRequests.push({ id: doc.id, ...doc.data() });
             });
-             // Ordena no cliente por contagem de votos (desc) e depois por data (asc)
-             pendingRequests.sort((a, b) => {
-                 const votesA = (a.requesters || []).length;
-                 const votesB = (b.requesters || []).length;
-                 if (votesB !== votesA) {
-                     return votesB - votesA; // Mais votados primeiro
-                 }
-                 return (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0); // Mais antigos primeiro (desempate)
-             });
-            // Re-renderiza se a view de pedidos estiver ativa
+            pendingRequests.sort((a, b) => {
+                const votesA = (a.requesters || []).length;
+                const votesB = (b.requesters || []).length;
+                if (votesB !== votesA) return votesB - votesA;
+                return (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0);
+            });
             if (window.location.hash === '#requests-view') {
-                 renderPendingRequests();
+                renderPendingRequests();
             }
         }, (error) => {
             console.error("Erro ao escutar pedidos: ", error);
+             if (window.location.hash === '#requests-view') {
+                const container = document.getElementById('pending-requests-container');
+                 if(container) container.innerHTML = '<p class="col-span-full text-center text-red-400">Erro ao carregar pedidos.</p>';
+            }
         });
     }
+
 
     async function handleVote(requestId) {
         if (!userId || !currentProfile) {
@@ -2143,38 +2170,36 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         const docRef = doc(db, 'pedidos', requestId);
         const voteButton = document.querySelector(`.vote-btn[data-request-id="${requestId}"]`);
-        if (voteButton) voteButton.disabled = true; // Desabilita botão temporariamente
+        if (voteButton) voteButton.disabled = true;
 
         try {
-            const docSnap = await getDoc(docRef); // Pega o estado atual do pedido
-            if (!docSnap.exists()) { // Se o pedido foi removido
+            const docSnap = await getDoc(docRef);
+            if (!docSnap.exists()) {
                 showToast("Este pedido não existe mais.", true);
                 return;
             }
             const requestData = docSnap.data();
-            const requesters = requestData.requesters || []; // Array de quem pediu/votou
-            // Verifica se o usuário atual já votou
-            const userVoteIndex = requesters.findIndex(r => r.userId === userId);
-            const userVote = { userId: userId, userName: currentProfile.name }; // Dados do voto
+            const requesters = requestData.requesters || [];
+            // **CORREÇÃO: Usar profileId para verificar voto**
+            const userHasVoted = requesters.some(r => r.userId === userId && r.profileId === currentProfile.id);
+            const userVote = { userId: userId, userName: currentProfile.name, profileId: currentProfile.id }; // Adiciona profileId ao voto
 
-            if (userVoteIndex > -1) { // Se já votou
-                // Remove o voto do array
-                await updateDoc(docRef, {
-                    requesters: arrayRemove(requesters[userVoteIndex])
-                });
-                showToast('Voto removido.');
-            } else { // Se não votou
-                // Adiciona o voto ao array
-                await updateDoc(docRef, {
-                    requesters: arrayUnion(userVote)
-                });
+            if (userHasVoted) {
+                 // Encontra o voto específico para remover (necessário com profileId)
+                 const voteToRemove = requesters.find(r => r.userId === userId && r.profileId === currentProfile.id);
+                 if (voteToRemove) {
+                     await updateDoc(docRef, { requesters: arrayRemove(voteToRemove) });
+                     showToast('Voto removido.');
+                 }
+            } else {
+                await updateDoc(docRef, { requesters: arrayUnion(userVote) });
                 showToast('Obrigado pelo seu voto!');
             }
         } catch (error) {
             console.error("Erro ao processar voto:", error);
             showToast("Ocorreu um erro ao processar seu voto.", true);
         } finally {
-             if (voteButton) voteButton.disabled = false; // Reabilita o botão
+            if (voteButton) voteButton.disabled = false;
         }
     }
 
@@ -2182,17 +2207,16 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderPendingRequests() {
         const container = document.getElementById('pending-requests-container');
         if (!container) return;
-        if (pendingRequests.length === 0) { // Mensagem se não houver pedidos
+        if (pendingRequests.length === 0) {
             container.innerHTML = '<p class="col-span-full text-center text-gray-400">Nenhum pedido em aberto no momento.</p>';
             return;
         }
 
-        // Cria o HTML para cada pedido pendente
         container.innerHTML = pendingRequests.map(request => {
             const posterPath = request.posterUrl || 'https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem';
-            const requesterCount = (request.requesters || []).length; // Contagem de votos
-            // Verifica se o usuário atual já votou neste pedido
-            const userHasVoted = userId && (request.requesters || []).some(r => r.userId === userId);
+            const requesterCount = (request.requesters || []).length;
+            // **CORREÇÃO: Usar profileId para verificar voto**
+            const userHasVoted = userId && currentProfile && (request.requesters || []).some(r => r.userId === userId && r.profileId === currentProfile.id);
 
             return `
                 <div class="liquid-glass-card bg-stone-900/50 rounded-lg overflow-hidden flex flex-col p-4 gap-4">
@@ -2212,81 +2236,75 @@ document.addEventListener('DOMContentLoaded', function() {
                          <div class="glass-overlay"></div>
                          <div class="glass-specular"></div>
                          <div class="glass-content flex justify-center items-center gap-2 p-2 text-sm">
-                             ${userHasVoted /* Muda texto e ícone do botão com base no voto */
-                                 ? '<i data-lucide="minus-circle" class="w-4 h-4"></i> Remover Voto'
-                                 : '<i data-lucide="plus-circle" class="w-4 h-4"></i> Apoiar Pedido'
-                             }
+                             ${userHasVoted
+                    ? '<i data-lucide="minus-circle" class="w-4 h-4"></i> Remover Voto'
+                    : '<i data-lucide="plus-circle" class="w-4 h-4"></i> Apoiar Pedido'
+                }
                          </div>
                      </button>
                 </div>
             `;
         }).join('');
-        attachGlassButtonListeners(); // Reatacha listeners visuais
-        lucide.createIcons(); // Recria ícones
+        attachGlassButtonListeners();
+        lucide.createIcons();
     }
 
-    // --- Lógica de Gerenciamento de Perfil ---
+
+    // --- Lógica de Gerenciamento de Perfil --- (sem alterações significativas)
     /** Carrega os perfis do usuário logado do Firestore */
     async function loadProfiles() {
-        if (!userId) return; // Sai se não houver usuário
-        const profilesCol = collection(db, 'users', userId, 'profiles'); // Referência da coleção
-        const snapshot = await getDocs(profilesCol); // Busca os documentos
-        // Mapeia os documentos para objetos de perfil, incluindo o ID do documento
+        if (!userId) return;
+        const profilesCol = collection(db, 'users', userId, 'profiles');
+        const snapshot = await getDocs(profilesCol);
         profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderProfiles(); // Renderiza os perfis na tela
+        renderProfiles();
     }
 
     /** Renderiza os cards de perfil na tela de seleção/gerenciamento */
     function renderProfiles() {
-        profilesGrid.innerHTML = ''; // Limpa a grid
-        // Cria um card para cada perfil existente
+        profilesGrid.innerHTML = '';
         profiles.forEach((profile) => {
             const profileCard = document.createElement('div');
-            profileCard.className = 'cursor-pointer group'; // Estilos e grupo para hover
-            profileCard.dataset.id = profile.id; // Armazena o ID do perfil no elemento
-            // HTML do card de perfil
+            profileCard.className = 'cursor-pointer group';
+            profileCard.dataset.id = profile.id;
             profileCard.innerHTML = `
                 <div class="relative w-full aspect-square liquid-glass-card">
                      <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
                      <div class="glass-content p-0">
                          <img src="${profile.avatar}" alt="${profile.name}" class="w-full h-full object-cover rounded-[inherit]">
-                         <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${isEditMode ? '!opacity-100' : ''}"> <!-- Overlay com ícone de edição -->
+                         <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${isEditMode ? '!opacity-100' : ''}">
                              <svg class="w-12 h-12 text-white ${isEditMode ? '' : 'hidden'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z"></path></svg>
                          </div>
                      </div>
                 </div>
-                <p class="text-center text-lg text-gray-300 group-hover:text-white mt-3 transition-colors">${profile.name}</p> <!-- Nome do perfil -->
+                <p class="text-center text-lg text-gray-300 group-hover:text-white mt-3 transition-colors">${profile.name}</p>
             `;
-            // Listener de clique no card
             profileCard.addEventListener('click', () => {
-                if (isEditMode) { // Se estiver no modo de edição
-                    showProfileModal(profile.id); // Abre o modal para editar este perfil
-                } else { // Se estiver no modo de seleção
-                    selectAndEnterProfile(profile); // Seleciona este perfil e entra no app
+                if (isEditMode) {
+                    showProfileModal(profile.id);
+                } else {
+                    selectAndEnterProfile(profile);
                 }
             });
-            profilesGrid.appendChild(profileCard); // Adiciona o card à grid
+            profilesGrid.appendChild(profileCard);
         });
 
-        // Adiciona o card "Adicionar Perfil" se houver menos de 4 perfis
         if (profiles.length < 4) {
             const addProfileCard = document.createElement('div');
             addProfileCard.className = 'cursor-pointer group';
-            // HTML do card de adicionar
             addProfileCard.innerHTML = `
                 <div class="relative w-full aspect-square liquid-glass-card flex items-center justify-center">
                     <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
                     <div class="glass-content flex items-center justify-center">
-                        <svg class="w-16 h-16 text-gray-400 group-hover:text-white transition-colors" style="transform: translateY(2px);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v12M6 12h12"></path></svg> <!-- Ícone de mais -->
+                        <svg class="w-16 h-16 text-gray-400 group-hover:text-white transition-colors" style="transform: translateY(2px);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v12M6 12h12"></path></svg>
                     </div>
                 </div>
                 <p class="text-center text-lg text-gray-300 group-hover:text-white mt-3 transition-colors">Adicionar Perfil</p>
             `;
-            // Listener para abrir o modal de adicionar perfil
             addProfileCard.addEventListener('click', () => showProfileModal());
             profilesGrid.appendChild(addProfileCard);
         }
-         attachGlassButtonListeners(); // Reatacha listeners visuais
+        attachGlassButtonListeners();
     }
 
     /**
@@ -2294,230 +2312,237 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {object} profile - O objeto do perfil selecionado.
      */
     async function selectAndEnterProfile(profile) {
-        currentProfile = profile; // Define o perfil globalmente
-
-        // **NOVO:** Salva o ID do perfil selecionado no localStorage
+        currentProfile = profile;
         localStorage.setItem(`starlight-lastProfile-${userId}`, profile.id);
 
-        // Atualiza o botão de perfil no header com o avatar
         const avatarImg = new Image();
         avatarImg.src = currentProfile.avatar;
         avatarImg.className = 'w-full h-full object-cover rounded-full';
-        headerProfileBtn.innerHTML = ''; // Limpa conteúdo anterior
+        headerProfileBtn.innerHTML = '';
         headerProfileBtn.appendChild(avatarImg);
 
-        // Navega para a home view (o roteador cuidará de mostrar/esconder)
+        // **IMPORTANTE:** Iniciar listeners que dependem do perfil AQUI
+        listenToFirestoreContent();
+        listenToRequests();
+        listenForNewsItems(); // Escuta itens de novidades após selecionar perfil
+
+
+        // Navega para a home view (se não estiver lá) ou força re-render
         if (window.location.hash !== '#home-view') {
             window.location.hash = '#home-view';
         } else {
-            // Se já estiver na home, força a execução do roteador para garantir a renderização
-            handleNavigation();
+            handleNavigation(); // Força a execução para garantir renderização correta
         }
-
-        // Inicia o carregamento do conteúdo do Firestore (necessário após selecionar perfil)
-        listenToFirestoreContent();
-        listenToRequests(); // Escuta pedidos após selecionar perfil
-        listenForNewsItems(); // Escuta novidades após selecionar perfil
     }
+
 
     /**
      * Mostra o modal para adicionar ou editar um perfil.
      * @param {string|null} [profileId=null] - O ID do perfil a ser editado, ou null para adicionar.
      */
     function showProfileModal(profileId = null) {
-        // Elementos do modal
         const modalTitle = document.getElementById('modal-title');
         const nameInput = document.getElementById('profile-name-input');
-        const idInput = document.getElementById('profile-id-input'); // Campo oculto para ID
+        const idInput = document.getElementById('profile-id-input');
         const deleteBtn = document.getElementById('delete-profile-btn');
 
-        // Popula as opções de avatar
         avatarOptionsContainer.innerHTML = AVATARS.map(avatar => `
             <img src="${avatar}" class="w-16 h-16 rounded-full cursor-pointer border-2 border-transparent hover:border-white transition-all" data-avatar="${avatar}">
         `).join('');
 
-        if (profileId) { // Editando perfil existente
+        // Limpa seleção anterior
+         avatarOptionsContainer.querySelectorAll('img').forEach(img => img.classList.remove('!border-purple-500', 'scale-110'));
+
+        if (profileId) {
             modalTitle.textContent = 'Editar Perfil';
-            const profile = profiles.find(p => p.id === profileId); // Encontra o perfil
-            nameInput.value = profile.name; // Preenche o nome
-            idInput.value = profile.id; // Preenche o ID (oculto)
-            deleteBtn.classList.remove('hidden'); // Mostra botão de excluir
-            // Marca o avatar atual como selecionado
+            const profile = profiles.find(p => p.id === profileId);
+            nameInput.value = profile.name;
+            idInput.value = profile.id;
+            deleteBtn.classList.remove('hidden');
             const currentAvatar = avatarOptionsContainer.querySelector(`img[data-avatar="${profile.avatar}"]`);
-            if(currentAvatar) currentAvatar.classList.add('!border-purple-500', 'scale-110');
-        } else { // Adicionando novo perfil
+            if (currentAvatar) currentAvatar.classList.add('!border-purple-500', 'scale-110');
+        } else {
             modalTitle.textContent = 'Adicionar Perfil';
-            nameInput.value = ''; // Limpa nome
-            idInput.value = ''; // Limpa ID
-            deleteBtn.classList.add('hidden'); // Esconde botão de excluir
+            nameInput.value = '';
+            idInput.value = '';
+            deleteBtn.classList.add('hidden');
+             // Seleciona o primeiro avatar como padrão visualmente
+            const firstAvatar = avatarOptionsContainer.querySelector('img');
+             if (firstAvatar) firstAvatar.classList.add('!border-purple-500', 'scale-110');
         }
 
-        profileModal.classList.remove('hidden'); // Mostra o modal
+        profileModal.classList.remove('hidden');
     }
+
 
     // Listener para seleção de avatar no modal
     avatarOptionsContainer.addEventListener('click', e => {
-        if(e.target.tagName === 'IMG') { // Se clicou em uma imagem de avatar
-            // Remove seleção de todos os avatares
+        if (e.target.tagName === 'IMG') {
             avatarOptionsContainer.querySelectorAll('img').forEach(img => img.classList.remove('!border-purple-500', 'scale-110'));
-            // Marca o avatar clicado como selecionado
             e.target.classList.add('!border-purple-500', 'scale-110');
         }
     });
 
     // Listener para o botão "Salvar" do modal de perfil
     document.getElementById('save-profile-btn').addEventListener('click', async () => {
-        const name = document.getElementById('profile-name-input').value.trim(); // Pega o nome
-        const selectedAvatar = document.querySelector('#avatar-options .scale-110')?.dataset.avatar; // Pega o avatar selecionado
-        const profileId = document.getElementById('profile-id-input').value; // Pega o ID (se estiver editando)
+        const name = document.getElementById('profile-name-input').value.trim();
+        const selectedAvatarEl = document.querySelector('#avatar-options .scale-110'); // Pega o elemento
+         const selectedAvatar = selectedAvatarEl?.dataset.avatar; // Pega o data attribute
+        const profileId = document.getElementById('profile-id-input').value;
 
-        // Validação simples
-        if (!name || !selectedAvatar) {
-            showToast('Por favor, preencha o nome e selecione um avatar.', true);
+         // Se nenhum avatar foi selecionado (caso de adicionar sem clicar), pega o primeiro
+         const finalAvatar = selectedAvatar || avatarOptionsContainer.querySelector('img')?.dataset.avatar || AVATARS[0];
+
+        if (!name) {
+            showToast('Por favor, preencha o nome do perfil.', true);
             return;
         }
-        if (!userId) { // Verifica se o usuário ainda está logado
+         if (!finalAvatar) { // Verificação extra
+             showToast('Por favor, selecione um avatar.', true);
+             return;
+         }
+        if (!userId) {
             showToast('Erro de autenticação. Por favor, recarregue a página.', true);
             return;
         }
 
-        const profileData = { name, avatar: selectedAvatar }; // Dados a serem salvos
+        const profileData = { name, avatar: finalAvatar };
 
         try {
-            if (profileId) { // Se tem ID, atualiza o perfil existente
+            if (profileId) {
                 const docRef = doc(db, 'users', userId, 'profiles', profileId);
                 await updateDoc(docRef, profileData);
                 showToast('Perfil atualizado com sucesso!');
-            } else { // Se não tem ID, adiciona um novo perfil
+            } else {
                 const colRef = collection(db, 'users', userId, 'profiles');
                 await addDoc(colRef, profileData);
                 showToast('Perfil criado com sucesso!');
             }
-            await loadProfiles(); // Recarrega a lista de perfis da UI
-            profileModal.classList.add('hidden'); // Esconde o modal
+            await loadProfiles();
+            profileModal.classList.add('hidden');
         } catch (error) {
             console.error("Erro ao salvar perfil: ", error);
             showToast('Não foi possível salvar o perfil.', true);
         }
     });
 
+
     // Listener para o botão "Cancelar" do modal de perfil
     document.getElementById('cancel-profile-btn').addEventListener('click', () => profileModal.classList.add('hidden'));
 
     // Listener para o botão "Excluir" do modal de perfil
     document.getElementById('delete-profile-btn').addEventListener('click', async () => {
-        const profileId = document.getElementById('profile-id-input').value; // Pega o ID do perfil
-         if (profileId && profiles.length > 1) { // Só permite excluir se houver mais de um perfil
-            // Mostra modal de confirmação customizado
+        const profileId = document.getElementById('profile-id-input').value;
+        if (profileId && profiles.length > 1) {
             showConfirmationModal(
-                'Excluir Perfil', // Título
-                'Tem certeza que deseja excluir este perfil? Esta ação não pode ser desfeita.', // Mensagem
-                async () => { // Função a ser executada se o usuário confirmar
+                'Excluir Perfil',
+                'Tem certeza que deseja excluir este perfil? Esta ação não pode ser desfeita.',
+                async () => {
                     try {
-                        const docRef = doc(db, 'users', userId, 'profiles', profileId); // Referência do perfil
-                        await deleteDoc(docRef); // Exclui do Firestore
+                        const docRef = doc(db, 'users', userId, 'profiles', profileId);
+                        await deleteDoc(docRef);
                         showToast('Perfil excluído.');
-                        await loadProfiles(); // Recarrega a lista de perfis da UI
-                        profileModal.classList.add('hidden'); // Esconde o modal
+                        // Se o perfil excluído era o atual, limpa currentProfile
+                         if (currentProfile?.id === profileId) {
+                            currentProfile = null;
+                            localStorage.removeItem(`starlight-lastProfile-${userId}`); // Limpa também o último selecionado
+                             // Força a volta para a tela de seleção
+                             window.location.hash = 'manage-profile-view';
+                         }
+                        await loadProfiles();
+                        profileModal.classList.add('hidden');
                     } catch (error) {
                         console.error("Erro ao excluir perfil: ", error);
                         showToast('Não foi possível excluir o perfil.', true);
                     }
                 }
             );
-         } else { // Se for o único perfil
-             showToast('Não é possível excluir o único perfil.', true);
-         }
+        } else {
+            showToast('Não é possível excluir o único perfil.', true);
+        }
     });
+
 
     // Listener para o botão "Gerenciar Perfis" / "Concluído"
     manageProfilesBtn.addEventListener('click', () => {
-        isEditMode = !isEditMode; // Alterna o modo de edição
-        // Atualiza texto do botão e título da página
+        isEditMode = !isEditMode;
         manageProfilesBtn.querySelector('.glass-content').textContent = isEditMode ? 'Concluído' : 'Gerenciar Perfis';
         document.getElementById('profile-main-title').textContent = isEditMode ? 'Gerenciar Perfis' : 'Quem está assistindo?';
-        renderProfiles(); // Re-renderiza os perfis para mostrar/esconder o ícone de edição
+        renderProfiles(); // Re-renderiza para atualizar a UI (ícones de edição)
     });
+
 
     // Listener para o botão de perfil no header (leva para a tela de gerenciamento)
     headerProfileBtn.addEventListener('click', () => {
-         // Reseta o estado de edição e força a seleção de perfil ao mudar o hash
-         isEditMode = false;
-         manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
-         document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
-         currentProfile = null; // **IMPORTANTE:** Limpa o perfil atual para forçar seleção
-         localStorage.removeItem(`starlight-lastProfile-${userId}`); // Limpa o perfil salvo
-         window.location.hash = 'manage-profile-view'; // Navega para a tela de gerenciamento
+        isEditMode = false; // Garante que não está em modo de edição
+        currentProfile = null; // Força seleção
+        localStorage.removeItem(`starlight-lastProfile-${userId}`); // Limpa último salvo
+        window.location.hash = 'manage-profile-view'; // Navega
     });
 
-    // --- Lógica de Autenticação e Troca de Formulário (Login/Registro) ---
+    // --- Lógica de Autenticação e Troca de Formulário (Login/Registro) --- (sem alterações)
     const switchToRegister = document.querySelector('.switch-to-register');
     const switchToLogin = document.querySelector('.switch-to-login');
     const loginFormContainer = document.querySelector('.form-container.login');
     const registerFormContainer = document.querySelector('.form-container.register');
 
-    // Trocar para formulário de registro
     switchToRegister.addEventListener('click', (e) => {
         e.preventDefault();
         loginFormContainer.classList.remove('active');
         registerFormContainer.classList.add('active');
     });
-    // Trocar para formulário de login
     switchToLogin.addEventListener('click', (e) => {
         e.preventDefault();
         registerFormContainer.classList.remove('active');
         loginFormContainer.classList.add('active');
     });
 
-    // Submit do formulário de login
     document.getElementById('login-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
         signInWithEmailAndPassword(auth, email, password)
-            .catch((error) => { // Trata erros de login
+            .catch((error) => {
                 console.error("Erro de login:", error);
                 showToast(`Erro: ${error.message}`, true);
             });
     });
 
-    // Submit do formulário de registro
     document.getElementById('register-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const email = document.getElementById('register-email').value;
         const password = document.getElementById('register-password').value;
         createUserWithEmailAndPassword(auth, email, password)
             .then(async (userCredential) => {
-                 // **NOVO:** Cria um perfil padrão após registro bem-sucedido
-                 const user = userCredential.user;
-                 if (user) {
-                     const colRef = collection(db, 'users', user.uid, 'profiles');
-                     await addDoc(colRef, { name: "Usuário", avatar: AVATARS[0] }); // Cria perfil inicial
-                     // Não precisa fazer mais nada aqui, o onAuthStateChanged vai lidar com a navegação
-                 }
+                const user = userCredential.user;
+                if (user) {
+                    const colRef = collection(db, 'users', user.uid, 'profiles');
+                     // Verifica se já existe algum perfil antes de criar um novo
+                    const snapshot = await getDocs(colRef);
+                     if (snapshot.empty) {
+                         await addDoc(colRef, { name: "Usuário", avatar: AVATARS[0] });
+                     }
+                }
             })
-            .catch((error) => { // Trata erros de registro
+            .catch((error) => {
                 console.error("Erro de registro:", error);
                 showToast(`Erro: ${error.message}`, true);
             });
     });
 
-    // Login com Google
     document.getElementById('google-signin-btn').addEventListener('click', () => {
         signInWithPopup(auth, googleProvider)
-             .then(async (result) => {
-                 // **NOVO:** Verifica se é o primeiro login com Google e cria perfil se necessário
-                 const user = result.user;
-                 if (user) {
-                     const profilesCol = collection(db, 'users', user.uid, 'profiles');
-                     const snapshot = await getDocs(profilesCol);
-                     if (snapshot.empty) { // Se não existem perfis, cria um
-                          await addDoc(profilesCol, { name: user.displayName || "Usuário", avatar: user.photoURL || AVATARS[0] });
-                     }
-                      // onAuthStateChanged cuidará da navegação
-                 }
-             })
-            .catch((error) => { // Trata erros de login com Google
+            .then(async (result) => {
+                const user = result.user;
+                if (user) {
+                    const profilesCol = collection(db, 'users', user.uid, 'profiles');
+                    const snapshot = await getDocs(profilesCol);
+                    if (snapshot.empty) {
+                        await addDoc(profilesCol, { name: user.displayName || "Usuário", avatar: user.photoURL || AVATARS[0] });
+                    }
+                }
+            })
+            .catch((error) => {
                 console.error("Erro de login com Google:", error);
                 showToast(`Erro: ${error.message}`, true);
             });
@@ -2525,16 +2550,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Logout
     logoutBtn.addEventListener('click', () => {
-        const currentUserId = userId; // Guarda o userId antes do logout
+        const currentUserId = userId;
         signOut(auth).then(() => {
-            // **NOVO:** Limpa o perfil salvo no localStorage ao sair
             if (currentUserId) {
                 localStorage.removeItem(`starlight-lastProfile-${currentUserId}`);
             }
-            // O onAuthStateChanged vai detectar a mudança e redirecionar para o login
-        }).catch((error) => { // Trata erros de logout
-             console.error("Erro ao sair:", error);
-             showToast(`Erro: ${error.message}`, true);
+            // O onAuthStateChanged redirecionará
+        }).catch((error) => {
+            console.error("Erro ao sair:", error);
+            showToast(`Erro: ${error.message}`, true);
         });
     });
 
@@ -2542,44 +2566,44 @@ document.addEventListener('DOMContentLoaded', function() {
     function showConfirmationModal(title, message, onConfirm) {
         confirmTitle.textContent = title;
         confirmMessage.textContent = message;
-        confirmCallback = onConfirm; // Armazena a função a ser chamada
-        confirmModal.classList.remove('hidden'); // Mostra o modal
+        confirmCallback = onConfirm;
+        confirmModal.classList.remove('hidden');
     }
 
-    confirmOkBtn.addEventListener('click', () => { // Botão confirmar
-        if (confirmCallback) {
-            confirmCallback(); // Executa a função armazenada
-        }
-        confirmModal.classList.add('hidden'); // Esconde o modal
-        confirmCallback = null; // Limpa a função
+    confirmOkBtn.addEventListener('click', () => {
+        if (confirmCallback) confirmCallback();
+        confirmModal.classList.add('hidden');
+        confirmCallback = null;
     });
 
-    confirmCancelBtn.addEventListener('click', () => { // Botão cancelar
-        confirmModal.classList.add('hidden'); // Apenas esconde o modal
-        confirmCallback = null; // Limpa a função
+    confirmCancelBtn.addEventListener('click', () => {
+        confirmModal.classList.add('hidden');
+        confirmCallback = null;
     });
 
-    // --- Busca TMDB para Pedidos --- (sem alterações)
+    // --- Busca TMDB para Pedidos --- (sem alterações significativas)
     const tmdbSearchInput = document.getElementById('tmdb-search-input');
-    tmdbSearchInput.addEventListener('input', () => { // Busca com debounce
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-            handleTmdbSearch(tmdbSearchInput.value);
-        }, 500);
-    });
+     if (tmdbSearchInput) { // Adiciona verificação se o elemento existe
+        tmdbSearchInput.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                handleTmdbSearch(tmdbSearchInput.value);
+            }, 500);
+        });
+     }
 
     async function handleTmdbSearch(query) {
         const resultsContainer = document.getElementById('tmdb-search-results');
-        if (query.length < 3) { // Só busca com 3+ caracteres
+         if (!resultsContainer) return; // Adiciona verificação
+        if (query.length < 3) {
             resultsContainer.innerHTML = '';
             return;
         }
-        resultsContainer.innerHTML = `<div class="col-span-full">${glassSpinnerHTML.replace('min-h-screen', '')}</div>`; // Spinner
-        const data = await fetchFromTMDB('search/multi', `query=${encodeURIComponent(query)}`); // Busca na API
+        resultsContainer.innerHTML = `<div class="col-span-full">${glassSpinnerHTML.replace('min-h-screen', '')}</div>`;
+        const data = await fetchFromTMDB('search/multi', `query=${encodeURIComponent(query)}`);
         if (data && data.results) {
-            // Filtra resultados (filmes/séries com poster)
             const filtered = data.results.filter(item => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path);
-            renderTmdbResults(filtered); // Renderiza os resultados
+            renderTmdbResults(filtered);
         } else {
             resultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum resultado encontrado.</p>`;
         }
@@ -2587,15 +2611,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function renderTmdbResults(results) {
         const container = document.getElementById('tmdb-search-results');
-        if (results.length === 0) { // Mensagem se não houver resultados
+         if (!container) return; // Adiciona verificação
+        if (results.length === 0) {
             container.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum resultado encontrado.</p>`;
             return;
         }
-        // Cria um card para cada resultado
         container.innerHTML = results.map(item => {
             const posterPath = item.poster_path ? `${IMG_URL_POSTER}${item.poster_path}` : 'https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem';
             return `
-            <div class="cursor-pointer group tmdb-result-item" data-item='${JSON.stringify(item)}'> <!-- Armazena dados do item -->
+            <div class="cursor-pointer group tmdb-result-item" data-item='${JSON.stringify(item)}'>
                 <div class="liquid-glass-card aspect-[2/3] bg-stone-800">
                     <div class="glass-filter"></div>
                     <div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.1);"></div>
@@ -2608,81 +2632,82 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             `;
         }).join('');
-        attachGlassButtonListeners(); // Reatacha listeners visuais
+        attachGlassButtonListeners();
     }
 
     // Listener para cliques nos resultados da busca TMDB
-    document.getElementById('tmdb-search-results').addEventListener('click', (e) => {
-        const itemElement = e.target.closest('.tmdb-result-item');
-        if (itemElement) { // Se clicou em um item
-            const itemData = JSON.parse(itemElement.dataset.item); // Pega os dados armazenados
-            confirmAndAddRequest(itemData); // Chama função para confirmar e adicionar pedido
-        }
-    });
+    const tmdbResultsContainer = document.getElementById('tmdb-search-results');
+     if (tmdbResultsContainer) { // Adiciona verificação
+         tmdbResultsContainer.addEventListener('click', (e) => {
+             const itemElement = e.target.closest('.tmdb-result-item');
+             if (itemElement) {
+                 const itemData = JSON.parse(itemElement.dataset.item);
+                 confirmAndAddRequest(itemData);
+             }
+         });
+     }
 
     // Listener para cliques nos botões de voto nos pedidos pendentes
-    document.getElementById('pending-requests-container').addEventListener('click', e => {
-        const voteButton = e.target.closest('.vote-btn');
-        if (voteButton) { // Se clicou no botão de voto
-            const requestId = voteButton.dataset.requestId; // Pega o ID do pedido
-            handleVote(requestId); // Processa o voto
-        }
-    });
+    const pendingRequestsContainer = document.getElementById('pending-requests-container');
+     if (pendingRequestsContainer) { // Adiciona verificação
+         pendingRequestsContainer.addEventListener('click', e => {
+             const voteButton = e.target.closest('.vote-btn');
+             if (voteButton) {
+                 const requestId = voteButton.dataset.requestId;
+                 handleVote(requestId);
+             }
+         });
+     }
+
 
     /** Confirma e adiciona um pedido (ou voto) para um item do TMDB */
     async function confirmAndAddRequest(item) {
-        const title = item.title || item.name; // Título do item
-        // Mostra modal de confirmação
+        const title = item.title || item.name;
         showConfirmationModal(
-            'Confirmar Pedido', // Título do modal
-            `Deseja solicitar a adição de "${title}"?`, // Mensagem
-            async () => { // Callback de confirmação
-                if (!userId || !currentProfile) { // Verifica login e perfil
+            'Confirmar Pedido',
+            `Deseja solicitar a adição de "${title}"?`,
+            async () => {
+                if (!userId || !currentProfile) {
                     showToast("Você precisa estar logado e ter um perfil selecionado.", true);
                     return;
                 }
 
-                // Verifica se o item já existe no catálogo principal
                 const alreadyInCatalog = firestoreContent.some(c => c.tmdb_id === item.id);
                 if (alreadyInCatalog) {
                     showToast('Este item já está disponível no catálogo.', true);
                     return;
                 }
 
-                // Verifica se já existe um pedido pendente para este item
                 const existingRequest = pendingRequests.find(r => r.tmdbId === item.id);
 
-                if (existingRequest) { // Se já existe um pedido
-                    // Verifica se o usuário atual já votou
-                    const userHasRequested = existingRequest.requesters && existingRequest.requesters.some(r => r.userId === userId);
+                if (existingRequest) {
+                    // **CORREÇÃO: Usar profileId para verificar voto**
+                    const userHasRequested = existingRequest.requesters && existingRequest.requesters.some(r => r.userId === userId && r.profileId === currentProfile.id);
                     if (userHasRequested) {
-                        showToast('Você já apoiou este pedido.', true); // Informa se já votou
+                        showToast('Você já apoiou este pedido.', true);
                         return;
                     }
-                    // Se não votou, adiciona o voto ao pedido existente
                     try {
                         const docRef = doc(db, 'pedidos', existingRequest.id);
                         await updateDoc(docRef, {
-                            requesters: arrayUnion({ userId: userId, userName: currentProfile.name }) // Adiciona ao array
+                            requesters: arrayUnion({ userId: userId, userName: currentProfile.name, profileId: currentProfile.id }) // Adiciona profileId
                         });
                         showToast('Seu apoio ao pedido foi adicionado!');
                     } catch (error) {
                         console.error("Erro ao apoiar pedido:", error);
                         showToast('Ocorreu um erro ao apoiar o pedido.', true);
                     }
-                } else { // Se não existe pedido, cria um novo
-                    const requestData = { // Dados do novo pedido
+                } else {
+                    const requestData = {
                         tmdbId: item.id,
                         title: item.title || item.name,
-                        year: (item.release_date || item.first_air_date || '').substring(0, 4), // Pega o ano
+                        year: (item.release_date || item.first_air_date || '').substring(0, 4),
                         posterUrl: item.poster_path ? `${IMG_URL_POSTER}${item.poster_path}` : 'https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem',
                         mediaType: item.media_type,
-                        status: 'pending', // Status inicial
-                        createdAt: serverTimestamp(), // Data de criação
-                        requesters: [{ userId: userId, userName: currentProfile.name }] // Array inicial de votantes
+                        status: 'pending',
+                        createdAt: serverTimestamp(),
+                        requesters: [{ userId: userId, userName: currentProfile.name, profileId: currentProfile.id }] // Adiciona profileId
                     };
-
-                    // Adiciona o novo pedido ao Firestore
                     try {
                         await addDoc(collection(db, 'pedidos'), requestData);
                         showToast('Pedido enviado com sucesso!');
@@ -2695,100 +2720,112 @@ document.addEventListener('DOMContentLoaded', function() {
         );
     }
 
+
     // --- Estado Inicial e Listener de Autenticação ---
 
     /** Mostra a tela de login e esconde o resto */
     function showLoginScreen() {
-        userId = null; // Limpa userId
-        currentProfile = null; // Limpa currentProfile
-        // Esconde todas as views principais, header e footer
+        userId = null;
+        currentProfile = null;
         document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
-        loginView.classList.remove('hidden'); // Mostra login
+        loginView.classList.remove('hidden');
         document.querySelector('header').classList.add('hidden');
         document.querySelector('footer').classList.add('hidden');
-        document.getElementById('main-background').style.opacity = 0; // Esconde background
-        stopNewsViewMedia(); // Garante que mídia de novidades pare
-        hideNewsPlayer(); // Garante que o player de novidades feche
+        document.getElementById('main-background').style.opacity = 0;
+        stopNewsViewMedia();
+        hideNewsPlayer();
+         // Para listeners que dependem do usuário/perfil
+         if (typeof window.unsubscribeNewsItems === 'function') window.unsubscribeNewsItems();
+         if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
+         if (typeof unsubscribeNewsComments === 'function') unsubscribeNewsComments();
+         if (typeof window.unsubscribeRequests === 'function') window.unsubscribeRequests();
     }
 
     /** Mostra a tela de seleção/gerenciamento de perfil */
     async function showProfileScreen() {
-        // Esconde outras views, header e footer
         document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
         loginView.classList.add('hidden');
-        manageProfileView.classList.remove('hidden'); // Mostra gerenciamento de perfil
+        manageProfileView.classList.remove('hidden');
         document.querySelector('header').classList.add('hidden');
         document.querySelector('footer').classList.add('hidden');
-        document.getElementById('main-background').style.opacity = 0; // Esconde background
-        // Reseta o modo de edição
+        document.getElementById('main-background').style.opacity = 0;
         isEditMode = false;
         manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
         document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
-        await loadProfiles(); // Carrega e renderiza os perfis
-        stopNewsViewMedia(); // Garante que mídia de novidades pare
-        hideNewsPlayer(); // Garante que o player de novidades feche
+        await loadProfiles();
+        stopNewsViewMedia();
+        hideNewsPlayer();
+         // Para listeners que dependem do usuário/perfil (caso o usuário volte para esta tela)
+         if (typeof window.unsubscribeNewsItems === 'function') window.unsubscribeNewsItems();
+         if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
+         if (typeof unsubscribeNewsComments === 'function') unsubscribeNewsComments();
+         if (typeof window.unsubscribeRequests === 'function') window.unsubscribeRequests();
     }
+
 
     // Listener principal de mudança de estado de autenticação
     onAuthStateChanged(auth, async (user) => {
-        document.body.classList.remove('auth-loading'); // Torna o body visível
-        if (user) { // Se o usuário está logado
-            userId = user.uid; // Define o userId global
-            // Inicia listeners do Firestore que dependem do usuário
-            listenForNotifications();
-            listenForNewsItems(); // NOVO
+        document.body.classList.remove('auth-loading');
+        if (user) {
+            userId = user.uid;
+            listenForNotifications(); // Notificações gerais não dependem de perfil
+            initializeUI(); // Inicializa UI geral do player
 
-            initializeUI(); // Inicializa UI do player (pode ser feito aqui)
-
-            // **LÓGICA DE PERFIL NO LOGIN:**
-            // Tenta carregar o último perfil do localStorage
             const lastProfileId = localStorage.getItem(`starlight-lastProfile-${userId}`);
             let autoSelectedProfile = false;
             if (lastProfileId) {
-                await loadProfiles(); // Carrega perfis para verificar se o ID salvo é válido
+                await loadProfiles(); // Precisa carregar para validar
                 const foundProfile = profiles.find(p => p.id === lastProfileId);
                 if (foundProfile) {
-                    // Se encontrou, seleciona automaticamente e PULA a tela de seleção
-                    selectAndEnterProfile(foundProfile);
+                    // Seleciona e entra - isso vai iniciar os listeners que dependem de perfil
+                    // e chamar handleNavigation
+                    await selectAndEnterProfile(foundProfile);
                     autoSelectedProfile = true;
                 }
             }
 
-            // Se nenhum perfil foi selecionado automaticamente, mostra a tela de seleção
             if (!autoSelectedProfile) {
-                currentProfile = null; // Garante que currentProfile esteja nulo
+                currentProfile = null; // Garante que está nulo
+                 // Para listeners dependentes de perfil se nenhum foi selecionado
+                 if (typeof window.unsubscribeNewsItems === 'function') window.unsubscribeNewsItems();
+                 if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
+                 if (typeof unsubscribeNewsComments === 'function') unsubscribeNewsComments();
+                 if (typeof window.unsubscribeRequests === 'function') window.unsubscribeRequests();
+
+                // Força a exibição da tela de seleção de perfil
                 if (window.location.hash !== '#manage-profile-view') {
+                     // Usamos replaceState para não poluir o histórico com redirecionamentos
                     history.replaceState(null, '', '#manage-profile-view');
                 }
-                handleNavigation(); // Roda o roteador (vai cair na condição !currentProfile)
+                 // Chamamos handleNavigation DEPOIS de forçar o hash,
+                 // pois ele depende do hash para mostrar a tela correta.
+                 handleNavigation();
             }
-             // Se um perfil foi selecionado (autoSelectedProfile = true),
-             // selectAndEnterProfile já chamou handleNavigation, então não precisa chamar de novo.
+             // Se autoSelectedProfile = true, selectAndEnterProfile já cuidou da navegação
 
-        } else { // Se o usuário NÃO está logado
-            userId = null;
-            currentProfile = null;
-            // Garante que o hash seja #login-view
-            if (window.location.hash !== '#login-view') {
-                history.replaceState(null, '', '#login-view');
-            }
-            handleNavigation(); // Roda o roteador (vai cair na condição !userId)
+        } else { // Usuário deslogado
+            showLoginScreen(); // Mostra login e para listeners
+             // Atualiza hash se necessário
+             if (window.location.hash !== '#login-view') {
+                 history.replaceState(null, '', '#login-view');
+             }
+             handleNavigation(); // Chama para garantir que a UI de login apareça
         }
+         // Atualiza o hash anterior após a mudança de auth/perfil
+         sessionStorage.setItem('starlight-previousHash', window.location.hash);
     });
 
     // --- Inicialização ---
-    attachGlassButtonListeners(); // Adiciona listeners visuais iniciais
-    window.addEventListener('resize', () => { // Listener para resize
-        updateMobileNavIndicator(); // Atualiza nav mobile
-        // Re-avalia qual listener de clique do player adicionar (mobile vs desktop)
-        addPlayerEventListeners();
+    initializeGlassEffects(); // Renomeado para clareza
+    window.addEventListener('resize', () => {
+        updateMobileNavIndicator();
+        addPlayerEventListeners(); // Reavalia listeners do player (mobile/desktop)
     });
 
-    // Chama o roteador na carga inicial da página para exibir a view correta
-    // O onAuthStateChanged pode chamar handleNavigation novamente, mas é seguro.
-    // handleNavigation(); << Removido - onAuthStateChanged cuidará da chamada inicial.
+    // A chamada inicial do handleNavigation será feita pelo onAuthStateChanged
+    // após verificar o estado de login e perfil.
 
-    // --- NOVO: Funções e Listeners de Comentários ---
+    // --- Funções e Listeners de Comentários --- (sem alterações significativas)
 
     function openCommentsModal(newsId) {
         if (!newsId) return;
@@ -2798,19 +2835,18 @@ document.addEventListener('DOMContentLoaded', function() {
         commentsModalTitle.textContent = `Comentários em: ${newsItem?.title || 'Post'}`;
         renderComments(newsId); // Renderiza os comentários existentes
         commentsModal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden'; // Impede scroll do fundo
+        document.body.style.overflow = 'hidden';
         commentInput.focus();
-        cancelReply(); // Garante que não está respondendo a ninguém ao abrir
+        cancelReply();
     }
 
     function closeCommentsModal() {
         commentsModal.classList.add('hidden');
         currentNewsCommentsModalId = null;
-        // Só restaura o scroll se nenhum player estiver ativo
         if (playerView.classList.contains('hidden') && newsPlayerView.classList.contains('hidden')) {
             document.body.style.overflow = 'auto';
         }
-        cancelReply(); // Limpa estado de resposta ao fechar
+        cancelReply();
     }
 
     async function handleCommentSubmit(event) {
@@ -2818,7 +2854,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!userId || !currentProfile || !currentNewsCommentsModalId) return;
 
         const commentText = commentInput.value.trim();
-        if (!commentText) return; // Não envia comentário vazio
+        if (!commentText) return;
 
         const commentData = {
             profileId: currentProfile.id,
@@ -2826,14 +2862,14 @@ document.addEventListener('DOMContentLoaded', function() {
             profileAvatar: currentProfile.avatar,
             text: commentText,
             createdAt: serverTimestamp(),
-            replyTo: replyToCommentId || null // Adiciona ID do comentário pai se for uma resposta
+            replyTo: replyToCommentId || null
         };
 
         try {
             const commentsColRef = collection(db, "news", currentNewsCommentsModalId, "comments");
             await addDoc(commentsColRef, commentData);
-            commentInput.value = ''; // Limpa o input
-            cancelReply(); // Limpa o estado de resposta
+            commentInput.value = '';
+            cancelReply();
             // O listener onSnapshot atualizará a lista
         } catch (error) {
             console.error("Erro ao adicionar comentário:", error);
@@ -2843,51 +2879,54 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function renderComments(newsId) {
         const comments = newsComments.get(newsId) || [];
-        commentsModalList.innerHTML = ''; // Limpa lista
+        commentsModalList.innerHTML = '';
 
         if (comments.length === 0) {
             commentsModalList.innerHTML = '<p class="text-slate-400 text-center py-4">Nenhum comentário ainda.</p>';
             return;
         }
 
-        // Agrupa respostas sob comentários pais
         const commentTree = {};
         const topLevelComments = [];
 
         comments.forEach(comment => {
             if (comment.replyTo) {
-                if (!commentTree[comment.replyTo]) {
-                    commentTree[comment.replyTo] = [];
-                }
+                if (!commentTree[comment.replyTo]) commentTree[comment.replyTo] = [];
                 commentTree[comment.replyTo].push(comment);
             } else {
                 topLevelComments.push(comment);
             }
         });
 
-        // Função recursiva para renderizar comentários e suas respostas
+        // Ordena respostas por data dentro de cada nó
+         Object.values(commentTree).forEach(replies => {
+             replies.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+         });
+
         const renderCommentNode = (comment, level = 0) => {
-            const commentDate = comment.createdAt?.toDate ? comment.createdAt.toDate().toLocaleString('pt-BR') : '';
+            const commentDate = comment.createdAt?.toDate ? comment.createdAt.toDate().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short'}) : '';
             const replies = commentTree[comment.id] || [];
             const isReplyingToThis = replyToCommentId === comment.id;
 
             let replyHTML = '';
             if (replies.length > 0) {
-                replyHTML = `<div class="ml-8 mt-2 space-y-2 border-l-2 border-slate-700 pl-4">
+                replyHTML = `<div class="ml-6 mt-2 space-y-2 border-l-2 border-slate-700 pl-3">
                                 ${replies.map(reply => renderCommentNode(reply, level + 1)).join('')}
                              </div>`;
             }
 
             return `
-                <div class="comment-item py-3 ${level > 0 ? '' : 'border-b border-slate-700/50'}">
+                <div class="comment-item py-2 ${level > 0 ? 'ml-0' : 'border-b border-slate-700/50'}">
                     <div class="flex items-start gap-3">
-                        <img src="${comment.profileAvatar || AVATARS[0]}" alt="${comment.profileName}" class="w-8 h-8 rounded-full flex-shrink-0">
+                        <img src="${comment.profileAvatar || AVATARS[0]}" alt="${comment.profileName}" class="w-8 h-8 rounded-full flex-shrink-0 mt-1">
                         <div class="flex-1">
                             <p class="font-semibold text-sm text-white">${comment.profileName}
                                 <span class="text-xs text-slate-400 font-normal ml-2">${commentDate}</span>
                             </p>
-                            <p class="text-slate-300 text-sm mt-1 whitespace-pre-wrap">${comment.text}</p>
-                            <button class="reply-button text-xs text-blue-400 hover:underline mt-1" data-comment-id="${comment.id}" data-author-name="${comment.profileName}">Responder</button>
+                            <p class="text-slate-300 text-sm mt-0.5 whitespace-pre-wrap break-words">${comment.text}</p>
+                            <button class="reply-button text-xs text-blue-400 hover:underline mt-1 flex items-center gap-1" data-comment-id="${comment.id}" data-author-name="${comment.profileName}">
+                                ${ICONS.reply} Responder
+                             </button>
                              ${isReplyingToThis ? '<span class="text-xs text-blue-400 ml-2">(Respondendo...)</span>' : ''}
                         </div>
                     </div>
@@ -2897,14 +2936,17 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         commentsModalList.innerHTML = topLevelComments.map(comment => renderCommentNode(comment)).join('');
+         // Recriar ícones Lucide após renderizar comentários (para ícone de resposta)
+         lucide.createIcons();
     }
+
 
 
     // Listener para o form de comentário
     commentForm.addEventListener('submit', handleCommentSubmit);
     commentsModalCloseBtn.addEventListener('click', closeCommentsModal);
 
-    // Listener para botões de responder dentro do modal
+    // Listener para botões de responder dentro do modal (usando delegação)
     commentsModalList.addEventListener('click', (e) => {
         const replyButton = e.target.closest('.reply-button');
         if (replyButton) {
@@ -2918,44 +2960,45 @@ document.addEventListener('DOMContentLoaded', function() {
     function startReply(commentId, authorName) {
         replyToCommentId = commentId;
         replyToCommentAuthor = authorName;
-        replyIndicator.textContent = `Respondendo a ${authorName}`;
+        // Mostra o indicador de resposta
+         replyIndicator.innerHTML = `<span>Respondendo a ${authorName}</span>
+                                    <button id="cancel-reply-btn-inner" class="text-red-400 hover:text-red-300 text-xs ml-auto">Cancelar</button>`;
         replyIndicator.classList.remove('hidden');
-        cancelReplyBtn.classList.remove('hidden');
+        // Adiciona listener ao botão interno de cancelar
+         const cancelBtnInner = document.getElementById('cancel-reply-btn-inner');
+         if(cancelBtnInner) cancelBtnInner.addEventListener('click', cancelReply, { once: true });
+
         commentInput.focus();
-        // Re-renderiza para mostrar "(Respondendo...)"
-        if(currentNewsCommentsModalId) renderComments(currentNewsCommentsModalId);
+        if (currentNewsCommentsModalId) renderComments(currentNewsCommentsModalId); // Re-renderiza para mostrar "(Respondendo...)"
     }
+
 
     // Cancela o modo de resposta
     function cancelReply() {
         replyToCommentId = null;
         replyToCommentAuthor = null;
         replyIndicator.classList.add('hidden');
-        cancelReplyBtn.classList.add('hidden');
-        replyIndicator.textContent = '';
-         // Re-renderiza para remover "(Respondendo...)"
-        if(currentNewsCommentsModalId && !commentsModal.classList.contains('hidden')) {
-             renderComments(currentNewsCommentsModalId);
+        replyIndicator.innerHTML = ''; // Limpa o conteúdo
+        if (currentNewsCommentsModalId && !commentsModal.classList.contains('hidden')) {
+            renderComments(currentNewsCommentsModalId); // Re-renderiza para remover "(Respondendo...)"
         }
     }
 
-    // Listener para o botão de cancelar resposta
-    cancelReplyBtn.addEventListener('click', cancelReply);
 
     // --- FIM: Funções e Listeners de Comentários ---
 
-    // NOVO: Função para parar iframes e player de novidades
+    // Função para parar iframes e player de novidades
     function stopNewsViewMedia() {
-        // Para player de novidades
-        hideNewsPlayer();
-
-        // Para iframes na tela de novidades
+        hideNewsPlayer(); // Para o player modal
+        // Reseta src de iframes na seção de novidades para pará-los
         const newsIframes = document.querySelectorAll('#news-items-container iframe');
         newsIframes.forEach(iframe => {
-            const src = iframe.src;
-            iframe.src = ''; // Remove src para parar
-            iframe.src = src; // Readiciona src (opcional, pode deixar vazio se preferir)
+            const originalSrc = iframe.getAttribute('src'); // Guarda o src original
+            iframe.setAttribute('src', ''); // Define src como vazio para parar
+            // Opcional: Readiciona o src após um pequeno delay se quiser que ele recarregue ao voltar
+            // setTimeout(() => iframe.setAttribute('src', originalSrc), 100);
         });
     }
+
 
 });
