@@ -118,12 +118,9 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
     // Caches para Novidades
     let newsItems = [];
     let newsLikes = new Map(); // Armazena likes por newsId -> Set[profileId]
-    let newsComments = new Map(); // Armazena comentários por newsId -> Array[comment]
+    // REMOVIDO: newsComments
     let unsubscribeNewsLikes = () => {}; // Função para parar listener de likes
-    let unsubscribeNewsComments = () => {}; // Função para parar listener de comentários
-    let currentNewsCommentsModalId = null; // ID do post que está no modal de comentários
-    let replyToCommentId = null; // ID do comentário sendo respondido
-    let replyToCommentAuthor = null; // Nome do autor do comentário sendo respondido
+    // REMOVIDO: unsubscribeNewsComments
 
     let firestoreContent = []; // Cache do conteúdo principal
     let pendingRequests = []; // Cache de pedidos pendentes
@@ -167,15 +164,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
     const newsPlayerTitle = document.getElementById('news-player-title');
     const newsPlayerCloseBtn = document.getElementById('news-player-close-btn');
 
-    // Elementos do Modal de Comentários
-    const commentsModal = document.getElementById('comments-modal');
-    const commentsModalTitle = document.getElementById('comments-modal-title');
-    const commentsModalList = document.getElementById('comments-list');
-    const commentsModalCloseBtn = document.getElementById('comments-modal-close-btn');
-    const commentForm = document.getElementById('comment-form');
-    const commentInput = document.getElementById('comment-input');
-    const replyIndicator = document.getElementById('reply-indicator'); // Elemento para mostrar a quem está respondendo
-    const cancelReplyBtn = document.getElementById('cancel-reply-btn'); // Botão para cancelar resposta
+    // REMOVIDO: Elementos do Modal de Comentários
 
     // Elementos de Gerenciamento de Perfil
     const manageProfileView = document.getElementById('manage-profile-view');
@@ -224,8 +213,8 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         , // Ícones para Novidades
         heartOutline: `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>`,
         heartFilled: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>`,
-        comment: `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 5.523-4.477 10-10 10S1 17.523 1 12 5.477 2 11 2s10 4.477 10 10z"></path></svg>`,
-        reply: `<svg fill="currentColor" viewBox="0 0 24 24" class="w-4 h-4"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"></path></svg>`
+        // REMOVIDO: comment icon
+        // REMOVIDO: reply icon
     };
 
     // HTML para o spinner de carregamento
@@ -352,7 +341,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
      */
     async function getProgressStorage() {
         if (!userId || !currentProfile?.id) {
-             console.log("getProgressStorage: userId ou currentProfile?.id ausente.");
+            console.log("getProgressStorage: userId ou currentProfile?.id ausente.");
             return {};
         }
         const progressCol = collection(db, 'users', userId, 'profiles', currentProfile.id, 'watch-progress');
@@ -390,7 +379,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                     season_number: currentPlayerContext.episodes[currentPlayerContext.currentIndex]?.season_number,
                     episode_number: currentPlayerContext.episodes[currentPlayerContext.currentIndex]?.episode_number,
                     still_path: currentPlayerContext.episodes[currentPlayerContext.currentIndex]?.still_path // Para UI "Continuar Assistindo"
-                  }
+                }
                 : null,
         };
 
@@ -605,19 +594,19 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
     async function updateListButton(button, item) {
         if (!button || !item) return; // Sai se botão ou item forem inválidos
         if (!userId || !currentProfile?.id) { // Se não estiver logado/com perfil, desabilita o botão
-             button.disabled = true;
-             button.style.opacity = '0.5';
-             button.style.cursor = 'not-allowed';
-             const contentDiv = button.querySelector('.glass-content');
-             if (contentDiv) {
-                 contentDiv.innerHTML = `<svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg><span>Minha Lista</span>`;
-             }
-             return;
-         }
-         // Se logado, habilita o botão
-         button.disabled = false;
-         button.style.opacity = '1';
-         button.style.cursor = 'pointer';
+            button.disabled = true;
+            button.style.opacity = '0.5';
+            button.style.cursor = 'not-allowed';
+            const contentDiv = button.querySelector('.glass-content');
+            if (contentDiv) {
+                contentDiv.innerHTML = `<svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg><span>Minha Lista</span>`;
+            }
+            return;
+        }
+        // Se logado, habilita o botão
+        button.disabled = false;
+        button.style.opacity = '1';
+        button.style.cursor = 'pointer';
 
         const itemId = String(item.docId || item.id); // Pega o ID
         const isInList = await checkIfInList(itemId); // Verifica se está na lista
@@ -683,16 +672,16 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
      * Escuta por atualizações na coleção 'content' do Firestore e atualiza a UI.
      */
     async function listenToFirestoreContent() {
-         if (!userId) { // Adiciona verificação de userId
+        if (!userId) { // Adiciona verificação de userId
             console.log("listenToFirestoreContent: userId ausente, não iniciando listener.");
             return;
         }
         // Garante que o listener antigo seja parado
-         if (typeof window.unsubscribeContent === 'function') {
-             window.unsubscribeContent();
+        if (typeof window.unsubscribeContent === 'function') {
+            window.unsubscribeContent();
         }
-         if (typeof window.unsubscribeFeatured === 'function') {
-             window.unsubscribeFeatured();
+        if (typeof window.unsubscribeFeatured === 'function') {
+            window.unsubscribeFeatured();
         }
 
         console.log("Iniciando listener para 'content'...");
@@ -707,16 +696,16 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             console.log(`Cache de 'content' atualizado com ${firestoreContent.length} itens.`);
 
             // Escuta o documento 'featured' na coleção 'config' para saber quais itens destacar
-             // Parar listener antigo de featured antes de criar novo
-             if (typeof window.unsubscribeFeatured === 'function') {
-                 window.unsubscribeFeatured();
+            // Parar listener antigo de featured antes de criar novo
+            if (typeof window.unsubscribeFeatured === 'function') {
+                window.unsubscribeFeatured();
             }
             console.log("Iniciando listener para 'config/featured'...");
             window.unsubscribeFeatured = onSnapshot(doc(db, 'config', 'featured'), (docSnap) => {
                 console.log("Recebido snapshot de 'config/featured'.");
                 // Pega a lista de IDs de destaque, ou um array vazio se não existir
                 featuredItemIds = docSnap.exists() ? (docSnap.data().items || []) : [];
-                 console.log(`Itens em destaque atualizados: ${featuredItemIds.length > 0 ? featuredItemIds.join(', ') : 'Nenhum'}.`);
+                console.log(`Itens em destaque atualizados: ${featuredItemIds.length > 0 ? featuredItemIds.join(', ') : 'Nenhum'}.`);
                 // Re-renderiza a tela atual com base nos novos dados
                 handleNavigation(); // O roteador decidirá o que renderizar
             }, (error) => {
@@ -725,9 +714,9 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                 handleNavigation(); // Renderiza mesmo assim
             });
         }, (error) => {
-             console.error("Erro ao escutar coleção 'content':", error);
-             firestoreContent = []; // Limpa em caso de erro
-             handleNavigation(); // Tenta renderizar
+            console.error("Erro ao escutar coleção 'content':", error);
+            firestoreContent = []; // Limpa em caso de erro
+            handleNavigation(); // Tenta renderizar
         });
     }
 
@@ -814,10 +803,10 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             } else if (firestoreContent.length > 0) {
                 // Fallback se não houver featured, mostra o mais recente
                 const mostRecent = [...firestoreContent].sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0))[0];
-                 if(mostRecent) updateHero(mostRecent); // Verifica se existe
+                if(mostRecent) updateHero(mostRecent); // Verifica se existe
             } else {
-                 // Se não há nem featured nem content, limpa o hero
-                 document.getElementById('hero-content-wrapper').style.opacity = 0;
+                // Se não há nem featured nem content, limpa o hero
+                document.getElementById('hero-content-wrapper').style.opacity = 0;
             }
             populateAllViews(); // Popula os carrosséis da home
         } else if (screenId === 'series-view') {
@@ -835,13 +824,11 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         } else if (screenId === 'news-view') { // Seção Novidades
             renderNewsView(); // Renderiza a seção
             listenForNewsLikes(); // (Re)inicia listener de likes
-            listenForNewsComments(); // (Re)inicia listener de comentários
+            // REMOVIDO: listenForNewsComments
         } else {
             // Se saiu de uma view que tinha listeners específicos (como novidades), para eles
             if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
-            if (typeof unsubscribeNewsComments === 'function') unsubscribeNewsComments();
-            // newsLikes.clear(); // Não limpar aqui, pode ser necessário para a UI
-            // newsComments.clear();
+            // REMOVIDO: unsubscribeNewsComments
         }
 
         lucide.createIcons(); // Recria ícones
@@ -969,7 +956,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                     showToast("Nenhum episódio encontrado.", true); // Mensagem de erro
                 }
             } else {
-                 showToast("Link de vídeo não encontrado.", true);
+                showToast("Link de vídeo não encontrado.", true);
             }
         });
         await updateListButton(document.getElementById('details-add-to-list'), data); // Atualiza botão "Minha Lista"
@@ -1101,17 +1088,17 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                 const episodeIndex = parseInt(episodeItem.dataset.index, 10); // Pega o índice do episódio
                 const allEpisodesOfSeason = data.seasons[seasonKey]?.episodes; // Adiciona ? para segurança
 
-                 if (!allEpisodesOfSeason || !allEpisodesOfSeason[episodeIndex]) {
-                     showToast("Erro ao carregar dados do episódio.", true);
-                     return;
-                 }
+                if (!allEpisodesOfSeason || !allEpisodesOfSeason[episodeIndex]) {
+                    showToast("Erro ao carregar dados do episódio.", true);
+                    return;
+                }
 
                 const episode = allEpisodesOfSeason[episodeIndex]; // Pega os dados do episódio
 
-                 if (!episode.url) {
-                     showToast("Link de vídeo para este episódio não encontrado.", true);
-                     return;
-                 }
+                if (!episode.url) {
+                    showToast("Link de vídeo para este episódio não encontrado.", true);
+                    return;
+                }
 
 
                 // Prepara o contexto para o player
@@ -1197,7 +1184,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             showToast("Erro ao carregar informações do vídeo.", true);
             return;
         }
-         if (!context.videoUrl) {
+        if (!context.videoUrl) {
             console.error("showPlayer called without videoUrl in context.");
             showToast("Link de vídeo não encontrado.", true);
             return;
@@ -1240,21 +1227,21 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                 }
             }
         } catch (e) {
-             console.warn("URL de vídeo inválida ou não processável:", urlToLoad, e);
-             // Tenta usar a URL original mesmo assim
+            console.warn("URL de vídeo inválida ou não processável:", urlToLoad, e);
+            // Tenta usar a URL original mesmo assim
         }
 
-         console.log("Tentando carregar URL:", urlToLoad);
+        console.log("Tentando carregar URL:", urlToLoad);
 
         // Configura HLS.js se for um stream .m3u8 e o navegador suportar
         if (Hls.isSupported() && urlToLoad.includes('.m3u8')) {
-             console.log("Usando HLS.js para:", urlToLoad);
+            console.log("Usando HLS.js para:", urlToLoad);
             hls = new Hls({
                 maxBufferLength: 30,       // Segundos de buffer
                 maxBufferSize: 60 * 1000 * 1000, // 60MB de buffer
-                startLevel: -1             // Começa na qualidade automática
+                startLevel: -1              // Começa na qualidade automática
             });
-             hls.on(Hls.Events.ERROR, function (event, data) { // <-- ADICIONADO LISTENER DE ERRO
+            hls.on(Hls.Events.ERROR, function (event, data) { // <-- ADICIONADO LISTENER DE ERRO
                 console.error('HLS.js Error:', data);
                 if (data.fatal) {
                     switch(data.type) {
@@ -1280,26 +1267,26 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                 console.log("Manifesto HLS carregado.");
                 // Se houver um tempo inicial definido (ex: continuar assistindo), pula para ele
                 if (context.startTime && context.startTime > 5) { // Só pula se for maior que 5s
-                     console.log("Pulando para tempo salvo:", context.startTime);
+                    console.log("Pulando para tempo salvo:", context.startTime);
                     videoPlayer.currentTime = context.startTime;
                 }
                 videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo HLS:", e)); // Tenta iniciar a reprodução
             });
         } else { // Se não for HLS ou não for suportado, usa a tag <video> nativa
-             console.log("Usando player nativo para:", urlToLoad);
+            console.log("Usando player nativo para:", urlToLoad);
             videoPlayer.src = urlToLoad; // Define a fonte do vídeo
             videoPlayer.addEventListener('loadedmetadata', () => { // Quando os metadados do vídeo carregarem
-                 console.log("Metadados do vídeo nativo carregados.");
+                console.log("Metadados do vídeo nativo carregados.");
                 if (context.startTime && context.startTime > 5) {
-                     console.log("Pulando para tempo salvo:", context.startTime);
+                    console.log("Pulando para tempo salvo:", context.startTime);
                     videoPlayer.currentTime = context.startTime; // Pula se necessário
                 }
                 videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo:", e)); // Tenta iniciar
             }, { once: true }); // Executa este listener apenas uma vez
-             videoPlayer.addEventListener('error', (e) => { // Adiciona listener de erro nativo
-                 console.error("Erro no elemento <video>:", e, videoPlayer.error);
-                 showToast("Erro ao carregar o vídeo.", true);
-             });
+            videoPlayer.addEventListener('error', (e) => { // Adiciona listener de erro nativo
+                console.error("Erro no elemento <video>:", e, videoPlayer.error);
+                showToast("Erro ao carregar o vídeo.", true);
+            });
         }
 
         // 2. Lógica de orientação e tela cheia para mobile
@@ -1324,9 +1311,9 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         if (context.episodes && context.episodes.length > 1) {
             nextEpisodeBtn.classList.remove('hidden');
             prevEpisodeBtn.classList.remove('hidden');
-             // Desabilita botões se no início/fim da lista
-             prevEpisodeBtn.disabled = context.currentIndex === 0;
-             nextEpisodeBtn.disabled = context.currentIndex === context.episodes.length - 1;
+            // Desabilita botões se no início/fim da lista
+            prevEpisodeBtn.disabled = context.currentIndex === 0;
+            nextEpisodeBtn.disabled = context.currentIndex === context.episodes.length - 1;
         } else {
             nextEpisodeBtn.classList.add('hidden');
             prevEpisodeBtn.classList.add('hidden');
@@ -1337,11 +1324,12 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
 
     /**
      * Esconde o player de vídeo e limpa seu estado.
-     * @param {boolean} [updateHistory=true] - Se true, salva o progresso e volta no histórico.
+     * @param {boolean} [updateHistory=true] - Se true, salva o progresso.
      * @param {boolean} [isChangingEpisode=false] - Se true, não desbloqueia a orientação (mobile).
      */
     async function hidePlayer(updateHistory = true, isChangingEpisode = false) {
         console.log(`hidePlayer chamado com updateHistory=${updateHistory}, isChangingEpisode=${isChangingEpisode}`);
+
         // Salva o progresso se updateHistory for true e houver um contexto válido e tempo > 0
         if (updateHistory && currentPlayerContext.key && videoPlayer.currentTime > 0) {
             console.log("Salvando progresso antes de fechar...");
@@ -1357,11 +1345,8 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             hls = null;
         }
         // Remove o atributo 'src' e chama 'load()' para parar completamente o download do vídeo
-         console.log("Resetando src e carregando vídeo vazio...");
+        console.log("Resetando src e carregando vídeo vazio...");
         videoPlayer.removeAttribute('src');
-        // Remove event listeners específicos do HLS ou do src anterior
-        // (Isso é feito implicitamente ao recriar o player ou em addPlayerEventListeners,
-        // mas é bom garantir que não haja listeners presos)
         videoPlayer.removeEventListener('error', null); // Remove listener de erro genérico se existir
         videoPlayer.load(); // Importante para parar downloads pendentes
 
@@ -1377,28 +1362,42 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         if (!isChangingEpisode) {
             console.log("Não está trocando de episódio, tentando sair do fullscreen e desbloquear orientação...");
             if (document.fullscreenElement) {
-                document.exitFullscreen().catch(err => console.error("Erro ao sair da tela cheia:", err));
+                try {
+                    await document.exitFullscreen();
+                    console.log("Saída da tela cheia bem-sucedida.");
+                } catch (err) {
+                    console.error("Erro ao sair da tela cheia:", err);
+                }
             }
             if (screen.orientation && typeof screen.orientation.unlock === 'function') {
-                screen.orientation.unlock(); // Desbloqueia a orientação da tela
+                try {
+                    screen.orientation.unlock(); // Desbloqueia a orientação da tela
+                    console.log("Orientação desbloqueada.");
+                } catch (err) {
+                    console.error("Erro ao desbloquear orientação:", err);
+                }
             }
+        } else {
+             console.log("Está trocando de episódio, mantendo orientação bloqueada.");
         }
+
 
         // Reseta o aspect ratio para o padrão
         videoPlayer.style.objectFit = 'contain';
         currentAspectRatio = 'contain';
         if (aspectRatioBtn) aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectContain;
 
-         // Reseta a barra de progresso e tempos
-         seekBar.value = 0;
-         seekProgressBar.style.width = '0%';
-         currentTimeEl.textContent = '00:00';
-         durationEl.textContent = '00:00';
-         playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play; // Garante ícone de play
+        // Reseta a barra de progresso e tempos
+        seekBar.value = 0;
+        seekProgressBar.style.width = '0%';
+        currentTimeEl.textContent = '00:00';
+        durationEl.textContent = '00:00';
+        playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play; // Garante ícone de play
 
 
-        // O roteador (`handleNavigation`) cuidará do history.back() se necessário.
+        // O roteador (`handleNavigation`) cuidará do history.back() ou popstate se necessário.
     }
+
 
     /**
      * Formata segundos para o formato HH:MM:SS ou MM:SS.
@@ -1516,7 +1515,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
     }
 
     function handleEndedEvent() {
-         console.log("Vídeo terminou.");
+        console.log("Vídeo terminou.");
         if (currentPlayerContext.episodes && currentPlayerContext.currentIndex < currentPlayerContext.episodes.length - 1) {
             console.log("Passando para o próximo episódio...");
             changeEpisode(1);
@@ -1525,11 +1524,11 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
             playerView.classList.add('controls-active');
             clearTimeout(controlsTimeout);
-             // Salva o progresso final como concluído (ou quase)
-             if (videoPlayer.duration > 0) {
-                 videoPlayer.currentTime = videoPlayer.duration - 1; // Marca como quase concluído
-                 savePlayerProgress();
-             }
+            // Salva o progresso final como concluído (ou quase)
+            if (videoPlayer.duration > 0) {
+                videoPlayer.currentTime = videoPlayer.duration - 1; // Marca como quase concluído
+                savePlayerProgress();
+            }
         }
     }
 
@@ -1600,16 +1599,16 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         // Verifica se o novo índice é válido
         if (newIndex >= 0 && newIndex < currentPlayerContext.episodes.length) {
             const episode = currentPlayerContext.episodes[newIndex]; // Pega dados do novo episódio
-             if (!episode.url) { // Verifica se o próximo episódio tem URL
-                 showToast(`Erro: Link de vídeo não encontrado para o ${direction > 0 ? 'próximo' : 'anterior'} episódio.`, true);
-                 console.error("Link de vídeo ausente para o episódio:", episode);
-                 // Mantém o player no episódio atual, mas pausa
-                 videoPlayer.pause();
-                 playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
-                 playerView.classList.add('controls-active');
-                 clearTimeout(controlsTimeout);
-                 return;
-             }
+            if (!episode.url) { // Verifica se o próximo episódio tem URL
+                showToast(`Erro: Link de vídeo não encontrado para o ${direction > 0 ? 'próximo' : 'anterior'} episódio.`, true);
+                console.error("Link de vídeo ausente para o episódio:", episode);
+                // Mantém o player no episódio atual, mas pausa
+                videoPlayer.pause();
+                playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
+                playerView.classList.add('controls-active');
+                clearTimeout(controlsTimeout);
+                return;
+            }
             // Cria novo contexto com índice atualizado e novo título
             const newContext = {
                 ...currentPlayerContext,
@@ -1620,8 +1619,8 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             };
             showPlayer(newContext); // Mostra o player com o novo episódio
         } else {
-             console.log("Não há mais episódios nessa direção.");
-             // Poderia mostrar uma mensagem ou fechar o player
+            console.log("Não há mais episódios nessa direção.");
+            // Poderia mostrar uma mensagem ou fechar o player
         }
     }
 
@@ -1646,14 +1645,16 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
 
         // Se saiu da tela cheia E o player ainda deveria estar visível E não estamos trocando de episódio
         // (A verificação do currentPlayerContext ajuda a evitar voltar se o player foi fechado por outro motivo)
+        // **CORREÇÃO MOBILE:** Não desbloquear orientação aqui se saiu do fullscreen via ESC,
+        // pois o usuário pode querer continuar assistindo sem estar em fullscreen mas ainda em landscape.
+        // A orientação será desbloqueada apenas quando o player for fechado (hidePlayer).
+        /*
         if (!isFullscreen && !playerView.classList.contains('hidden') && currentPlayerContext.key) {
-             // Apenas desbloqueia a orientação se saiu do fullscreen e não estava trocando de episódio
             if (screen.orientation && typeof screen.orientation.unlock === 'function') {
-                 screen.orientation.unlock();
+                 screen.orientation.unlock(); // REMOVIDO DAQUI
             }
-            // Não força history.back() aqui, pois o usuário pode ter saído do fullscreen intencionalmente.
-            // O botão voltar do player ainda funciona com history.back().
         }
+        */
     });
 
 
@@ -1696,10 +1697,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             document.getElementById('season-selector-button')?.click(); // Simula clique no botão para fechar
         }
 
-        // Fecha modal de comentários se clicar fora do card interno
-        if (!commentsModal.classList.contains('hidden') && !commentsModal.querySelector('.liquid-glass-card').contains(e.target)) {
-            closeCommentsModal();
-        }
+        // REMOVIDO: Fechar modal de comentários
     });
 
     /** Cria as opções no painel de configurações do player (velocidade, qualidade) */
@@ -1731,8 +1729,8 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         });
 
         // Opções de qualidade (Placeholder - HLS.js pode gerenciar isso dinamicamente se necessário)
-         // A lógica atual usa qualidade automática (startLevel: -1)
-         // Se precisar de troca manual, a lógica seria mais complexa, envolvendo hls.levels e hls.currentLevel
+        // A lógica atual usa qualidade automática (startLevel: -1)
+        // Se precisar de troca manual, a lógica seria mais complexa, envolvendo hls.levels e hls.currentLevel
         const qualities = ["Auto"];
         qualities.forEach(quality => {
             const button = document.createElement('button');
@@ -1837,13 +1835,13 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
     // --- Roteador Central ---
     /** Função principal que lida com a navegação baseada no hash da URL */
     async function handleNavigation() {
-         console.log(`[handleNavigation] Navegando para: ${window.location.hash}, UserID: ${userId}, CurrentProfile: ${currentProfile?.id}`);
+        console.log(`[handleNavigation] Navegando para: ${window.location.hash}, UserID: ${userId}, CurrentProfile: ${currentProfile?.id}`);
         const hash = window.location.hash; // Pega o hash atual (ex: #home-view, #details/123)
         const previousHash = sessionStorage.getItem('starlight-previousHash') || '#home-view'; // Pega hash anterior
 
         // --- Rota de Autenticação ---
         if (!userId) { // Se o usuário NÃO está logado
-             console.log("[handleNavigation] Usuário não logado, redirecionando para #login-view");
+            console.log("[handleNavigation] Usuário não logado, redirecionando para #login-view");
             if (hash !== '#login-view') {
                 history.replaceState(null, '', '#login-view');
             }
@@ -1860,24 +1858,24 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             if (lastProfileId) {
                 console.log("[handleNavigation] Tentando carregar último perfil:", lastProfileId);
                 if (!profiles || profiles.length === 0) {
-                     console.log("[handleNavigation] Carregando perfis...");
+                    console.log("[handleNavigation] Carregando perfis...");
                     await loadProfiles();
                 }
                 const foundProfile = profiles.find(p => p.id === lastProfileId);
                 if (foundProfile) {
-                     console.log("[handleNavigation] Último perfil encontrado, selecionando:", foundProfile.id);
+                    console.log("[handleNavigation] Último perfil encontrado, selecionando:", foundProfile.id);
                     await selectAndEnterProfile(foundProfile); // selectAndEnterProfile chama handleNavigation de novo implicitamente via hash change
                     autoSelectedProfile = true;
                     // Não precisa mais nada aqui, selectAndEnterProfile já tratou a navegação
                     sessionStorage.setItem('starlight-previousHash', window.location.hash); // Atualiza hash anterior
                     return; // Importante retornar para evitar execução duplicada
                 } else {
-                     console.log("[handleNavigation] Último perfil salvo não encontrado, limpando localStorage.");
-                     localStorage.removeItem(`starlight-lastProfile-${userId}`);
+                    console.log("[handleNavigation] Último perfil salvo não encontrado, limpando localStorage.");
+                    localStorage.removeItem(`starlight-lastProfile-${userId}`);
                 }
             }
             if (!autoSelectedProfile) {
-                 console.log("[handleNavigation] Nenhum perfil autoselecionado, mostrando tela de seleção.");
+                console.log("[handleNavigation] Nenhum perfil autoselecionado, mostrando tela de seleção.");
                 if (hash !== '#manage-profile-view') {
                     history.replaceState(null, '', '#manage-profile-view');
                 }
@@ -1888,7 +1886,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         }
 
         // --- Roteamento do Aplicativo (Usuário Logado e com Perfil Selecionado) ---
-         console.log("[handleNavigation] Usuário logado e com perfil selecionado.");
+        console.log("[handleNavigation] Usuário logado e com perfil selecionado.");
 
         // Garante que overlays especiais sejam fechados
         if (!searchOverlay.classList.contains('hidden')) {
@@ -1903,7 +1901,14 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
 
         // Garante que views especiais sejam escondidas ao navegar para views normais
         if (!hash.startsWith('#details/')) detailsView.classList.add('hidden');
-        if (hash !== '#player' && !playerView.classList.contains('hidden')) hidePlayer(true, false); // Salva progresso ao sair do player
+
+        // *** CORREÇÃO PLAYER NAVIGATION: Chama hidePlayer adequadamente ***
+        if (hash !== '#player' && !playerView.classList.contains('hidden')) {
+             console.log("[handleNavigation] Hash mudou de #player, chamando hidePlayer(true).");
+             // 'true' para salvar progresso, 'false' para isChangingEpisode
+             await hidePlayer(true, false); // Aguarda hidePlayer concluir (async)
+        }
+
 
         // Para mídia de novidades se saiu dessa view
         if (previousHash === '#news-view' && hash !== '#news-view') {
@@ -1920,53 +1925,53 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         if (hash.startsWith('#details/')) {
             const docId = hash.split('/')[1];
             if (docId) {
-                 console.log("[handleNavigation] Rota: #details/", docId);
+                console.log("[handleNavigation] Rota: #details/", docId);
                 targetId = 'details-view'; // Marcamos que é a view de detalhes
                 showDetailsView({ docId }); // Mostra e renderiza
                 targetView = detailsView; // detailsView já está visível
             } else {
                 console.log("[handleNavigation] Rota: #details/ inválida, redirecionando para #home-view");
-                 history.replaceState(null, '', '#home-view'); // Hash inválido, volta pra home
-                 hash = '#home-view'; // Atualiza hash local para cair no else
-                 targetId = 'home-view'; // Define targetId para o fallback
+                history.replaceState(null, '', '#home-view'); // Hash inválido, volta pra home
+                hash = '#home-view'; // Atualiza hash local para cair no else
+                targetId = 'home-view'; // Define targetId para o fallback
             }
         }
 
         if (targetId !== 'details-view') { // Se não for detalhes (já tratado acima)
-             if (hash === '#player') {
-                 console.log("[handleNavigation] Rota: #player");
+            if (hash === '#player') {
+                console.log("[handleNavigation] Rota: #player");
                 targetId = 'player-view';
                 // O player é tratado por showPlayer(), não fazemos nada aqui exceto marcar targetId
                 if (playerView.classList.contains('hidden')) {
                     // Se recarregou em #player ou tentou navegar direto, volta para o hash anterior
                     console.log("[handleNavigation] Tentativa de acesso direto a #player, voltando...");
-                     const fallbackHash = previousHash !== '#player' ? previousHash : '#home-view';
-                     history.replaceState(null, '', fallbackHash); // Volta para o anterior (ou home)
-                     handleNavigation(); // Chama de novo para carregar a view correta
+                    const fallbackHash = previousHash !== '#player' ? previousHash : '#home-view';
+                    history.replaceState(null, '', fallbackHash); // Volta para o anterior (ou home)
+                    handleNavigation(); // Chama de novo para carregar a view correta
                     return; // Interrompe
                 }
                 targetView = playerView; // Marca a view ativa
-             } else {
-                 targetId = hash.substring(1) || 'home-view'; // Pega ID da view normal
-                 console.log(`[handleNavigation] Rota normal: #${targetId}`);
-                 targetView = document.getElementById(targetId);
+            } else {
+                targetId = hash.substring(1) || 'home-view'; // Pega ID da view normal
+                console.log(`[handleNavigation] Rota normal: #${targetId}`);
+                targetView = document.getElementById(targetId);
 
-                 if (targetView && targetView.classList.contains('content-view')) {
-                     console.log(`[handleNavigation] Mostrando view: ${targetId}`);
+                if (targetView && targetView.classList.contains('content-view')) {
+                    console.log(`[handleNavigation] Mostrando view: ${targetId}`);
                     targetView.classList.remove('hidden'); // Mostra a view correta
                     renderScreenContent(targetId); // Renderiza conteúdo
-                 } else { // Fallback para home se view inválida
-                     console.log(`[handleNavigation] View #${targetId} inválida, redirecionando para #home-view`);
+                } else { // Fallback para home se view inválida
+                    console.log(`[handleNavigation] View #${targetId} inválida, redirecionando para #home-view`);
                     targetId = 'home-view';
                     targetView = document.getElementById(targetId);
-                     if (targetView) { // Garante que a home existe
-                         targetView.classList.remove('hidden');
-                         renderScreenContent(targetId);
-                     }
+                    if (targetView) { // Garante que a home existe
+                        targetView.classList.remove('hidden');
+                        renderScreenContent(targetId);
+                    }
                     if (window.location.hash !== `#${targetId}`) {
                         history.replaceState(null, '', `#${targetId}`);
                     }
-                 }
+                }
             }
         }
 
@@ -1986,7 +1991,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
 
         // Atualiza hash anterior para a próxima navegação
         sessionStorage.setItem('starlight-previousHash', `#${targetId}`);
-         console.log(`[handleNavigation] Navegação para #${targetId} concluída.`);
+        console.log(`[handleNavigation] Navegação para #${targetId} concluída.`);
     }
 
 
@@ -1999,7 +2004,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         console.log("Iniciando listener de notificações...");
         const q = query(collection(db, "notifications"), orderBy("createdAt", "desc"));
         // Garante que o listener antigo seja parado
-         if (typeof window.unsubscribeNotifications === 'function') {
+        if (typeof window.unsubscribeNotifications === 'function') {
             window.unsubscribeNotifications();
         }
         window.unsubscribeNotifications = onSnapshot(q, (snapshot) => {
@@ -2009,12 +2014,12 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                 notifications.push({ id: doc.id, ...doc.data() });
             });
             updateNotificationBell();
-             // Re-renderiza se o painel estiver aberto
-             if (!notificationPanel.classList.contains('hidden')) {
-                 renderNotifications();
-             }
+            // Re-renderiza se o painel estiver aberto
+            if (!notificationPanel.classList.contains('hidden')) {
+                renderNotifications();
+            }
         }, (error) => {
-             console.error("Erro ao escutar notificações:", error);
+            console.error("Erro ao escutar notificações:", error);
         });
     }
 
@@ -2079,10 +2084,10 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             }
             removeBtn.closest('.notification-item')?.remove(); // Usa optional chaining
             // Verifica se a lista de novidades ficou vazia após remover
-             const novidadesContainer = document.getElementById('notifications-novidades');
-             if (novidadesContainer && novidadesContainer.children.length === 0) {
-                 novidadesContainer.innerHTML = '<p class="text-stone-400 text-center p-4">Nenhuma novidade.</p>';
-             }
+            const novidadesContainer = document.getElementById('notifications-novidades');
+            if (novidadesContainer && novidadesContainer.children.length === 0) {
+                novidadesContainer.innerHTML = '<p class="text-stone-400 text-center p-4">Nenhuma novidade.</p>';
+            }
             return;
         }
 
@@ -2120,7 +2125,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             snapshot.forEach((doc) => {
                 newsItems.push({ id: doc.id, ...doc.data() });
             });
-             console.log(`Cache de novidades atualizado com ${newsItems.length} itens.`);
+            console.log(`Cache de novidades atualizado com ${newsItems.length} itens.`);
             if (window.location.hash === '#news-view') {
                 renderNewsView();
             }
@@ -2128,7 +2133,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             console.error("Erro ao escutar novidades: ", error);
             if (window.location.hash === '#news-view') {
                 const container = document.getElementById('news-items-container');
-                 if(container) container.innerHTML = '<p class="text-red-400 text-center py-10">Erro ao carregar novidades.</p>';
+                if(container) container.innerHTML = '<p class="text-red-400 text-center py-10">Erro ao carregar novidades.</p>';
             }
         });
     }
@@ -2142,117 +2147,30 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         const q = query(collection(db, "news")); // Escuta a coleção inteira
         unsubscribeNewsLikes = onSnapshot(q, (snapshot) => {
             let changed = false;
-             console.log("Recebido snapshot de likes (docChanges).");
+            console.log("Recebido snapshot de likes (docChanges).");
             snapshot.docChanges().forEach((change) => { // Ouve apenas as mudanças
-                 if (change.type === "added" || change.type === "modified") {
-                     const data = change.doc.data();
+                if (change.type === "added" || change.type === "modified") {
+                    const data = change.doc.data();
                     newsLikes.set(change.doc.id, new Set(data.likedBy || []));
                     changed = true;
-                 } else if (change.type === "removed") {
-                      newsLikes.delete(change.doc.id);
-                      changed = true;
-                 }
+                } else if (change.type === "removed") {
+                    newsLikes.delete(change.doc.id);
+                    changed = true;
+                }
             });
 
             if (changed && window.location.hash === '#news-view') {
-                 console.log("Likes alterados, atualizando UI de novidades.");
+                console.log("Likes alterados, atualizando UI de novidades.");
                 updateNewsItemsUI(); // Atualiza apenas a UI se houver mudanças
             } else if (changed) {
-                 console.log("Likes alterados, mas não na view de novidades.");
+                console.log("Likes alterados, mas não na view de novidades.");
             }
         }, (error) => {
             console.error("Erro ao escutar likes de novidades:", error);
         });
     }
 
-
-    // Escuta por mudanças nos comentários (CORRIGIDO para usar a coleção 'comentarios')
-    function listenForNewsComments() {
-        if (!userId) return; // Não escuta se não estiver logado
-        console.log("Iniciando listener de comentários...");
-        if (typeof unsubscribeNewsComments === 'function') {
-             console.log("Parando listener de comentários anterior...");
-            unsubscribeNewsComments();
-        }
-
-        let commentUnsubscribers = {}; // Objeto para guardar unsubscribers por newsId
-
-        // 1. Escuta a coleção 'news' para saber quais posts existem
-        const qNews = query(collection(db, "news"));
-         console.log("Iniciando listener da coleção 'news' (para saber quais posts existem)...");
-        const unsubscribeMain = onSnapshot(qNews, (newsSnapshot) => {
-            console.log("Recebido snapshot da coleção 'news' (para comentários).");
-             const currentNewsIds = new Set();
-             newsSnapshot.forEach(newsDoc => currentNewsIds.add(newsDoc.id));
-             console.log(`Posts atuais encontrados: ${currentNewsIds.size}`);
-
-             // 2. Cancela listeners de comentários de posts removidos
-             Object.keys(commentUnsubscribers).forEach(newsId => {
-                 if (!currentNewsIds.has(newsId)) {
-                     console.log(`Post ${newsId} removido, parando listener de comentários.`);
-                     commentUnsubscribers[newsId](); // Chama a função de unsubscribe
-                     delete commentUnsubscribers[newsId]; // Remove do objeto
-                     newsComments.delete(newsId); // Remove do cache
-                 }
-             });
-
-             // 3. Adiciona listeners para comentários de posts novos ou existentes
-             currentNewsIds.forEach(newsId => {
-                 if (!commentUnsubscribers[newsId]) { // Só adiciona se não existir
-                     console.log(`Iniciando listener para comentários do post ${newsId}...`);
-                     // **CORREÇÃO: Usa a coleção 'comentarios'**
-                     const commentsQuery = query(collection(db, "comentarios", newsId, "comments"), orderBy("createdAt", "asc"));
-                     commentUnsubscribers[newsId] = onSnapshot(commentsQuery, (commentsSnapshot) => {
-                          console.log(`Recebido snapshot de comentários para ${newsId}.`);
-                         const commentsList = [];
-                         commentsSnapshot.forEach((commentDoc) => {
-                             commentsList.push({ id: commentDoc.id, ...commentDoc.data() });
-                         });
-                          console.log(`Cache de comentários para ${newsId} atualizado com ${commentsList.length} comentários.`);
-                         newsComments.set(newsId, commentsList); // Atualiza cache
-
-                         if (window.location.hash === '#news-view') {
-                             updateNewsItemsUI(); // Atualiza contagem na view principal
-                         }
-                         if (currentNewsCommentsModalId === newsId && !commentsModal.classList.contains('hidden')) {
-                              console.log(`Modal de comentários para ${newsId} aberto, re-renderizando.`);
-                             renderComments(newsId); // Atualiza lista no modal se aberto
-                         }
-                     }, (error) => {
-                         console.error(`Erro ao escutar comentários para ${newsId}:`, error);
-                         // Limpa cache para este post em caso de erro
-                         newsComments.set(newsId, []);
-                          if (window.location.hash === '#news-view') updateNewsItemsUI();
-                          if (currentNewsCommentsModalId === newsId) renderComments(newsId);
-                     });
-                 }
-             });
-
-             // Atualiza UI geral caso posts tenham sido removidos e a view esteja ativa
-              if (window.location.hash === '#news-view') {
-                  updateNewsItemsUI();
-              }
-
-        }, (error) => {
-            console.error("Erro ao escutar coleção 'news' para comentários:", error);
-            // Se falhar em obter a lista de news, cancela todos os listeners de comentários
-            Object.values(commentUnsubscribers).forEach(unsub => unsub());
-            commentUnsubscribers = {};
-            newsComments.clear();
-             if (window.location.hash === '#news-view') updateNewsItemsUI();
-
-        });
-
-        // Define a função global de unsubscribe que para tudo
-        unsubscribeNewsComments = () => {
-            console.log("Parando todos os listeners de comentários...");
-            unsubscribeMain();
-            Object.values(commentUnsubscribers).forEach(unsub => unsub());
-            commentUnsubscribers = {}; // Limpa o objeto
-             console.log("Listeners de comentários parados.");
-        };
-    }
-
+    // REMOVIDO: listenForNewsComments
 
     // Atualiza apenas os contadores e estado dos botões na UI de Novidades
     function updateNewsItemsUI() {
@@ -2264,11 +2182,11 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             const likeButton = card.querySelector('.like-button');
             const likeButtonContent = likeButton?.querySelector('.glass-content'); // Pega o content div
             const likeCountSpan = card.querySelector('.like-count');
-            const commentCountSpan = card.querySelector('.comment-count');
-            const commentButton = card.querySelector('.comment-button'); // Pega o botão de comentário
+            // REMOVIDO: commentCountSpan
+            // REMOVIDO: commentButton
 
-            // Verifica se todos os elementos necessários existem
-            if (!newsId || !likeButton || !likeButtonContent || !likeCountSpan || !commentCountSpan || !commentButton) return;
+            // Verifica se todos os elementos necessários existem (exceto comentários)
+            if (!newsId || !likeButton || !likeButtonContent || !likeCountSpan ) return;
 
 
             // Atualiza Likes
@@ -2287,20 +2205,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             likeButton.classList.toggle('text-red-500', userLiked);
             likeButton.classList.toggle('text-slate-400', !userLiked);
 
-            // Atualiza Comentários
-            const commentsList = newsComments.get(newsId) || [];
-            const commentCount = commentsList.length;
-             if (commentCountSpan) commentCountSpan.textContent = commentCount;
-
-            // Atualiza o conteúdo do botão de comentário (se necessário, embora já tenha o ícone)
-             const commentButtonContent = commentButton.querySelector('.glass-content');
-             if (commentButtonContent) {
-                 // Mantém o ícone e atualiza a contagem
-                 commentButtonContent.innerHTML = `
-                      ${ICONS.comment}
-                      <span class="comment-count">${commentCount}</span>
-                 `;
-             }
+            // REMOVIDO: Atualiza Comentários
         });
         // Garante que lucide icons sejam recriados após mudança de SVG
         lucide.createIcons();
@@ -2321,14 +2226,13 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         container.innerHTML = newsItems.map(item => createNewsItemCard(item)).join('');
         lucide.createIcons();
         attachGlassButtonListeners(); // Renomeado para clareza
-        updateNewsItemsUI(); // Aplica estado inicial de likes/comentários
+        updateNewsItemsUI(); // Aplica estado inicial de likes
 
-        // Não precisa chamar addNewsViewListeners() aqui
     }
 
     // Função auxiliar para inicializar efeitos de vidro
     function initializeGlassEffects() {
-         attachGlassButtonListeners();
+        attachGlassButtonListeners();
     }
 
     function createNewsItemCard(item) {
@@ -2347,28 +2251,28 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                 typeClass = 'news-item-image';
                 break;
             case 'video': // Para iframes (YouTube, etc.)
-                 const isYoutube = item.content.includes('youtube.com/embed') || item.content.includes('youtu.be');
-                 const aspectClass = isYoutube ? 'aspect-video' : '';
-                 // Adiciona overlay e botão play para evitar autoplay indesejado
-                 contentHTML = `
-                     <div class="relative ${aspectClass} mt-3 group news-iframe-container rounded-lg overflow-hidden shadow-lg bg-black" data-iframe-src="${item.content}">
-                         <div id="overlay-${uniqueId}" class="absolute inset-0 flex items-center justify-center cursor-pointer z-10 bg-black/50 hover:bg-black/70 transition-colors news-iframe-play-overlay">
+                const isYoutube = item.content.includes('youtube.com/embed') || item.content.includes('youtu.be');
+                const aspectClass = isYoutube ? 'aspect-video' : '';
+                // Adiciona overlay e botão play para evitar autoplay indesejado
+                contentHTML = `
+                    <div class="relative ${aspectClass} mt-3 group news-iframe-container rounded-lg overflow-hidden shadow-lg bg-black" data-iframe-src="${item.content}">
+                        <div id="overlay-${uniqueId}" class="absolute inset-0 flex items-center justify-center cursor-pointer z-10 bg-black/50 hover:bg-black/70 transition-colors news-iframe-play-overlay">
                              <i data-lucide="play-circle" class="w-16 h-16 text-white opacity-80 group-hover:opacity-100 transition-opacity"></i>
-                         </div>
-                         <div id="iframe-wrapper-${uniqueId}" class="w-full h-full ${isYoutube ? '' : 'min-h-[300px]'}">
+                        </div>
+                        <div id="iframe-wrapper-${uniqueId}" class="w-full h-full ${isYoutube ? '' : 'min-h-[300px]'}">
                              <!-- Iframe será inserido aqui pelo JS ao clicar -->
-                         </div>
-                     </div>`;
-                 typeClass = 'news-item-video';
-                 break;
+                        </div>
+                    </div>`;
+                typeClass = 'news-item-video';
+                break;
             case 'video_direct': // Para URLs de vídeo diretas
                 contentHTML = `
-                     <div class="relative mt-3 rounded-lg overflow-hidden cursor-pointer news-video-thumbnail group" data-video-url="${item.content}" data-video-title="${item.title || 'Vídeo'}">
-                         <img src="${item.thumbnail || 'https://placehold.co/600x338/1f2937/a3a3a3?text=Video'}" alt="Thumbnail do vídeo" class="w-full h-auto aspect-video object-cover">
-                         <div class="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/60 transition-colors">
+                    <div class="relative mt-3 rounded-lg overflow-hidden cursor-pointer news-video-thumbnail group" data-video-url="${item.content}" data-video-title="${item.title || 'Vídeo'}">
+                        <img src="${item.thumbnail || 'https://placehold.co/600x338/1f2937/a3a3a3?text=Video'}" alt="Thumbnail do vídeo" class="w-full h-auto aspect-video object-cover">
+                        <div class="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/60 transition-colors">
                              <i data-lucide="play-circle" class="w-16 h-16 text-white opacity-80 group-hover:opacity-100 transition-opacity"></i>
-                         </div>
-                     </div>`;
+                        </div>
+                    </div>`;
                 typeClass = 'news-item-video-direct';
                 break;
             default:
@@ -2378,8 +2282,8 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         const likesSet = newsLikes.get(item.id) || new Set();
         const likeCount = likesSet.size;
         const userLiked = currentProfile && likesSet.has(currentProfile.id);
-        const commentsList = newsComments.get(item.id) || [];
-        const commentCount = commentsList.length;
+        // REMOVIDO: commentsList
+        // REMOVIDO: commentCount
 
         return `
             <div class="liquid-glass-card news-item-card ${typeClass}" data-news-id="${item.id}" style="--bg-color: rgba(15, 23, 42, 0.5);">
@@ -2396,13 +2300,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                                 <span class="like-count">${likeCount}</span>
                             </div>
                         </button>
-                        <button class="comment-button glass-container glass-button rounded-full px-3 py-1.5 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white">
-                             <div class="glass-filter"></div><div class="glass-overlay !bg-opacity-10 hover:!bg-opacity-20"></div><div class="glass-specular"></div>
-                             <div class="glass-content flex items-center gap-1.5">
-                                 ${ICONS.comment}
-                                 <span class="comment-count">${commentCount}</span>
-                            </div>
-                        </button>
+                        <!-- REMOVIDO: Botão de Comentários -->
                     </div>
                 </div>
             </div>
@@ -2416,7 +2314,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             // console.log("Clique detectado na área de novidades:", e.target);
 
             const likeButton = e.target.closest('.like-button');
-            const commentButton = e.target.closest('.comment-button');
+            // REMOVIDO: commentButton
             const videoThumbnail = e.target.closest('.news-video-thumbnail');
             const iframeOverlay = e.target.closest('.news-iframe-play-overlay');
 
@@ -2425,17 +2323,9 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                 const card = likeButton.closest('.news-item-card');
                 const newsId = card?.dataset.newsId;
                 if (newsId) handleNewsLike(newsId);
-            } else if (commentButton) {
-                console.log("Botão Comentar clicado"); // Log para verificar clique
-                const card = commentButton.closest('.news-item-card');
-                const newsId = card?.dataset.newsId;
-                if (newsId) {
-                    console.log("Abrindo modal para newsId:", newsId); // Log
-                    openCommentsModal(newsId);
-                } else {
-                     console.log("Não foi possível encontrar newsId para o botão de comentar."); // Log
-                }
-            } else if (videoThumbnail) {
+            }
+            // REMOVIDO: else if (commentButton)
+            else if (videoThumbnail) {
                 // console.log("Thumbnail de vídeo direto clicado");
                 const url = videoThumbnail.dataset.videoUrl;
                 const title = videoThumbnail.dataset.videoTitle;
@@ -2456,8 +2346,8 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                             url.searchParams.set('autoplay', '1');
                             finalSrc = url.toString();
                         } catch (error) {
-                             console.error("URL do YouTube inválida:", iframeSrc, error);
-                             // Usa a URL original se der erro
+                            console.error("URL do YouTube inválida:", iframeSrc, error);
+                            // Usa a URL original se der erro
                         }
                     }
                     // Define atributos allow e sandbox
@@ -2465,9 +2355,9 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                         ? 'allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; autoplay"'
                         : 'allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"'; // Sem autoplay explícito para outros
 
-                     wrapper.innerHTML = `<iframe src="${finalSrc}" frameborder="0" sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-forms" ${allowAttribute} allowfullscreen class="w-full h-full absolute inset-0"></iframe>`; // Adicionado absolute inset-0
-                     iframeOverlay.classList.add('hidden'); // Esconde o overlay
-                     console.log("Iframe carregado para:", finalSrc);
+                    wrapper.innerHTML = `<iframe src="${finalSrc}" frameborder="0" sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-forms" ${allowAttribute} allowfullscreen class="w-full h-full absolute inset-0"></iframe>`; // Adicionado absolute inset-0
+                    iframeOverlay.classList.add('hidden'); // Esconde o overlay
+                    console.log("Iframe carregado para:", finalSrc);
                 } else {
                     console.log("Não foi possível carregar o iframe. Src:", iframeSrc, "Wrapper:", wrapper);
                 }
@@ -2504,7 +2394,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                     transaction.update(newsDocRef, { likedBy: arrayRemove(profileId) });
                 } else {
                     // Curtir: Usa arrayUnion
-                     console.log(`[handleNewsLike] Adicionando like de ${profileId} ao post ${newsId}`);
+                    console.log(`[handleNewsLike] Adicionando like de ${profileId} ao post ${newsId}`);
                     transaction.update(newsDocRef, { likedBy: arrayUnion(profileId) });
                 }
             });
@@ -2520,15 +2410,15 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
 
     // --- Lógica de Pedidos ---
     function listenToRequests() {
-         if (!userId) return; // Não escuta se não estiver logado
-         console.log("Iniciando listener de pedidos...");
+        if (!userId) return; // Não escuta se não estiver logado
+        console.log("Iniciando listener de pedidos...");
         const q = query(collection(db, "pedidos"), where("status", "==", "pending"));
-         // Garante que o listener antigo seja removido
-         if (typeof window.unsubscribeRequests === 'function') {
+        // Garante que o listener antigo seja removido
+        if (typeof window.unsubscribeRequests === 'function') {
             window.unsubscribeRequests();
         }
         window.unsubscribeRequests = onSnapshot(q, (snapshot) => {
-             console.log("Recebido snapshot de pedidos pendentes.");
+            console.log("Recebido snapshot de pedidos pendentes.");
             pendingRequests = [];
             snapshot.forEach((doc) => {
                 pendingRequests.push({ id: doc.id, ...doc.data() });
@@ -2540,15 +2430,15 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                 if (votesB !== votesA) return votesB - votesA;
                 return (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0);
             });
-             console.log(`Cache de pedidos atualizado com ${pendingRequests.length} itens.`);
+            console.log(`Cache de pedidos atualizado com ${pendingRequests.length} itens.`);
             if (window.location.hash === '#requests-view') {
                 renderPendingRequests();
             }
         }, (error) => {
             console.error("Erro ao escutar pedidos: ", error);
-             if (window.location.hash === '#requests-view') {
-                 const container = document.getElementById('pending-requests-container');
-                  if(container) container.innerHTML = '<p class="col-span-full text-center text-red-400">Erro ao carregar pedidos.</p>';
+            if (window.location.hash === '#requests-view') {
+                const container = document.getElementById('pending-requests-container');
+                if(container) container.innerHTML = '<p class="col-span-full text-center text-red-400">Erro ao carregar pedidos.</p>';
             }
         });
     }
@@ -2579,18 +2469,18 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                 if (userVoteIndex > -1) {
                     // Remover voto: Cria um novo array sem o voto do perfil atual
                     const updatedRequesters = requesters.filter((_, index) => index !== userVoteIndex);
-                     console.log(`[handleVote] Removendo voto de ${profileId} do pedido ${requestId}`);
+                    console.log(`[handleVote] Removendo voto de ${profileId} do pedido ${requestId}`);
                     transaction.update(docRef, { requesters: updatedRequesters });
                 } else {
                     // Adicionar voto: Usa arrayUnion com o objeto de voto completo
                     const userVote = { userId: userId, userName: currentProfile.name, profileId: profileId };
-                     console.log(`[handleVote] Adicionando voto de ${profileId} ao pedido ${requestId}`);
+                    console.log(`[handleVote] Adicionando voto de ${profileId} ao pedido ${requestId}`);
                     transaction.update(docRef, { requesters: arrayUnion(userVote) });
                 }
             });
             // O listener onSnapshot atualizará a UI
             // showToast(userVoteIndex > -1 ? 'Voto removido.' : 'Obrigado pelo seu voto!'); // Toast é opcional aqui, já que a UI atualiza
-             console.log(`[handleVote] Transação de voto para ${requestId} concluída.`);
+            console.log(`[handleVote] Transação de voto para ${requestId} concluída.`);
 
         } catch (error) {
             console.error("Erro ao processar voto:", error);
@@ -2629,15 +2519,15 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                         </div>
                     </div>
                      <button class="vote-btn glass-container glass-button rounded-lg w-full mt-2 ${userHasVoted ? 'voted' : ''}" data-request-id="${request.id}">
-                         <div class="glass-filter"></div>
-                         <div class="glass-overlay"></div>
-                         <div class="glass-specular"></div>
-                         <div class="glass-content flex justify-center items-center gap-2 p-2 text-sm">
-                             ${userHasVoted
+                        <div class="glass-filter"></div>
+                        <div class="glass-overlay"></div>
+                        <div class="glass-specular"></div>
+                        <div class="glass-content flex justify-center items-center gap-2 p-2 text-sm">
+                            ${userHasVoted
                                 ? '<i data-lucide="minus-circle" class="w-4 h-4"></i> Remover Voto'
                                 : '<i data-lucide="plus-circle" class="w-4 h-4"></i> Apoiar Pedido'
-                             }
-                         </div>
+                            }
+                        </div>
                      </button>
                 </div>
             `;
@@ -2670,7 +2560,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
 
     /** Renderiza os cards de perfil na tela de seleção/gerenciamento */
     function renderProfiles() {
-         console.log("Renderizando perfis...");
+        console.log("Renderizando perfis...");
         profilesGrid.innerHTML = ''; // Limpa a grid
         profiles.forEach((profile) => {
             const profileCard = document.createElement('div');
@@ -2715,7 +2605,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             profilesGrid.appendChild(addProfileCard);
         }
         attachGlassButtonListeners();
-         console.log("Renderização de perfis concluída.");
+        console.log("Renderização de perfis concluída.");
     }
 
     /**
@@ -2742,14 +2632,14 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         listenToRequests();
         listenForNewsItems();
         listenForNewsLikes(); // Precisa reiniciar para pegar os likes deste perfil
-        listenForNewsComments(); // Precisa reiniciar para pegar os comentários deste perfil
+        // REMOVIDO: listenForNewsComments
 
         // Navega para a home view (se não estiver lá) ou força re-render
         if (window.location.hash !== '#home-view') {
-             console.log("Navegando para #home-view após seleção de perfil.");
+            console.log("Navegando para #home-view após seleção de perfil.");
             window.location.hash = '#home-view';
         } else {
-             console.log("Já está na #home-view, forçando re-renderização após seleção de perfil.");
+            console.log("Já está na #home-view, forçando re-renderização após seleção de perfil.");
             handleNavigation(); // Força a execução para garantir renderização correta
         }
     }
@@ -2770,16 +2660,16 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         `).join('');
 
         // Limpa seleção anterior
-         avatarOptionsContainer.querySelectorAll('img').forEach(img => img.classList.remove('!border-purple-500', 'scale-110'));
+        avatarOptionsContainer.querySelectorAll('img').forEach(img => img.classList.remove('!border-purple-500', 'scale-110'));
 
         if (profileId) {
-             console.log("Abrindo modal para editar perfil:", profileId);
+            console.log("Abrindo modal para editar perfil:", profileId);
             modalTitle.textContent = 'Editar Perfil';
             const profile = profiles.find(p => p.id === profileId);
             if (!profile) {
-                 console.error("Perfil para edição não encontrado:", profileId);
-                 showToast("Erro ao carregar dados do perfil.", true);
-                 return;
+                console.error("Perfil para edição não encontrado:", profileId);
+                showToast("Erro ao carregar dados do perfil.", true);
+                return;
             }
             nameInput.value = profile.name;
             idInput.value = profile.id;
@@ -2788,18 +2678,18 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
             const currentAvatar = avatarOptionsContainer.querySelector(`img[data-avatar="${profile.avatar}"]`);
             if (currentAvatar) currentAvatar.classList.add('!border-purple-500', 'scale-110');
             else { // Fallback se o avatar salvo não estiver mais na lista AVATARS
-                 const firstAvatar = avatarOptionsContainer.querySelector('img');
-                 if (firstAvatar) firstAvatar.classList.add('!border-purple-500', 'scale-110');
+                const firstAvatar = avatarOptionsContainer.querySelector('img');
+                if (firstAvatar) firstAvatar.classList.add('!border-purple-500', 'scale-110');
             }
         } else {
-             console.log("Abrindo modal para adicionar novo perfil.");
+            console.log("Abrindo modal para adicionar novo perfil.");
             modalTitle.textContent = 'Adicionar Perfil';
             nameInput.value = '';
             idInput.value = '';
             deleteBtn.classList.add('hidden');
-             // Seleciona o primeiro avatar como padrão visualmente
+            // Seleciona o primeiro avatar como padrão visualmente
             const firstAvatar = avatarOptionsContainer.querySelector('img');
-             if (firstAvatar) firstAvatar.classList.add('!border-purple-500', 'scale-110');
+            if (firstAvatar) firstAvatar.classList.add('!border-purple-500', 'scale-110');
         }
 
         profileModal.classList.remove('hidden');
@@ -2818,20 +2708,20 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
     document.getElementById('save-profile-btn').addEventListener('click', async () => {
         const name = document.getElementById('profile-name-input').value.trim();
         const selectedAvatarEl = document.querySelector('#avatar-options .scale-110'); // Pega o elemento
-         const selectedAvatar = selectedAvatarEl?.dataset.avatar; // Pega o data attribute
+        const selectedAvatar = selectedAvatarEl?.dataset.avatar; // Pega o data attribute
         const profileId = document.getElementById('profile-id-input').value;
 
-         // Se nenhum avatar foi selecionado (caso de adicionar sem clicar), pega o primeiro
-         const finalAvatar = selectedAvatar || avatarOptionsContainer.querySelector('img')?.dataset.avatar || AVATARS[0];
+        // Se nenhum avatar foi selecionado (caso de adicionar sem clicar), pega o primeiro
+        const finalAvatar = selectedAvatar || avatarOptionsContainer.querySelector('img')?.dataset.avatar || AVATARS[0];
 
         if (!name) {
             showToast('Por favor, preencha o nome do perfil.', true);
             return;
         }
-         if (!finalAvatar) { // Verificação extra
-             showToast('Por favor, selecione um avatar.', true);
-             return;
-         }
+        if (!finalAvatar) { // Verificação extra
+            showToast('Por favor, selecione um avatar.', true);
+            return;
+        }
         if (!userId) {
             showToast('Erro de autenticação. Por favor, recarregue a página.', true);
             return;
@@ -2841,12 +2731,12 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
 
         try {
             if (profileId) {
-                 console.log("Atualizando perfil:", profileId, profileData);
+                console.log("Atualizando perfil:", profileId, profileData);
                 const docRef = doc(db, 'users', userId, 'profiles', profileId);
                 await updateDoc(docRef, profileData);
                 showToast('Perfil atualizado com sucesso!');
             } else {
-                 console.log("Adicionando novo perfil:", profileData);
+                console.log("Adicionando novo perfil:", profileData);
                 const colRef = collection(db, 'users', userId, 'profiles');
                 await addDoc(colRef, profileData);
                 showToast('Perfil criado com sucesso!');
@@ -2872,32 +2762,32 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                 'Tem certeza que deseja excluir este perfil? Esta ação não pode ser desfeita.',
                 async () => {
                     try {
-                         console.log("Excluindo perfil:", profileId);
+                        console.log("Excluindo perfil:", profileId);
                         const docRef = doc(db, 'users', userId, 'profiles', profileId);
                         await deleteDoc(docRef);
                         showToast('Perfil excluído.');
                         // Se o perfil excluído era o atual, limpa currentProfile e força seleção
                         if (currentProfile?.id === profileId) {
-                             console.log("Perfil atual excluído, limpando seleção...");
+                            console.log("Perfil atual excluído, limpando seleção...");
                             currentProfile = null;
                             localStorage.removeItem(`starlight-lastProfile-${userId}`); // Limpa também o último selecionado
-                             // Para listeners que dependiam do perfil
+                            // Para listeners que dependiam do perfil
                             if (typeof window.unsubscribeNewsItems === 'function') window.unsubscribeNewsItems();
                             if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
-                            if (typeof unsubscribeNewsComments === 'function') unsubscribeNewsComments();
+                            // REMOVIDO: unsubscribeNewsComments
                             if (typeof window.unsubscribeRequests === 'function') window.unsubscribeRequests();
-                             // Limpa caches que dependem do perfil
+                            // Limpa caches que dependem do perfil
                             newsLikes.clear();
-                            newsComments.clear();
+                            // REMOVIDO: newsComments.clear();
                             pendingRequests = [];
                             firestoreContent = []; // Limpa catálogo principal também
                             headerProfileBtn.innerHTML = ''; // Limpa ícone do header
 
-                             // Força a volta para a tela de seleção após um pequeno delay
-                             setTimeout(() => {
-                                 window.location.hash = 'manage-profile-view';
-                                 handleNavigation(); // Chama para garantir que a tela de seleção seja mostrada
-                             }, 100);
+                            // Força a volta para a tela de seleção após um pequeno delay
+                            setTimeout(() => {
+                                window.location.hash = 'manage-profile-view';
+                                handleNavigation(); // Chama para garantir que a tela de seleção seja mostrada
+                            }, 100);
                         }
                         await loadProfiles(); // Recarrega a lista
                         profileModal.classList.add('hidden'); // Fecha o modal
@@ -2916,7 +2806,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
     // Listener para o botão "Gerenciar Perfis" / "Concluído"
     manageProfilesBtn.addEventListener('click', () => {
         isEditMode = !isEditMode;
-         console.log("Modo edição de perfis:", isEditMode);
+        console.log("Modo edição de perfis:", isEditMode);
         manageProfilesBtn.querySelector('.glass-content').textContent = isEditMode ? 'Concluído' : 'Gerenciar Perfis';
         document.getElementById('profile-main-title').textContent = isEditMode ? 'Gerenciar Perfis' : 'Quem está assistindo?';
         renderProfiles(); // Re-renderiza para atualizar a UI (ícones de edição)
@@ -2925,19 +2815,19 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
 
     // Listener para o botão de perfil no header (leva para a tela de gerenciamento)
     headerProfileBtn.addEventListener('click', () => {
-         console.log("Botão de perfil no header clicado.");
+        console.log("Botão de perfil no header clicado.");
         isEditMode = false; // Garante que não está em modo de edição
         currentProfile = null; // Força seleção
         localStorage.removeItem(`starlight-lastProfile-${userId}`); // Limpa último salvo
 
-         // Para listeners que dependiam do perfil ao voltar para seleção
+        // Para listeners que dependiam do perfil ao voltar para seleção
         if (typeof window.unsubscribeNewsItems === 'function') window.unsubscribeNewsItems();
         if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
-        if (typeof unsubscribeNewsComments === 'function') unsubscribeNewsComments();
+        // REMOVIDO: unsubscribeNewsComments
         if (typeof window.unsubscribeRequests === 'function') window.unsubscribeRequests();
-         // Limpa caches que dependem do perfil
+        // Limpa caches que dependem do perfil
         newsLikes.clear();
-        newsComments.clear();
+        // REMOVIDO: newsComments.clear();
         pendingRequests = [];
         firestoreContent = []; // Limpa catálogo principal também
         headerProfileBtn.innerHTML = ''; // Limpa ícone do header
@@ -2966,7 +2856,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
 
     document.getElementById('login-form').addEventListener('submit', (e) => {
         e.preventDefault();
-         console.log("Tentando login com Email/Senha...");
+        console.log("Tentando login com Email/Senha...");
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
         signInWithEmailAndPassword(auth, email, password)
@@ -2974,36 +2864,36 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                 console.error("Erro de login:", error);
                 showToast(`Erro: ${error.message}`, true);
             });
-         // onAuthStateChanged cuidará do redirecionamento
+        // onAuthStateChanged cuidará do redirecionamento
     });
 
     document.getElementById('register-form').addEventListener('submit', (e) => {
         e.preventDefault();
-         console.log("Tentando registro com Email/Senha...");
+        console.log("Tentando registro com Email/Senha...");
         const email = document.getElementById('register-email').value;
         const password = document.getElementById('register-password').value;
         createUserWithEmailAndPassword(auth, email, password)
             .then(async (userCredential) => {
                 const user = userCredential.user;
-                 console.log("Registro bem-sucedido, usuário:", user.uid);
+                console.log("Registro bem-sucedido, usuário:", user.uid);
                 if (user) {
                     // Cria o primeiro perfil automaticamente após o registro
                     const colRef = collection(db, 'users', user.uid, 'profiles');
-                     console.log("Verificando se já existem perfis...");
+                    console.log("Verificando se já existem perfis...");
                     const snapshot = await getDocs(colRef);
                     if (snapshot.empty) {
-                         console.log("Nenhum perfil encontrado, criando perfil padrão...");
-                         // Tenta usar o nome do email como base, ou "Usuário"
-                         const defaultName = email.split('@')[0] || "Usuário";
-                         // Capitaliza a primeira letra
-                         const capitalizedName = defaultName.charAt(0).toUpperCase() + defaultName.slice(1);
+                        console.log("Nenhum perfil encontrado, criando perfil padrão...");
+                        // Tenta usar o nome do email como base, ou "Usuário"
+                        const defaultName = email.split('@')[0] || "Usuário";
+                        // Capitaliza a primeira letra
+                        const capitalizedName = defaultName.charAt(0).toUpperCase() + defaultName.slice(1);
                         await addDoc(colRef, { name: capitalizedName, avatar: AVATARS[0] });
-                         console.log("Perfil padrão criado.");
+                        console.log("Perfil padrão criado.");
                     } else {
-                         console.log("Perfis já existem, não criando perfil padrão.");
+                        console.log("Perfis já existem, não criando perfil padrão.");
                     }
                 }
-                 // onAuthStateChanged cuidará do redirecionamento e seleção de perfil
+                // onAuthStateChanged cuidará do redirecionamento e seleção de perfil
             })
             .catch((error) => {
                 console.error("Erro de registro:", error);
@@ -3012,76 +2902,76 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
     });
 
     document.getElementById('google-signin-btn').addEventListener('click', () => {
-         console.log("Tentando login com Google...");
+        console.log("Tentando login com Google...");
         signInWithPopup(auth, googleProvider)
             .then(async (result) => {
                 const user = result.user;
-                 console.log("Login com Google bem-sucedido, usuário:", user.uid);
+                console.log("Login com Google bem-sucedido, usuário:", user.uid);
                 if (user) {
                     // Cria perfil padrão se não existir (igual ao registro)
                     const profilesCol = collection(db, 'users', user.uid, 'profiles');
-                     console.log("Verificando se já existem perfis (Google)...");
+                    console.log("Verificando se já existem perfis (Google)...");
                     const snapshot = await getDocs(profilesCol);
                     if (snapshot.empty) {
-                         console.log("Nenhum perfil encontrado (Google), criando perfil padrão...");
+                        console.log("Nenhum perfil encontrado (Google), criando perfil padrão...");
                         await addDoc(profilesCol, { name: user.displayName || "Usuário", avatar: user.photoURL || AVATARS[0] });
-                         console.log("Perfil padrão (Google) criado.");
+                        console.log("Perfil padrão (Google) criado.");
                     } else {
-                         console.log("Perfis já existem (Google), não criando perfil padrão.");
+                        console.log("Perfis já existem (Google), não criando perfil padrão.");
                     }
                 }
-                 // onAuthStateChanged cuidará do redirecionamento e seleção de perfil
+                // onAuthStateChanged cuidará do redirecionamento e seleção de perfil
             })
             .catch((error) => {
                 console.error("Erro de login com Google:", error);
-                 // Trata erros comuns de popup bloqueado ou fechado pelo usuário
-                 if (error.code === 'auth/popup-closed-by-user') {
-                     showToast('Login cancelado.', true);
-                 } else if (error.code === 'auth/popup-blocked') {
-                     showToast('Popup bloqueado. Habilite popups para este site.', true);
-                 } else {
-                     showToast(`Erro: ${error.message}`, true);
-                 }
+                // Trata erros comuns de popup bloqueado ou fechado pelo usuário
+                if (error.code === 'auth/popup-closed-by-user') {
+                    showToast('Login cancelado.', true);
+                } else if (error.code === 'auth/popup-blocked') {
+                    showToast('Popup bloqueado. Habilite popups para este site.', true);
+                } else {
+                    showToast(`Erro: ${error.message}`, true);
+                }
             });
     });
 
     // Logout
     logoutBtn.addEventListener('click', () => {
-         console.log("Botão Logout clicado.");
+        console.log("Botão Logout clicado.");
         const currentUserIdBeforeSignOut = userId; // Guarda o userId antes do logout
         signOut(auth).then(() => {
-             console.log("Logout bem-sucedido.");
+            console.log("Logout bem-sucedido.");
             // Limpa o último perfil selecionado para este usuário
             if (currentUserIdBeforeSignOut) {
                 localStorage.removeItem(`starlight-lastProfile-${currentUserIdBeforeSignOut}`);
-                 console.log(`LocalStorage para ${currentUserIdBeforeSignOut} limpo.`);
+                console.log(`LocalStorage para ${currentUserIdBeforeSignOut} limpo.`);
             }
-             // Limpa variáveis de estado
-             userId = null;
-             currentProfile = null;
-             profiles = [];
-             firestoreContent = [];
-             pendingRequests = [];
-             newsItems = [];
-             newsLikes.clear();
-             newsComments.clear();
-             headerProfileBtn.innerHTML = ''; // Limpa ícone do header
+            // Limpa variáveis de estado
+            userId = null;
+            currentProfile = null;
+            profiles = [];
+            firestoreContent = [];
+            pendingRequests = [];
+            newsItems = [];
+            newsLikes.clear();
+            // REMOVIDO: newsComments.clear();
+            headerProfileBtn.innerHTML = ''; // Limpa ícone do header
 
             // Para todos os listeners do Firestore que dependem de login/perfil
-             console.log("Parando todos os listeners do Firestore...");
-             if (typeof window.unsubscribeContent === 'function') window.unsubscribeContent();
-             if (typeof window.unsubscribeFeatured === 'function') window.unsubscribeFeatured();
-             if (typeof window.unsubscribeNotifications === 'function') window.unsubscribeNotifications(); // Notificações também param
-             if (typeof window.unsubscribeNewsItems === 'function') window.unsubscribeNewsItems();
-             if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
-             if (typeof unsubscribeNewsComments === 'function') unsubscribeNewsComments();
-             if (typeof window.unsubscribeRequests === 'function') window.unsubscribeRequests();
-             console.log("Listeners parados.");
+            console.log("Parando todos os listeners do Firestore...");
+            if (typeof window.unsubscribeContent === 'function') window.unsubscribeContent();
+            if (typeof window.unsubscribeFeatured === 'function') window.unsubscribeFeatured();
+            if (typeof window.unsubscribeNotifications === 'function') window.unsubscribeNotifications(); // Notificações também param
+            if (typeof window.unsubscribeNewsItems === 'function') window.unsubscribeNewsItems();
+            if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
+            // REMOVIDO: unsubscribeNewsComments
+            if (typeof window.unsubscribeRequests === 'function') window.unsubscribeRequests();
+            console.log("Listeners parados.");
 
 
             // O onAuthStateChanged será chamado e redirecionará para a tela de login
-             console.log("Redirecionando para a tela de login via onAuthStateChanged...");
-             // Não é necessário chamar handleNavigation aqui, onAuthStateChanged fará isso.
+            console.log("Redirecionando para a tela de login via onAuthStateChanged...");
+            // Não é necessário chamar handleNavigation aqui, onAuthStateChanged fará isso.
 
         }).catch((error) => {
             console.error("Erro ao sair:", error);
@@ -3112,18 +3002,18 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
 
     // --- Busca TMDB para Pedidos ---
     const tmdbSearchInput = document.getElementById('tmdb-search-input');
-     if (tmdbSearchInput) { // Adiciona verificação se o elemento existe
-         tmdbSearchInput.addEventListener('input', () => {
+    if (tmdbSearchInput) { // Adiciona verificação se o elemento existe
+        tmdbSearchInput.addEventListener('input', () => {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
                 handleTmdbSearch(tmdbSearchInput.value);
             }, 500); // Aumenta debounce para TMDB
         });
-     }
+    }
 
     async function handleTmdbSearch(query) {
         const resultsContainer = document.getElementById('tmdb-search-results');
-         if (!resultsContainer) return; // Adiciona verificação
+        if (!resultsContainer) return; // Adiciona verificação
         if (query.length < 3) {
             resultsContainer.innerHTML = ''; // Limpa se a busca for muito curta
             return;
@@ -3142,7 +3032,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
 
     function renderTmdbResults(results) {
         const container = document.getElementById('tmdb-search-results');
-         if (!container) return; // Adiciona verificação
+        if (!container) return; // Adiciona verificação
         if (results.length === 0) {
             container.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum filme ou série encontrado no TMDB.</p>`;
             return;
@@ -3169,34 +3059,34 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
 
     // Listener para cliques nos resultados da busca TMDB
     const tmdbResultsContainer = document.getElementById('tmdb-search-results');
-     if (tmdbResultsContainer) { // Adiciona verificação
-         tmdbResultsContainer.addEventListener('click', (e) => {
-             const itemElement = e.target.closest('.tmdb-result-item');
-             if (itemElement) {
-                 try {
-                     const itemData = JSON.parse(itemElement.dataset.item);
-                     confirmAndAddRequest(itemData);
-                 } catch (parseError) {
-                     console.error("Erro ao parsear dados do item TMDB:", parseError);
-                     showToast("Erro ao processar seleção.", true);
-                 }
+    if (tmdbResultsContainer) { // Adiciona verificação
+        tmdbResultsContainer.addEventListener('click', (e) => {
+            const itemElement = e.target.closest('.tmdb-result-item');
+            if (itemElement) {
+                try {
+                    const itemData = JSON.parse(itemElement.dataset.item);
+                    confirmAndAddRequest(itemData);
+                } catch (parseError) {
+                    console.error("Erro ao parsear dados do item TMDB:", parseError);
+                    showToast("Erro ao processar seleção.", true);
+                }
             }
         });
-     }
+    }
 
     // Listener para cliques nos botões de voto nos pedidos pendentes
     const pendingRequestsContainer = document.getElementById('pending-requests-container');
-     if (pendingRequestsContainer) { // Adiciona verificação
-         pendingRequestsContainer.addEventListener('click', e => {
-             const voteButton = e.target.closest('.vote-btn');
-             if (voteButton) {
-                 const requestId = voteButton.dataset.requestId;
-                  if (requestId) { // Garante que o ID existe
-                      handleVote(requestId);
-                  }
+    if (pendingRequestsContainer) { // Adiciona verificação
+        pendingRequestsContainer.addEventListener('click', e => {
+            const voteButton = e.target.closest('.vote-btn');
+            if (voteButton) {
+                const requestId = voteButton.dataset.requestId;
+                if (requestId) { // Garante que o ID existe
+                    handleVote(requestId);
+                }
             }
         });
-     }
+    }
 
 
     /** Confirma e adiciona um pedido (ou voto) para um item do TMDB */
@@ -3222,7 +3112,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                 const existingRequest = pendingRequests.find(r => r.tmdbId === item.id && r.mediaType === item.media_type);
 
                 if (existingRequest) {
-                     console.log("Pedido existente encontrado:", existingRequest.id);
+                    console.log("Pedido existente encontrado:", existingRequest.id);
                     // Verifica se o perfil atual já votou neste pedido
                     const userHasRequested = existingRequest.requesters && existingRequest.requesters.some(r => r.userId === userId && r.profileId === currentProfile.id);
                     if (userHasRequested) {
@@ -3230,7 +3120,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                         return;
                     }
                     try {
-                         console.log("Adicionando voto ao pedido existente...");
+                        console.log("Adicionando voto ao pedido existente...");
                         const docRef = doc(db, 'pedidos', existingRequest.id);
                         await updateDoc(docRef, {
                             requesters: arrayUnion({ userId: userId, userName: currentProfile.name, profileId: currentProfile.id }) // Adiciona profileId
@@ -3241,7 +3131,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                         showToast('Ocorreu um erro ao apoiar o pedido.', true);
                     }
                 } else {
-                     console.log("Nenhum pedido existente, criando novo...");
+                    console.log("Nenhum pedido existente, criando novo...");
                     const requestData = {
                         tmdbId: item.id,
                         title: item.title || item.name,
@@ -3255,9 +3145,9 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                     try {
                         await addDoc(collection(db, 'pedidos'), requestData);
                         showToast('Pedido enviado com sucesso!');
-                         // Limpa a busca do TMDB após adicionar
-                         if(tmdbSearchInput) tmdbSearchInput.value = '';
-                         if(tmdbResultsContainer) tmdbResultsContainer.innerHTML = '';
+                        // Limpa a busca do TMDB após adicionar
+                        if(tmdbSearchInput) tmdbSearchInput.value = '';
+                        if(tmdbResultsContainer) tmdbResultsContainer.innerHTML = '';
 
                     } catch (error) {
                         console.error("Erro ao adicionar novo pedido:", error);
@@ -3273,7 +3163,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
 
     /** Mostra a tela de login e esconde o resto, parando listeners */
     function showLoginScreen() {
-         console.log("Mostrando tela de login.");
+        console.log("Mostrando tela de login.");
         userId = null;
         currentProfile = null;
         document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
@@ -3283,28 +3173,28 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         document.getElementById('main-background').style.opacity = 0;
         stopNewsViewMedia();
         hideNewsPlayer();
-         // Para listeners que dependem do usuário/perfil
-         console.log("Parando listeners dependentes do usuário/perfil...");
-         if (typeof window.unsubscribeContent === 'function') window.unsubscribeContent();
-         if (typeof window.unsubscribeFeatured === 'function') window.unsubscribeFeatured();
-         if (typeof window.unsubscribeNotifications === 'function') window.unsubscribeNotifications();
-         if (typeof window.unsubscribeNewsItems === 'function') window.unsubscribeNewsItems();
-         if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
-         if (typeof unsubscribeNewsComments === 'function') unsubscribeNewsComments();
-         if (typeof window.unsubscribeRequests === 'function') window.unsubscribeRequests();
-          // Limpa caches que dependem do perfil
-         newsLikes.clear();
-         newsComments.clear();
-         pendingRequests = [];
-         firestoreContent = []; // Limpa catálogo principal também
-         profiles = []; // Limpa perfis
-         headerProfileBtn.innerHTML = ''; // Limpa ícone do header
-         console.log("Listeners parados e caches limpos.");
+        // Para listeners que dependem do usuário/perfil
+        console.log("Parando listeners dependentes do usuário/perfil...");
+        if (typeof window.unsubscribeContent === 'function') window.unsubscribeContent();
+        if (typeof window.unsubscribeFeatured === 'function') window.unsubscribeFeatured();
+        if (typeof window.unsubscribeNotifications === 'function') window.unsubscribeNotifications();
+        if (typeof window.unsubscribeNewsItems === 'function') window.unsubscribeNewsItems();
+        if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
+        // REMOVIDO: unsubscribeNewsComments
+        if (typeof window.unsubscribeRequests === 'function') window.unsubscribeRequests();
+        // Limpa caches que dependem do perfil
+        newsLikes.clear();
+        // REMOVIDO: newsComments.clear();
+        pendingRequests = [];
+        firestoreContent = []; // Limpa catálogo principal também
+        profiles = []; // Limpa perfis
+        headerProfileBtn.innerHTML = ''; // Limpa ícone do header
+        console.log("Listeners parados e caches limpos.");
     }
 
     /** Mostra a tela de seleção/gerenciamento de perfil */
     async function showProfileScreen() {
-         console.log("Mostrando tela de seleção de perfil.");
+        console.log("Mostrando tela de seleção de perfil.");
         document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
         loginView.classList.add('hidden');
         manageProfileView.classList.remove('hidden');
@@ -3317,22 +3207,22 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         await loadProfiles(); // Carrega os perfis para exibição
         stopNewsViewMedia();
         hideNewsPlayer();
-         // Para listeners que dependiam do perfil (caso o usuário volte para esta tela)
-         console.log("Parando listeners dependentes do perfil (ao mostrar seleção)...");
-         if (typeof window.unsubscribeContent === 'function') window.unsubscribeContent();
-         if (typeof window.unsubscribeFeatured === 'function') window.unsubscribeFeatured();
-         // Não para notificações aqui, pois são gerais do usuário
-         if (typeof window.unsubscribeNewsItems === 'function') window.unsubscribeNewsItems();
-         if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
-         if (typeof unsubscribeNewsComments === 'function') unsubscribeNewsComments();
-         if (typeof window.unsubscribeRequests === 'function') window.unsubscribeRequests();
-          // Limpa caches que dependem do perfil
-         newsLikes.clear();
-         newsComments.clear();
-         pendingRequests = [];
-         firestoreContent = []; // Limpa catálogo principal também
-         headerProfileBtn.innerHTML = ''; // Limpa ícone do header
-         console.log("Listeners parados e caches limpos (ao mostrar seleção).");
+        // Para listeners que dependiam do perfil (caso o usuário volte para esta tela)
+        console.log("Parando listeners dependentes do perfil (ao mostrar seleção)...");
+        if (typeof window.unsubscribeContent === 'function') window.unsubscribeContent();
+        if (typeof window.unsubscribeFeatured === 'function') window.unsubscribeFeatured();
+        // Não para notificações aqui, pois são gerais do usuário
+        if (typeof window.unsubscribeNewsItems === 'function') window.unsubscribeNewsItems();
+        if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
+        // REMOVIDO: unsubscribeNewsComments
+        if (typeof window.unsubscribeRequests === 'function') window.unsubscribeRequests();
+        // Limpa caches que dependem do perfil
+        newsLikes.clear();
+        // REMOVIDO: newsComments.clear();
+        pendingRequests = [];
+        firestoreContent = []; // Limpa catálogo principal também
+        headerProfileBtn.innerHTML = ''; // Limpa ícone do header
+        console.log("Listeners parados e caches limpos (ao mostrar seleção).");
 
     }
 
@@ -3343,7 +3233,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         document.body.classList.remove('auth-loading'); // Torna o body visível
         if (user) {
             userId = user.uid; // Define o userId globalmente
-             console.log("Usuário logado:", userId);
+            console.log("Usuário logado:", userId);
             listenForNotifications(); // Notificações gerais não dependem de perfil
             initializeUI(); // Inicializa UI geral do player (ícones, etc.)
 
@@ -3362,53 +3252,53 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
                     await selectAndEnterProfile(foundProfile);
                     autoSelectedProfile = true;
                 } else {
-                     console.log("Último perfil salvo inválido, limpando localStorage.");
-                     localStorage.removeItem(`starlight-lastProfile-${userId}`);
-                     currentProfile = null; // Garante que currentProfile esteja nulo
+                    console.log("Último perfil salvo inválido, limpando localStorage.");
+                    localStorage.removeItem(`starlight-lastProfile-${userId}`);
+                    currentProfile = null; // Garante que currentProfile esteja nulo
                 }
             } else {
-                 console.log("Nenhum último perfil salvo encontrado.");
-                 currentProfile = null; // Garante que currentProfile esteja nulo
+                console.log("Nenhum último perfil salvo encontrado.");
+                currentProfile = null; // Garante que currentProfile esteja nulo
             }
 
             // Se nenhum perfil foi selecionado automaticamente, força a tela de seleção
             if (!autoSelectedProfile) {
-                 console.log("Nenhum perfil selecionado automaticamente, mostrando tela de seleção...");
-                 // Garante que listeners dependentes do perfil estejam parados
-                 if (typeof window.unsubscribeContent === 'function') window.unsubscribeContent();
-                 if (typeof window.unsubscribeFeatured === 'function') window.unsubscribeFeatured();
-                 if (typeof window.unsubscribeNewsItems === 'function') window.unsubscribeNewsItems();
-                 if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
-                 if (typeof unsubscribeNewsComments === 'function') unsubscribeNewsComments();
-                 if (typeof window.unsubscribeRequests === 'function') window.unsubscribeRequests();
-                 // Limpa caches que dependem do perfil
-                 newsLikes.clear();
-                 newsComments.clear();
-                 pendingRequests = [];
-                 firestoreContent = [];
-                 headerProfileBtn.innerHTML = '';
+                console.log("Nenhum perfil selecionado automaticamente, mostrando tela de seleção...");
+                // Garante que listeners dependentes do perfil estejam parados
+                if (typeof window.unsubscribeContent === 'function') window.unsubscribeContent();
+                if (typeof window.unsubscribeFeatured === 'function') window.unsubscribeFeatured();
+                if (typeof window.unsubscribeNewsItems === 'function') window.unsubscribeNewsItems();
+                if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
+                // REMOVIDO: unsubscribeNewsComments
+                if (typeof window.unsubscribeRequests === 'function') window.unsubscribeRequests();
+                // Limpa caches que dependem do perfil
+                newsLikes.clear();
+                // REMOVIDO: newsComments.clear();
+                pendingRequests = [];
+                firestoreContent = [];
+                headerProfileBtn.innerHTML = '';
 
-                 // Força a exibição da tela de seleção de perfil
-                 if (window.location.hash !== '#manage-profile-view') {
+                // Força a exibição da tela de seleção de perfil
+                if (window.location.hash !== '#manage-profile-view') {
                     history.replaceState(null, '', '#manage-profile-view');
-                 }
-                  // Chamamos handleNavigation DEPOIS de forçar o hash
-                  handleNavigation();
+                }
+                // Chamamos handleNavigation DEPOIS de forçar o hash
+                handleNavigation();
             }
-             // Se autoSelectedProfile = true, selectAndEnterProfile já cuidou da navegação
+            // Se autoSelectedProfile = true, selectAndEnterProfile já cuidou da navegação
 
         } else { // Usuário deslogado
-             console.log("Usuário deslogado.");
+            console.log("Usuário deslogado.");
             showLoginScreen(); // Mostra login e para listeners
-             // Atualiza hash se necessário
-             if (window.location.hash !== '#login-view') {
-                 history.replaceState(null, '', '#login-view');
-             }
-             handleNavigation(); // Chama para garantir que a UI de login apareça
+            // Atualiza hash se necessário
+            if (window.location.hash !== '#login-view') {
+                history.replaceState(null, '', '#login-view');
+            }
+            handleNavigation(); // Chama para garantir que a UI de login apareça
         }
-         // Atualiza o hash anterior após a mudança de auth/perfil
-         sessionStorage.setItem('starlight-previousHash', window.location.hash);
-         console.log("onAuthStateChanged concluído.");
+        // Atualiza o hash anterior após a mudança de auth/perfil
+        sessionStorage.setItem('starlight-previousHash', window.location.hash);
+        console.log("onAuthStateChanged concluído.");
     });
 
     // --- Inicialização ---
@@ -3423,230 +3313,7 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
     console.log("Script inicializado, aguardando estado de autenticação...");
 
 
-    // --- Funções e Listeners de Comentários ---
-
-    function openCommentsModal(newsId) {
-         console.log(`[openCommentsModal] Abrindo para: ${newsId}`);
-        if (!newsId || !userId || !currentProfile?.id) { // Verifica se pode comentar
-            showToast("Faça login e selecione um perfil para ver ou adicionar comentários.", true);
-            return;
-        }
-        const newsItem = newsItems.find(item => item.id === newsId);
-        if (!newsItem) {
-            console.error("Item de notícia não encontrado para comentários:", newsId);
-            showToast("Erro ao carregar comentários.", true);
-            return;
-        }
-
-        currentNewsCommentsModalId = newsId;
-        commentsModalTitle.textContent = `Comentários em: ${newsItem?.title || 'Post'}`;
-        commentsModalList.innerHTML = '<div class="spinner mx-auto my-8"></div>'; // Mostra spinner inicial
-        renderComments(newsId); // Renderiza os comentários existentes (ou mensagem de vazio)
-        commentsModal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-        commentInput.focus();
-        cancelReply(); // Garante que não está em modo de resposta ao abrir
-        // Recria ícones Lucide DEPOIS de tornar o modal visível
-        setTimeout(() => {
-             console.log("[openCommentsModal] Recriando ícones Lucide no modal.");
-             lucide.createIcons({
-                 // Força a busca dentro do modal
-                 nodes: [commentsModal]
-             });
-        }, 50); // Pequeno delay para garantir renderização
-    }
-
-
-    function closeCommentsModal() {
-        commentsModal.classList.add('hidden');
-        currentNewsCommentsModalId = null;
-        // Restaura scroll apenas se nenhum player estiver ativo
-        if (playerView.classList.contains('hidden') && newsPlayerView.classList.contains('hidden')) {
-            document.body.style.overflow = 'auto';
-        }
-        cancelReply();
-    }
-
-    async function handleCommentSubmit(event) {
-        event.preventDefault();
-         console.log("[handleCommentSubmit] Tentando enviar comentário...");
-        if (!userId || !currentProfile?.id || !currentNewsCommentsModalId) { // Adicionado .id
-             console.log("[handleCommentSubmit] Erro: userId, currentProfile.id ou currentNewsCommentsModalId ausente.");
-             showToast("Erro: Faça login e selecione um perfil para comentar.", true);
-             return;
-         }
-
-        const commentText = commentInput.value.trim();
-        if (!commentText) {
-             console.log("[handleCommentSubmit] Erro: Comentário vazio.");
-             return; // Não envia comentário vazio
-         }
-
-        // Desabilita o form temporariamente para evitar envios duplicados
-        commentInput.disabled = true;
-        commentForm.querySelector('button[type="submit"]').disabled = true;
-
-
-        const commentData = {
-            profileId: currentProfile.id,
-            profileName: currentProfile.name,
-            profileAvatar: currentProfile.avatar,
-            text: commentText,
-            createdAt: serverTimestamp(),
-            replyTo: replyToCommentId || null, // ID do comentário pai, se for resposta
-            newsId: currentNewsCommentsModalId // Adiciona o ID do post ao comentário
-        };
-
-        try {
-             console.log("[handleCommentSubmit] Adicionando documento à coleção 'comentarios':", commentData);
-             // **CORREÇÃO: Salva na coleção raiz 'comentarios', usando newsId como parte do caminho**
-             const commentsColRef = collection(db, "comentarios", currentNewsCommentsModalId, "comments");
-            await addDoc(commentsColRef, commentData);
-             console.log("[handleCommentSubmit] Comentário adicionado com sucesso.");
-            commentInput.value = ''; // Limpa o input
-            cancelReply(); // Sai do modo de resposta, se estiver
-            // O listener onSnapshot (listenForNewsComments) atualizará a lista no modal
-        } catch (error) {
-            console.error("[handleCommentSubmit] Erro ao adicionar comentário:", error);
-            showToast("Erro ao enviar comentário. Tente novamente.", true);
-        } finally {
-            // Reabilita o form
-            commentInput.disabled = false;
-            commentForm.querySelector('button[type="submit"]').disabled = false;
-            commentInput.focus(); // Coloca o foco de volta no input
-        }
-    }
-
-    function renderComments(newsId) {
-        // Pega os comentários do cache (atualizado pelo listener)
-        const comments = newsComments.get(newsId) || [];
-        commentsModalList.innerHTML = ''; // Limpa a lista atual
-
-        if (comments.length === 0) {
-            commentsModalList.innerHTML = '<p class="text-slate-400 text-center py-4">Nenhum comentário ainda. Seja o primeiro!</p>';
-            return;
-        }
-
-        // Constrói uma árvore de comentários (respostas aninhadas)
-        const commentTree = {}; // Guarda respostas: { parentId: [reply1, reply2] }
-        const topLevelComments = []; // Guarda comentários que não são respostas
-
-        comments.forEach(comment => {
-            if (comment.replyTo) { // Se for uma resposta
-                if (!commentTree[comment.replyTo]) commentTree[comment.replyTo] = [];
-                commentTree[comment.replyTo].push(comment); // Adiciona ao array do pai
-            } else { // Se for um comentário principal
-                topLevelComments.push(comment);
-            }
-        });
-
-        // Ordena respostas por data dentro de cada nó
-         Object.values(commentTree).forEach(replies => {
-             replies.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
-         });
-         // Ordena comentários principais por data
-         topLevelComments.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
-
-
-        // Função recursiva para renderizar um comentário e suas respostas
-        const renderCommentNode = (comment, level = 0) => {
-            const commentDate = comment.createdAt?.toDate ? comment.createdAt.toDate().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short'}) : '';
-            const replies = commentTree[comment.id] || []; // Pega as respostas para este comentário
-            const isReplyingToThis = replyToCommentId === comment.id; // Verifica se estamos respondendo a este
-
-            // Gera o HTML para as respostas (chamando a função recursivamente)
-            let replyHTML = '';
-            if (replies.length > 0) {
-                replyHTML = `<div class="ml-6 mt-2 space-y-2 border-l-2 border-slate-700 pl-3">
-                                ${replies.map(reply => renderCommentNode(reply, level + 1)).join('')}
-                             </div>`;
-            }
-
-            // HTML do comentário atual
-            return `
-                <div class="comment-item py-2 ${level > 0 ? '' : 'border-b border-slate-700/50 pb-3 mb-1'}"> {/* Estilo diferente para nível 0 */}
-                    <div class="flex items-start gap-3">
-                        <img src="${comment.profileAvatar || AVATARS[0]}" alt="${comment.profileName}" class="w-8 h-8 rounded-full flex-shrink-0 mt-1 shadow-md">
-                        <div class="flex-1">
-                            <p class="font-semibold text-sm text-white">${comment.profileName}
-                                <span class="text-xs text-slate-400 font-normal ml-2">${commentDate}</span>
-                            </p>
-                            <p class="text-slate-300 text-sm mt-0.5 whitespace-pre-wrap break-words">${comment.text}</p>
-                            <button class="reply-button text-xs text-blue-400 hover:underline mt-1 flex items-center gap-1" data-comment-id="${comment.id}" data-author-name="${comment.profileName}">
-                                ${ICONS.reply} Responder
-                             </button>
-                             ${isReplyingToThis ? '<span class="text-xs text-blue-400 ml-2">(Respondendo...)</span>' : ''} {/* Indicador de resposta */}
-                        </div>
-                    </div>
-                    ${replyHTML} {/* Insere as respostas aninhadas */}
-                </div>
-            `;
-        };
-
-        // Renderiza todos os comentários de nível superior
-        commentsModalList.innerHTML = topLevelComments.map(comment => renderCommentNode(comment)).join('');
-        // Recria ícones Lucide após renderizar (para os botões de resposta)
-         lucide.createIcons({
-             nodes: [commentsModalList] // Otimiza buscando apenas na lista
-         });
-         // Rola para o final da lista de comentários
-         commentsModalList.scrollTop = commentsModalList.scrollHeight;
-    }
-
-
-
-    // Listener para o form de comentário
-    commentForm.addEventListener('submit', handleCommentSubmit);
-    commentsModalCloseBtn.addEventListener('click', closeCommentsModal);
-
-    // Listener para botões de responder dentro do modal (usando delegação de evento)
-    commentsModalList.addEventListener('click', (e) => {
-        const replyButton = e.target.closest('.reply-button');
-        if (replyButton) {
-            const commentId = replyButton.dataset.commentId;
-            const authorName = replyButton.dataset.authorName;
-             console.log(`Botão responder clicado para: ${commentId} (${authorName})`);
-            startReply(commentId, authorName);
-        }
-    });
-
-    // Inicia o modo de resposta a um comentário específico
-    function startReply(commentId, authorName) {
-        replyToCommentId = commentId;
-        replyToCommentAuthor = authorName;
-        // Mostra o indicador visual de a quem está respondendo
-         replyIndicator.innerHTML = `<span>Respondendo a ${authorName}</span>
-                                    <button id="cancel-reply-btn-inner" class="text-red-400 hover:text-red-300 text-xs ml-auto">Cancelar</button>`;
-        replyIndicator.classList.remove('hidden');
-        // Adiciona listener ao botão interno de cancelar (será removido em cancelReply)
-         const cancelBtnInner = document.getElementById('cancel-reply-btn-inner');
-         if(cancelBtnInner) cancelBtnInner.addEventListener('click', cancelReply, { once: true });
-
-        commentInput.focus(); // Foca no input
-        // Re-renderiza a lista para mostrar o indicador "(Respondendo...)" no comentário correto
-        if (currentNewsCommentsModalId) renderComments(currentNewsCommentsModalId);
-    }
-
-
-    // Cancela o modo de resposta
-    function cancelReply() {
-         console.log("Cancelando modo de resposta.");
-        replyToCommentId = null;
-        replyToCommentAuthor = null;
-        replyIndicator.classList.add('hidden');
-        replyIndicator.innerHTML = ''; // Limpa o conteúdo
-        // Remove o listener do botão interno (se existir)
-        const cancelBtnInner = document.getElementById('cancel-reply-btn-inner');
-        if(cancelBtnInner) cancelBtnInner.removeEventListener('click', cancelReply);
-
-        // Re-renderiza a lista para remover o indicador "(Respondendo...)"
-        if (currentNewsCommentsModalId && !commentsModal.classList.contains('hidden')) {
-            renderComments(currentNewsCommentsModalId);
-        }
-    }
-
-
-    // --- FIM: Funções e Listeners de Comentários ---
+    // REMOVIDO: Funções e Listeners de Comentários
 
     // Função para parar iframes e player de novidades
     function stopNewsViewMedia() {
@@ -3654,11 +3321,11 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- TORNADO 
         // Reseta src de iframes na seção de novidades para pará-los e remove o iframe carregado
         const newsIframeContainers = document.querySelectorAll('.news-iframe-container');
         newsIframeContainers.forEach(container => {
-             const overlay = container.querySelector('.news-iframe-play-overlay');
-             const wrapper = container.querySelector('[id^="iframe-wrapper-"]'); // Encontra o wrapper pelo prefixo do ID
+            const overlay = container.querySelector('.news-iframe-play-overlay');
+            const wrapper = container.querySelector('[id^="iframe-wrapper-"]'); // Encontra o wrapper pelo prefixo do ID
 
-             if (wrapper) wrapper.innerHTML = ''; // Remove o iframe se existir
-             if (overlay) overlay.classList.remove('hidden'); // Mostra o overlay de play novamente
+            if (wrapper) wrapper.innerHTML = ''; // Remove o iframe se existir
+            if (overlay) overlay.classList.remove('hidden'); // Mostra o overlay de play novamente
         });
     }
 
