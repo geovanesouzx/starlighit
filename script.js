@@ -563,14 +563,16 @@ document.addEventListener('DOMContentLoaded', function() {
         newsPlayerVideo.src = url;
         newsPlayerView.classList.remove('hidden');
         document.body.style.overflow = 'hidden'; // Impede scroll do fundo
-        newsPlayerVideo.play().catch(e => console.error("Erro ao iniciar player de novidades:", e));
+        // **CORREÇÃO: Remove autoplay**
+        // newsPlayerVideo.play().catch(e => console.error("Erro ao iniciar player de novidades:", e));
     }
+
 
     function hideNewsPlayer() {
         if (!newsPlayerView || !newsPlayerVideo) return;
         newsPlayerVideo.pause();
         newsPlayerVideo.removeAttribute('src'); // Remove a fonte para parar o carregamento
-        newsPlayerVideo.load();
+        newsPlayerVideo.load(); // Importante para parar downloads pendentes
         newsPlayerView.classList.add('hidden');
         // Só restaura o scroll se o player principal também não estiver ativo
         if (playerView.classList.contains('hidden')) {
@@ -588,8 +590,16 @@ document.addEventListener('DOMContentLoaded', function() {
      * Escuta por atualizações na coleção 'content' do Firestore e atualiza a UI.
      */
     async function listenToFirestoreContent() {
+        // Garante que o listener antigo seja parado
+         if (typeof window.unsubscribeContent === 'function') {
+            window.unsubscribeContent();
+        }
+         if (typeof window.unsubscribeFeatured === 'function') {
+            window.unsubscribeFeatured();
+        }
+
         // Escuta a coleção 'content'
-        onSnapshot(collection(db, 'content'), (snapshot) => {
+        window.unsubscribeContent = onSnapshot(collection(db, 'content'), (snapshot) => {
             firestoreContent = []; // Limpa o cache local
             snapshot.forEach(doc => {
                 // Adiciona cada item ao cache com seu ID do Firestore
@@ -597,14 +607,27 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             // Escuta o documento 'featured' na coleção 'config' para saber quais itens destacar
-            onSnapshot(doc(db, 'config', 'featured'), (docSnap) => {
+             // Parar listener antigo de featured antes de criar novo
+             if (typeof window.unsubscribeFeatured === 'function') {
+                 window.unsubscribeFeatured();
+             }
+            window.unsubscribeFeatured = onSnapshot(doc(db, 'config', 'featured'), (docSnap) => {
                 // Pega a lista de IDs de destaque, ou um array vazio se não existir
                 featuredItemIds = docSnap.exists() ? (docSnap.data().items || []) : [];
                 // Re-renderiza a tela atual com base nos novos dados
                 handleNavigation(); // O roteador decidirá o que renderizar
+            }, (error) => {
+                 console.error("Erro ao escutar config/featured:", error);
+                 featuredItemIds = []; // Define como vazio em caso de erro
+                 handleNavigation(); // Renderiza mesmo assim
             });
+        }, (error) => {
+             console.error("Erro ao escutar coleção 'content':", error);
+             firestoreContent = []; // Limpa em caso de erro
+             handleNavigation(); // Tenta renderizar
         });
     }
+
 
     /**
      * Popula a tela inicial com carrosséis (adicionados recentemente, por gênero).
@@ -682,7 +705,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (firestoreContent.length > 0) {
                 // Fallback se não houver featured, mostra o mais recente
                 const mostRecent = [...firestoreContent].sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0))[0];
-                updateHero(mostRecent);
+                 if(mostRecent) updateHero(mostRecent); // Verifica se existe
             }
             populateAllViews(); // Popula os carrosséis da home
         } else if (screenId === 'series-view') {
@@ -1999,6 +2022,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const date = item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Data indisponível';
         let contentHTML = '';
         let typeClass = '';
+        const uniqueId = `iframe-${item.id}-${Math.random().toString(36).substring(7)}`; // ID único para iframe e overlay
 
         switch (item.type) {
             case 'text':
@@ -2010,11 +2034,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 typeClass = 'news-item-image';
                 break;
             case 'video': // Para iframes (YouTube, etc.)
-                const isYoutube = item.content.includes('youtube.com/embed');
-                const aspectClass = isYoutube ? 'aspect-video' : '';
-                contentHTML = `<div class="${aspectClass} mt-3"><iframe src="${item.content}" frameborder="0" sandbox="allow-scripts allow-same-origin allow-presentation" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="w-full h-full rounded-lg shadow-lg ${isYoutube ? '' : 'min-h-[300px]'}"></iframe></div>`;
-                typeClass = 'news-item-video';
-                break;
+                 const isYoutube = item.content.includes('youtube.com/embed') || item.content.includes('youtu.be');
+                 const aspectClass = isYoutube ? 'aspect-video' : '';
+                 // **CORREÇÃO AUTOPLAY IFRAME:** Adiciona overlay e botão play
+                 contentHTML = `
+                     <div class="relative ${aspectClass} mt-3 group news-iframe-container rounded-lg overflow-hidden shadow-lg bg-black" data-iframe-src="${item.content}">
+                         <div id="overlay-${uniqueId}" class="absolute inset-0 flex items-center justify-center cursor-pointer z-10 bg-black/50 hover:bg-black/70 transition-colors news-iframe-play-overlay">
+                             <i data-lucide="play-circle" class="w-16 h-16 text-white opacity-80 group-hover:opacity-100 transition-opacity"></i>
+                         </div>
+                         <div id="iframe-wrapper-${uniqueId}" class="w-full h-full ${isYoutube ? '' : 'min-h-[300px]'}">
+                             <!-- Iframe será inserido aqui pelo JS -->
+                         </div>
+                     </div>`;
+                 typeClass = 'news-item-video';
+                 break;
             case 'video_direct': // Para URLs de vídeo diretas
                 contentHTML = `
                     <div class="relative mt-3 rounded-lg overflow-hidden cursor-pointer news-video-thumbnail group" data-video-url="${item.content}" data-video-title="${item.title || 'Vídeo'}">
@@ -2063,31 +2096,44 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
 
-    // **CORREÇÃO: Usa delegação de eventos para a seção de novidades**
+    // Listener de eventos delegado para a seção de novidades
     const newsContainer = document.getElementById('news-items-container');
     if (newsContainer) {
         newsContainer.addEventListener('click', (e) => {
             const likeButton = e.target.closest('.like-button');
             const commentButton = e.target.closest('.comment-button');
             const videoThumbnail = e.target.closest('.news-video-thumbnail');
+            const iframeOverlay = e.target.closest('.news-iframe-play-overlay'); // **NOVO: Listener para overlay do iframe**
 
             if (likeButton) {
                 const card = likeButton.closest('.news-item-card');
                 const newsId = card?.dataset.newsId;
-                if (newsId) {
-                    handleNewsLike(newsId);
-                }
+                if (newsId) handleNewsLike(newsId);
             } else if (commentButton) {
                 const card = commentButton.closest('.news-item-card');
                 const newsId = card?.dataset.newsId;
-                if (newsId) {
-                    openCommentsModal(newsId);
-                }
+                if (newsId) openCommentsModal(newsId);
             } else if (videoThumbnail) {
                 const url = videoThumbnail.dataset.videoUrl;
                 const title = videoThumbnail.dataset.videoTitle;
-                if (url) {
-                    showNewsPlayer(url, title);
+                if (url) showNewsPlayer(url, title);
+            } else if (iframeOverlay) { // **NOVO: Lógica para iniciar iframe**
+                const container = iframeOverlay.closest('.news-iframe-container');
+                const iframeSrc = container?.dataset.iframeSrc;
+                const wrapperId = iframeOverlay.id.replace('overlay-', 'iframe-wrapper-');
+                const wrapper = document.getElementById(wrapperId);
+
+                if (iframeSrc && wrapper) {
+                    // Adiciona autoplay=1 se for youtube
+                    let finalSrc = iframeSrc;
+                     if (iframeSrc.includes('youtube.com') || iframeSrc.includes('youtu.be')) {
+                         const url = new URL(iframeSrc);
+                         url.searchParams.set('autoplay', '1');
+                         finalSrc = url.toString();
+                     }
+
+                    wrapper.innerHTML = `<iframe src="${finalSrc}" frameborder="0" sandbox="allow-scripts allow-same-origin allow-presentation allow-popups" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; autoplay" allowfullscreen class="w-full h-full"></iframe>`;
+                    iframeOverlay.classList.add('hidden'); // Esconde o overlay
                 }
             }
         });
@@ -2739,6 +2785,11 @@ document.addEventListener('DOMContentLoaded', function() {
          if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
          if (typeof unsubscribeNewsComments === 'function') unsubscribeNewsComments();
          if (typeof window.unsubscribeRequests === 'function') window.unsubscribeRequests();
+          // Limpa caches que dependem do perfil
+         newsLikes.clear();
+         newsComments.clear();
+         pendingRequests = [];
+         firestoreContent = []; // Limpa catálogo principal também
     }
 
     /** Mostra a tela de seleção/gerenciamento de perfil */
@@ -2760,6 +2811,11 @@ document.addEventListener('DOMContentLoaded', function() {
          if (typeof unsubscribeNewsLikes === 'function') unsubscribeNewsLikes();
          if (typeof unsubscribeNewsComments === 'function') unsubscribeNewsComments();
          if (typeof window.unsubscribeRequests === 'function') window.unsubscribeRequests();
+          // Limpa caches que dependem do perfil
+         newsLikes.clear();
+         newsComments.clear();
+         pendingRequests = [];
+         firestoreContent = []; // Limpa catálogo principal também
     }
 
 
@@ -2781,6 +2837,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     // e chamar handleNavigation
                     await selectAndEnterProfile(foundProfile);
                     autoSelectedProfile = true;
+                } else {
+                     // Se o profileId salvo não existe mais, remove do localStorage
+                     localStorage.removeItem(`starlight-lastProfile-${userId}`);
                 }
             }
 
@@ -2825,7 +2884,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // A chamada inicial do handleNavigation será feita pelo onAuthStateChanged
     // após verificar o estado de login e perfil.
 
-    // --- Funções e Listeners de Comentários --- (sem alterações significativas)
+    // --- Funções e Listeners de Comentários ---
 
     function openCommentsModal(newsId) {
         if (!newsId) return;
@@ -2838,7 +2897,11 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.style.overflow = 'hidden';
         commentInput.focus();
         cancelReply();
+        // **CORREÇÃO:** Chama lucide.createIcons DEPOIS de tornar o modal visível
+        // para garantir que o ícone 'x' seja renderizado
+        setTimeout(() => lucide.createIcons(), 0);
     }
+
 
     function closeCommentsModal() {
         commentsModal.classList.add('hidden');
@@ -2902,6 +2965,9 @@ document.addEventListener('DOMContentLoaded', function() {
          Object.values(commentTree).forEach(replies => {
              replies.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
          });
+         // Ordena comentários principais por data
+         topLevelComments.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+
 
         const renderCommentNode = (comment, level = 0) => {
             const commentDate = comment.createdAt?.toDate ? comment.createdAt.toDate().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short'}) : '';
@@ -2990,15 +3056,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Função para parar iframes e player de novidades
     function stopNewsViewMedia() {
         hideNewsPlayer(); // Para o player modal
-        // Reseta src de iframes na seção de novidades para pará-los
-        const newsIframes = document.querySelectorAll('#news-items-container iframe');
-        newsIframes.forEach(iframe => {
-            const originalSrc = iframe.getAttribute('src'); // Guarda o src original
-            iframe.setAttribute('src', ''); // Define src como vazio para parar
-            // Opcional: Readiciona o src após um pequeno delay se quiser que ele recarregue ao voltar
-            // setTimeout(() => iframe.setAttribute('src', originalSrc), 100);
+        // Reseta src de iframes na seção de novidades para pará-los e remove o iframe carregado
+        const newsIframeContainers = document.querySelectorAll('.news-iframe-container');
+        newsIframeContainers.forEach(container => {
+             const overlayId = container.querySelector('.news-iframe-play-overlay')?.id;
+             const wrapperId = overlayId?.replace('overlay-', 'iframe-wrapper-');
+             const wrapper = wrapperId ? document.getElementById(wrapperId) : null;
+             const overlay = overlayId ? document.getElementById(overlayId) : null;
+
+             if (wrapper) wrapper.innerHTML = ''; // Remove o iframe se existir
+             if (overlay) overlay.classList.remove('hidden'); // Mostra o overlay de play novamente
         });
     }
 
 
 });
+
