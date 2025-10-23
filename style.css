@@ -15,16 +15,18 @@ body.auth-loading {
     visibility: hidden;
 }
 
+/* Fundo padrão para login (horizontal) */
 #login-view {
     background-image: url('https://image.tmdb.org/t/p/original/c2dPK558peXs9QzacwzHYQqqS2r.jpg');
 }
+/* Fundo específico para login em telas menores (vertical) */
 @media (max-width: 768px) {
     #login-view {
         background-image: url('https://image.tmdb.org/t/p/original/8RivlvIUNxwrI19w9ypiC4ZzJ6S.jpg');
     }
 }
 
-
+/* Fundo principal (usado na Home) */
 .main-background {
     position: absolute;
     top: 0;
@@ -35,8 +37,11 @@ body.auth-loading {
     background-position: center;
     transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in-out;
     z-index: -2;
+    /* Imagem horizontal padrão (pode ser sobrescrita pelo JS) */
+    background-image: url('https://placehold.co/1920x1080/0c0a09/ffffff?text=Fundo+Horizontal');
 }
 
+/* Sobreposição de gradiente no fundo principal */
 .main-background::after {
     content: '';
     position: absolute;
@@ -44,6 +49,20 @@ body.auth-loading {
     background: linear-gradient(to top, #0c0a09 15%, transparent 50%),
                 linear-gradient(to right, #0c0a09 2%, transparent 50%);
 }
+
+/* Fundo vertical para #main-background em telas menores */
+@media (max-width: 768px) {
+    .main-background {
+        /* Imagem vertical para mobile - será sobrescrita pelo JS na Home, mas funciona em outras telas se necessário */
+        background-image: url('https://placehold.co/720x1280/0c0a09/ffffff?text=Fundo+Vertical');
+    }
+     /* Ajusta o gradiente para telas menores */
+    .main-background::after {
+         background: linear-gradient(to top, #0c0a09 25%, transparent 60%), /* Mais forte na base */
+                    linear-gradient(to right, #0c0a09 5%, transparent 70%); /* Um pouco mais forte na lateral */
+    }
+}
+
 
 .glass-container {
     position: relative;
@@ -645,3 +664,4 @@ input[type="range"].player-volume-slider {
         font-size: 0.75rem;
     }
 }
+

@@ -456,7 +456,7 @@ document.addEventListener('DOMContentLoaded', function() {
             currentHeroItem = item; // Define o item atual do hero
             const backgroundUrl = item.backdrop; // URL do backdrop
 
-            // Define a imagem de fundo principal
+            // Define a imagem de fundo principal (ainda usa a horizontal por enquanto)
             mainBackground.style.backgroundImage = `url('${backgroundUrl}')`;
 
             // Atualiza os textos e informações
@@ -2277,3 +2277,4 @@ document.addEventListener('DOMContentLoaded', function() {
     // handleNavigation(); << Removido - onAuthStateChanged cuidará da chamada inicial.
 
 });
+
