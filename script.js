@@ -2782,14 +2782,14 @@ function loadComments(newsId, commentsListElement) {
         const repliesList = cardElement.querySelector('.replies-list');
 
         replyBtn.addEventListener('click', () => replyInputArea.classList.toggle('hidden'));
-         {
+        if (viewRepliesBtn) {
             viewRepliesBtn.addEventListener('click', () => {
                 const isHidden = repliesList.classList.toggle('hidden');
                  viewRepliesBtn.innerHTML = isHidden
                      ? `<i data-lucide="messages-square" class="w-3 h-3"></i> Ver ${viewRepliesBtn.dataset.count} ${viewRepliesBtn.dataset.count == 1 ? 'resposta' : 'respostas'}`
                      : `<i data-lucide="chevron-up" class="w-3 h-3"></i> Ocultar respostas`;
                  lucide.createIcons({ nodes: [viewRepliesBtn] });
-                if if (viewRepliesBtn)(!isHidden && repliesList.innerHTML === '') {
+                if (!isHidden && repliesList.innerHTML === '') {
                     loadReplies(newsId, commentId, repliesList); // Carrega respostas ao expandir
                 }
             });
