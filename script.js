@@ -2561,33 +2561,47 @@ document.addEventListener('DOMContentLoaded', function() {
         return card;
     }
 
-    /** Adiciona listeners aos botões e elementos de um card de novidade */
-    function addNewsCardListeners(cardElement) {
-        const likeBtn = cardElement.querySelector('.like-btn');
-        const commentBtn = cardElement.querySelector('.comment-btn');
-        const commentsSection = cardElement.querySelector('.comments-section');
-        const commentInput = cardElement.querySelector('.comment-input');
-        const submitCommentBtn = cardElement.querySelector('.submit-comment-btn');
-        const commentsList = cardElement.querySelector('.comments-list');
-        const newsId = cardElement.dataset.newsId;
+   /** Adiciona listeners aos botões e elementos de um card de novidade */
+function addNewsCardListeners(cardElement) {
+    const likeBtn = cardElement.querySelector('.like-btn');
+    const commentBtn = cardElement.querySelector('.comment-btn');
+    const commentsSection = cardElement.querySelector('.comments-section');
+    const commentInput = cardElement.querySelector('.comment-input');
+    const submitCommentBtn = cardElement.querySelector('.submit-comment-btn');
+    const commentsList = cardElement.querySelector('.comments-list');
+    const newsId = cardElement.dataset.newsId;
 
-        likeBtn.addEventListener('click', () => handleLike(newsId, likeBtn));
-        commentBtn.addEventListener('click', () => {
-             commentsSection.classList.toggle('hidden');
-             if (!commentsSection.classList.contains('hidden') && commentsList.innerHTML === '') {
-                 loadComments(newsId, commentsList); // Carrega comentários ao abrir pela 1ª vez
-             }
-         });
-        submitCommentBtn.addEventListener('click', () => submitComment(newsId, commentInput, commentsList));
+    // NOVO: Variável para armazenar a função que cancela o ouvinte de comentários
+    let unsubscribeCommentsListener = null; 
 
-        // Listener para submeter comentário com Enter (Shift+Enter para nova linha)
-        commentInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault(); // Impede nova linha
-                submitComment(newsId, commentInput, commentsList);
+    likeBtn.addEventListener('click', () => handleLike(newsId, likeBtn));
+    
+    commentBtn.addEventListener('click', () => {
+        commentsSection.classList.toggle('hidden');
+        
+        if (!commentsSection.classList.contains('hidden')) {
+            // SEÇÃO ABRINDO: Liga o ouvinte em tempo real
+            // loadComments retorna a função de cancelamento.
+            unsubscribeCommentsListener = loadComments(newsId, commentsList); 
+        } else {
+            // SEÇÃO FECHANDO: Cancela o ouvinte se ele estiver ligado
+            if (unsubscribeCommentsListener) {
+                unsubscribeCommentsListener();
+                unsubscribeCommentsListener = null; // Limpa a variável
             }
-        });
-    }
+        }
+    });
+
+    submitCommentBtn.addEventListener('click', () => submitComment(newsId, commentInput, commentsList));
+
+    // Listener para submeter comentário com Enter (Shift+Enter para nova linha)
+    commentInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault(); 
+            submitComment(newsId, commentInput, commentsList);
+        }
+    });
+}
 
     /** Lida com o clique no botão de curtir */
     async function handleLike(newsId, likeBtn) {
@@ -2684,29 +2698,40 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    /** Carrega os comentários de um post (poderia ter paginação no futuro) */
-    async function loadComments(newsId, commentsListElement) {
-        commentsListElement.innerHTML = `<div class="spinner mx-auto my-4"></div>`; // Spinner
-        const q = query(collection(db, 'news', newsId, 'comments'), orderBy('createdAt', 'desc')); // Ordena por mais recentes
+   // CÓDIGO NOVO E CORRIGIDO PARA loadComments
+/** Carrega e escuta os comentários de um post em tempo real. */
+// Esta função NÃO é mais async
+function loadComments(newsId, commentsListElement) {
+    // A query para a coleção de comentários
+    const q = query(collection(db, 'news', newsId, 'comments'), orderBy('createdAt', 'asc'));
 
-        // Usar onSnapshot para atualizações em tempo real (opcional, mas bom)
-        onSnapshot(q, (snapshot) => {
-            if (snapshot.empty) {
-                commentsListElement.innerHTML = '<p class="text-stone-400 text-sm text-center">Nenhum comentário ainda.</p>';
-                return;
-            }
-            commentsListElement.innerHTML = ''; // Limpa spinner/conteúdo anterior
-            snapshot.forEach(doc => {
-                const commentCard = createCommentCard({ id: doc.id, ...doc.data() }, newsId);
-                commentsListElement.appendChild(commentCard);
-            });
-            attachGlassButtonListeners();
-            lucide.createIcons();
-        }, (error) => {
-             console.error("Erro ao carregar comentários:", error);
-             commentsListElement.innerHTML = '<p class="text-red-400 text-sm text-center">Erro ao carregar comentários.</p>';
+    // Configura o ouvinte em tempo real (onSnapshot)
+    // O onSnapshot retorna a função que cancela o ouvinte!
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        // Limpa o conteúdo (Spinner/mensagens) ANTES de reconstruir
+        commentsListElement.innerHTML = ''; 
+        
+        if (snapshot.empty) {
+            commentsListElement.innerHTML = '<p class="text-stone-400 text-sm text-center">Nenhum comentário ainda.</p>';
+            return;
+        }
+
+        // Reconstrói a lista de comentários
+        snapshot.forEach(doc => {
+            const commentCard = createCommentCard({ id: doc.id, ...doc.data() }, newsId);
+            commentsListElement.appendChild(commentCard);
         });
-    }
+        
+        attachGlassButtonListeners();
+        lucide.createIcons();
+    }, (error) => {
+        console.error("Erro ao carregar comentários:", error);
+        commentsListElement.innerHTML = '<p class="text-red-400 text-sm text-center">Erro ao carregar comentários.</p>';
+    });
+    
+    // RETORNA a função de unsubscribe. Quem chamar 'loadComments' precisa guardar isso.
+    return unsubscribe; 
+}
 
     /** Cria o HTML para um card de comentário */
     function createCommentCard(comment, newsId) {
