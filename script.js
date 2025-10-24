@@ -2409,25 +2409,57 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /** Escuta por atualizações na coleção 'news' e atualiza o cache */
     function listenForNews() {
-        // Para o listener anterior se existir (evita duplicação ao trocar de perfil)
-        if (unsubscribeNewsListener) {
-            unsubscribeNewsListener();
-        }
-
-        const q = query(collection(db, "news"), orderBy("createdAt", "desc"));
-        unsubscribeNewsListener = onSnapshot(q, (snapshot) => {
-            newsItemsCache = [];
-            snapshot.forEach((doc) => {
-                newsItemsCache.push({ id: doc.id, ...doc.data() });
-            });
-            // Re-renderiza o feed se a view de novidades estiver ativa
-            if (window.location.hash === '#news-view') {
-                renderNewsFeed();
-            }
-        }, (error) => {
-            console.error("Erro ao escutar novidades: ", error);
-        });
+    if (unsubscribeNewsListener) {
+        unsubscribeNewsListener();
     }
+
+    const q = query(collection(db, "news"), orderBy("createdAt", "desc"));
+    unsubscribeNewsListener = onSnapshot(q, (snapshot) => {
+        const newsContainer = document.getElementById('news-items-container');
+
+        snapshot.docChanges().forEach((change) => {
+            const changedData = { id: change.doc.id, ...change.doc.data() };
+            const existingCard = newsContainer ? newsContainer.querySelector(`.news-card[data-news-id="${change.doc.id}"]`) : null;
+
+            if (change.type === "added") {
+                // Adiciona o novo post no cache e na tela
+                if (!existingCard) {
+                    newsItemsCache.unshift(changedData); // Adiciona no início do array
+                    if (window.location.hash === '#news-view' && newsContainer) {
+                         // Remove mensagem de "nenhuma novidade" se existir
+                        const placeholder = newsContainer.querySelector('p');
+                        if(placeholder) placeholder.remove();
+
+                        const newCard = createNewsCard(changedData);
+                        newsContainer.prepend(newCard); // Adiciona no topo do feed
+                        attachGlassButtonListeners();
+                        lucide.createIcons();
+                    }
+                }
+            }
+            if (change.type === "modified") {
+                // Atualiza o post existente no cache e na tela
+                const index = newsItemsCache.findIndex(item => item.id === change.doc.id);
+                if (index > -1) {
+                    newsItemsCache[index] = changedData;
+                }
+                if (existingCard) {
+                    // Esta é a função mágica que vamos criar no próximo passo
+                    updateNewsCardUI(existingCard, changedData);
+                }
+            }
+            if (change.type === "removed") {
+                // Remove o post do cache e da tela
+                newsItemsCache = newsItemsCache.filter(item => item.id !== change.doc.id);
+                if (existingCard) {
+                    existingCard.remove();
+                }
+            }
+        });
+    }, (error) => {
+        console.error("Erro ao escutar novidades: ", error);
+    });
+}
 
     /** Renderiza o feed de novidades na tela */
     function renderNewsFeed() {
@@ -2979,5 +3011,40 @@ document.addEventListener('DOMContentLoaded', function() {
         // Re-avalia qual listener de clique do player adicionar (mobile vs desktop)
         addPlayerEventListeners();
     });
+// CÓDIGO NOVO (ADICIONAR ESTA FUNÇÃO)
+/**
+ * Atualiza apenas os elementos visuais de um card de novidade que mudaram,
+ * sem recriar o card inteiro.
+ * @param {HTMLElement} cardElement - O elemento do card que já está na página.
+ * @param {object} updatedData - Os novos dados do post vindos do Firestore.
+ */
+function updateNewsCardUI(cardElement, updatedData) {
+    // --- Atualiza o contador de curtidas ---
+    const likeCountSpan = cardElement.querySelector('.like-count');
+    const likeBtn = cardElement.querySelector('.like-btn');
+    const likeIcon = likeBtn ? likeBtn.firstElementChild : null;
 
+    if (likeCountSpan) {
+        likeCountSpan.textContent = updatedData.likeCount || 0;
+    }
+
+    // --- Atualiza o ícone de curtida para o usuário atual ---
+    if (likeBtn && likeIcon) {
+        const userHasLiked = userId && (updatedData.likes || []).includes(userId);
+        const isCurrentlyLiked = likeBtn.classList.contains('text-pink-500');
+
+        if (userHasLiked && !isCurrentlyLiked) {
+            likeBtn.classList.add('text-pink-500');
+            likeIcon.setAttribute('data-lucide', 'heart-handshake');
+            lucide.createIcons({ nodes: [likeIcon] });
+        } else if (!userHasLiked && isCurrentlyLiked) {
+            likeBtn.classList.remove('text-pink-500');
+            likeIcon.setAttribute('data-lucide', 'heart');
+            lucide.createIcons({ nodes: [likeIcon] });
+        }
+    }
+
+    // --- Atualiza o contador de respostas (se existir no futuro) ---
+    // Poderíamos adicionar lógica aqui para atualizar contadores de comentários/respostas se quiséssemos.
+}
 }); // Fim do DOMContentLoaded
