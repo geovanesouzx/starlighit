@@ -144,8 +144,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const AVATARS = [ // URLs dos avatares disponíveis
         'https://pbs.twimg.com/media/EcGdw6xXsAMkqGF?format=jpg&name=large',
         'https://pbs.twimg.com/media/FMs8_KeWYAAtoS3.jpg',
-        'https://i.pinimg.com/736x/a8/31/b5/a831b58a3a067756a16518884967e812.jpg',
+        'https://pbs.twimg.com/media/EcGdw6wXYAUrPu4.jpg',
         'https://pbs.twimg.com/media/EcGdw6uXgAEpGA-.jpg'
+        'https://pbs.twimg.com/media/EcGdw6uXgAEpGA-.jpg'
+    ];
     ];
 
     // Ícones SVG para os controles do player
