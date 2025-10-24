@@ -2782,27 +2782,33 @@ function loadComments(newsId, commentsListElement) {
         const repliesList = cardElement.querySelector('.replies-list');
 
         replyBtn.addEventListener('click', () => replyInputArea.classList.toggle('hidden'));
-        if (viewRepliesBtn) {
+         {
+            if (viewRepliesBtn) {
+            // NOVO: Variável local para armazenar a função de cancelamento do ouvinte de respostas para este comentário
+            let unsubscribeRepliesListener = null;
+
             viewRepliesBtn.addEventListener('click', () => {
                 const isHidden = repliesList.classList.toggle('hidden');
-                 viewRepliesBtn.innerHTML = isHidden
-                     ? `<i data-lucide="messages-square" class="w-3 h-3"></i> Ver ${viewRepliesBtn.dataset.count} ${viewRepliesBtn.dataset.count == 1 ? 'resposta' : 'respostas'}`
-                     : `<i data-lucide="chevron-up" class="w-3 h-3"></i> Ocultar respostas`;
-                 lucide.createIcons({ nodes: [viewRepliesBtn] });
-                if (!isHidden && repliesList.innerHTML === '') {
-                    loadReplies(newsId, commentId, repliesList); // Carrega respostas ao expandir
+                
+                // Atualiza o texto do botão de ver respostas
+                viewRepliesBtn.innerHTML = isHidden
+                    ? `<i data-lucide="messages-square" class="w-3 h-3"></i> Ver ${viewRepliesBtn.dataset.count} ${viewRepliesBtn.dataset.count == 1 ? 'resposta' : 'respostas'}`
+                    : `<i data-lucide="chevron-up" class="w-3 h-3"></i> Ocultar respostas`;
+                lucide.createIcons({ nodes: [viewRepliesBtn] });
+
+                if (!isHidden) {
+                    // SEÇÃO ABRINDO: Liga o ouvinte e armazena a função de cancelamento
+                    // loadReplies agora retorna a função de unsubscribe.
+                    unsubscribeRepliesListener = loadReplies(newsId, commentId, repliesList); 
+                } else {
+                    // SEÇÃO FECHANDO: Cancela o ouvinte se estiver ligado
+                    if (unsubscribeRepliesListener) {
+                        unsubscribeRepliesListener();
+                        unsubscribeRepliesListener = null;
+                    }
                 }
             });
         }
-        submitReplyBtn.addEventListener('click', () => submitReply(newsId, commentId, replyInput, repliesList, viewRepliesBtn));
-
-        replyInput.addEventListener('keydown', (e) => {
-             if (e.key === 'Enter' && !e.shiftKey) {
-                 e.preventDefault();
-                 submitReply(newsId, commentId, replyInput, repliesList, viewRepliesBtn);
-             }
-         });
-    }
 
     /** Submete uma nova resposta a um comentário */
     async function submitReply(newsId, commentId, inputElement, repliesListElement, viewRepliesBtn) {
@@ -2828,74 +2834,65 @@ function loadComments(newsId, commentsListElement) {
         if(submitBtn) submitBtn.disabled = true;
 
         try {
-            const repliesColRef = collection(db, 'news', newsId, 'comments', commentId, 'replies');
-            await addDoc(repliesColRef, replyData);
+    const repliesColRef = collection(db, 'news', newsId, 'comments', commentId, 'replies');
+    // Adiciona a resposta (await é mantido, pois é a gravação no DB)
+    await addDoc(repliesColRef, replyData); 
 
-            // Incrementa o contador de respostas no documento do comentário
-            const commentDocRef = doc(db, 'news', newsId, 'comments', commentId);
-            await updateDoc(commentDocRef, { repliesCount: increment(1) });
+    // Incrementa o contador de respostas no documento do comentário
+    const commentDocRef = doc(db, 'news', newsId, 'comments', commentId);
+    await updateDoc(commentDocRef, { repliesCount: increment(1) });
 
-            inputElement.value = '';
-            inputElement.closest('.reply-input-area').classList.add('hidden'); // Esconde input area
-            showToast('Resposta adicionada!');
-             // Opcional: Adicionar resposta localmente na UI imediatamente
-             const newReplyCard = createReplyCard({ id: 'temp-reply-' + Date.now(), ...replyData });
-             repliesListElement.prepend(newReplyCard); // Adiciona no início
-             repliesListElement.classList.remove('hidden'); // Garante que a lista esteja visível
-             // Atualiza o botão "Ver respostas"
-             const newCount = (parseInt(viewRepliesBtn?.dataset.count || '0') + 1);
-             if (viewRepliesBtn) {
-                 viewRepliesBtn.dataset.count = newCount;
-                 viewRepliesBtn.innerHTML = `<i data-lucide="chevron-up" class="w-3 h-3"></i> Ocultar respostas`; // Assume que está expandido
-                 lucide.createIcons({ nodes: [viewRepliesBtn] });
-             } else {
-                 // Se não havia botão (0 respostas), cria um agora (simplificado)
-                 const commentCard = inputElement.closest('.comment-card');
-                 const buttonContainer = commentCard.querySelector('.flex.items-center.gap-4'); // Container dos botões
-                 if (buttonContainer) {
-                    const newViewRepliesBtn = document.createElement('button');
-                    newViewRepliesBtn.className = "view-replies-btn text-xs text-stone-400 hover:text-indigo-400 flex items-center gap-1";
-                    newViewRepliesBtn.dataset.count = 1;
-                    newViewRepliesBtn.innerHTML = `<i data-lucide="chevron-up" class="w-3 h-3"></i> Ocultar respostas`;
-                    buttonContainer.appendChild(newViewRepliesBtn);
-                    // Adiciona listener ao novo botão (importante!)
-                    addCommentCardListeners(commentCard, newsId, commentId);
-                    lucide.createIcons({ nodes: [newViewRepliesBtn] });
-                 }
-             }
+    inputElement.value = '';
+    // Esconde o input após enviar 
+    inputElement.closest('.reply-input-area').classList.add('hidden'); 
+    showToast('Resposta adicionada!');
+    
+    // REMOVIDO: TODA a lógica manual de criação e inserção de cards de resposta.
+    // O 'onSnapshot' (configurado na loadReplies) agora cuida da renderização em tempo real.
 
-        } catch (error) {
-            console.error("Erro ao adicionar resposta:", error);
-            showToast("Erro ao enviar resposta.", true);
-        } finally {
-            inputElement.disabled = false;
-            if(submitBtn) submitBtn.disabled = false;
+} catch (error) {
+    console.error("Erro ao adicionar resposta:", error);
+    showToast("Erro ao enviar resposta.", true);
+} finally {
+    // Garante que os campos sejam reativados
+    inputElement.disabled = false;
+    if(submitBtn) submitBtn.disabled = false;
+}
+
+    r/** Carrega as respostas de um comentário em tempo real. */
+// OBSERVE: A função não é mais async/await, é um listener
+function loadReplies(newsId, commentId, repliesListElement) {
+    repliesListElement.innerHTML = `<div class="spinner mx-auto my-2 w-4 h-4 border-2"></div>`; // Spinner menor
+    
+    const repliesColRef = collection(db, 'news', newsId, 'comments', commentId, 'replies');
+    const q = query(repliesColRef, orderBy('createdAt', 'asc')); // Ordena por mais antigas
+
+    // O onSnapshot retorna a função que cancela o ouvinte!
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        
+        // Limpa o conteúdo antes de reconstruir a lista
+        repliesListElement.innerHTML = ''; 
+
+        if (snapshot.empty) {
+            repliesListElement.innerHTML = '<p class="text-stone-500 text-xs text-center">Nenhuma resposta ainda.</p>';
+            return;
         }
-    }
 
-    /** Carrega as respostas de um comentário */
-    function loadReplies(newsId, commentId, repliesListElement) {
-        repliesListElement.innerHTML = `<div class="spinner mx-auto my-2 w-4 h-4 border-2"></div>`; // Spinner menor
-        const q = query(collection(db, 'news', newsId, 'comments', commentId, 'replies'), orderBy('createdAt', 'asc')); // Ordena por mais antigas
-
-        // Usar onSnapshot para atualizações
-        onSnapshot(q, (snapshot) => {
-            if (snapshot.empty) {
-                repliesListElement.innerHTML = '<p class="text-stone-500 text-xs text-center">Nenhuma resposta ainda.</p>';
-                return;
-            }
-            repliesListElement.innerHTML = ''; // Limpa spinner/conteúdo anterior
-            snapshot.forEach(doc => {
-                const replyCard = createReplyCard({ id: doc.id, ...doc.data() });
-                repliesListElement.appendChild(replyCard);
-            });
-             attachGlassButtonListeners(); // Reanexa se houver botões futuros na resposta
-             lucide.createIcons();
-        }, (error) => {
-             console.error("Erro ao carregar respostas:", error);
-             repliesListElement.innerHTML = '<p class="text-red-400 text-xs text-center">Erro ao carregar respostas.</p>';
+        snapshot.forEach(doc => {
+            const replyCard = createReplyCard({ id: doc.id, ...doc.data() });
+            repliesListElement.appendChild(replyCard);
         });
-    }
+        
+        attachGlassButtonListeners(); 
+        lucide.createIcons();
+    }, (error) => {
+        console.error("Erro ao carregar respostas:", error);
+        repliesListElement.innerHTML = '<p class="text-red-400 text-xs text-center">Erro ao carregar respostas.</p>';
+    });
+
+    // A MUDANÇA ESSENCIAL: Retorna a função de unsubscribe.
+    return unsubscribe; 
+}
 
     /** Cria o HTML para um card de resposta */
     function createReplyCard(reply) {
