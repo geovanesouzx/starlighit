@@ -2492,7 +2492,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         newsItemsCache.forEach(item => {
             const newsCard = createNewsCard(item);
-            itemsContainer.appendChild(newsCard);
+            itemsContainer.prepend(newsCard);
         });
         attachGlassButtonListeners();
         lucide.createIcons();
