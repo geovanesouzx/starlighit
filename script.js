@@ -2415,7 +2415,7 @@ document.addEventListener('DOMContentLoaded', function() {
         unsubscribeNewsListener();
     }
 
-    const q = query(collection(db, "news"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "news"), orderBy("isPinned", "desc"), orderBy("createdAt", "desc"));
     unsubscribeNewsListener = onSnapshot(q, (snapshot) => {
         const newsContainer = document.getElementById('news-items-container');
 
@@ -2505,6 +2505,12 @@ document.addEventListener('DOMContentLoaded', function() {
         card.dataset.newsId = item.id; // Guarda o ID
 
         const date = item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric'}) : 'Data indisponível';
+        
+        // NOVO: Cria o selo "FIXADO" se o item tiver 'isPinned: true'
+        const pinnedBadge = item.isPinned 
+            ? `<span class="text-xs font-bold bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded-full ml-2">FIXADO</span>` 
+            : '';
+
         let contentHTML = '';
 
         // Renderiza o conteúdo principal (texto, imagem ou vídeo)
@@ -2524,7 +2530,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const likes = item.likes || [];
         const userHasLiked = userId ? likes.includes(userId) : false;
-        const likeCount = item.likeCount || likes.length; // Usa likeCount se existir, senão o tamanho do array
+        const likeCount = item.likeCount || likes.length; 
 
         card.innerHTML = `
             <div class="glass-filter"></div>
@@ -2532,7 +2538,9 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="glass-specular"></div>
             <div class="glass-content p-4 sm:p-6">
                 ${item.title ? `<h3 class="text-xl font-semibold text-white">${item.title}</h3>` : ''}
-                <p class="text-xs text-stone-400 mb-4">${date}</p>
+                
+                <p class="text-xs text-stone-400 mb-4 flex items-center">${date} ${pinnedBadge}</p>
+                
                 ${contentHTML}
                 <div class="mt-4 pt-4 border-t border-white/10 flex items-center justify-between gap-4">
                     <button class="like-btn flex items-center gap-2 text-stone-400 hover:text-pink-500 transition-colors ${userHasLiked ? 'text-pink-500' : ''}" data-news-id="${item.id}">
@@ -2541,19 +2549,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     </button>
                     <button class="comment-btn flex items-center gap-2 text-stone-400 hover:text-indigo-400 transition-colors" data-news-id="${item.id}">
                         <i data-lucide="message-square" class="w-5 h-5"></i>
-                        <span class="comment-count-display text-sm">Comentar</span> <!-- Opcional: mostrar contagem -->
+                        <span class="comment-count-display text-sm">Comentar</span>
                     </button>
-                    <!-- <button class="share-btn flex items-center gap-2 text-stone-400 hover:text-green-400 transition-colors" data-news-id="${item.id}">
-                        <i data-lucide="share-2" class="w-5 h-5"></i>
-                        <span class="text-sm">Compartilhar</span>
-                    </button> -->
                 </div>
                 <div class="comments-section mt-4 hidden">
-                     <div class="comment-input-area mb-4">
-                         <textarea class="comment-input w-full p-2 bg-black/30 rounded-lg text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none border border-white/20" rows="2" placeholder="Escreva seu comentário..."></textarea>
-                         <button class="submit-comment-btn bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-md text-sm mt-2 float-right">Enviar</button>
-                     </div>
-                     <div class="comments-list space-y-3">
+                    <div class="comment-input-area mb-4">
+                        <textarea class="comment-input w-full p-2 bg-black/30 rounded-lg text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none border border-white/20" rows="2" placeholder="Escreva seu comentário..."></textarea>
+                        <button class="submit-comment-btn bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-md text-sm mt-2 float-right">Enviar</button>
+                    </div>
+                    <div class="comments-list space-y-3">
                         </div>
                 </div>
             </div>`;
