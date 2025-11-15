@@ -1151,3 +1151,28 @@ header.header-hidden {
         --highlight: rgba(255, 255, 255, 0.15);
     }
 }
+
+/* --- Correção para Rolagem das Páginas de Conteúdo --- */
+
+/* 1. Remove a altura fixa de TODOS os cards de vidro (corrigindo 'Novidades') */
+.liquid-glass-card .glass-content {
+    height: auto;
+    /* Permite que o card cresça com o conteúdo */
+}
+
+/* 2. Aplica a altura correta APENAS para a PÁGINA de 'Pedidos' */
+#requests-view.content-view>.liquid-glass-card {
+    /* Ocupa a tela (menos o header de 100px) */
+    height: calc(100vh - 100px);
+    max-height: calc(100vh - 100px);
+    overflow: hidden;
+    /* Garante que o efeito de vidro não vaze */
+}
+
+/* 3. Faz o conteúdo da PÁGINA 'Pedidos' rolar internamente */
+#requests-view.content-view>.liquid-glass-card>.glass-content {
+    height: 100%;
+    overflow-y: auto;
+}
+
+/* --- Fim da Correção --- */
