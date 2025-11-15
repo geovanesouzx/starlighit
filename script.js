@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'https://pbs.twimg.com/media/EcGdw6xXsAANIu1?format=jpg&name=large',
         'https://pbs.twimg.com/media/EcGdw6wXYAUrPu4.jpg',
         'https://pbs.twimg.com/media/EcGdw6uXgAEpGA-.jpg',
-       
+
     ];
 
     // Ícones SVG para os controles do player
@@ -1980,14 +1980,6 @@ document.addEventListener('DOMContentLoaded', function () {
         headerProfileBtn.innerHTML = ''; // Limpa conteúdo anterior
         headerProfileBtn.appendChild(avatarImg);
 
-        // Navega para a home view (o roteador cuidará de mostrar/esconder)
-        if (window.location.hash !== '#home-view') {
-            window.location.hash = '#home-view';
-        } else {
-            // Se já estiver na home, força a execução do roteador para garantir a renderização
-            handleNavigation();
-        }
-
         // Inicia o carregamento do conteúdo do Firestore (necessário após selecionar perfil)
         listenToFirestoreContent();
         listenToRequests(); // Escuta pedidos após selecionar perfil
@@ -2427,8 +2419,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 const foundProfile = profiles.find(p => p.id === lastProfileId);
                 if (foundProfile) {
                     // Se encontrou, seleciona automaticamente e PULA a tela de seleção
-                    selectAndEnterProfile(foundProfile);
+                    selectAndEnterProfile(foundProfile); // Esta função agora SÓ seleciona o perfil
                     autoSelectedProfile = true;
+                    handleNavigation(); // ADICIONE ESTA LINHA
                 }
             }
 
