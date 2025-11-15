@@ -341,7 +341,12 @@ body.auth-loading {
     position: relative;
     z-index: 4;
     color: var(--text);
-    height: 100%;
+    /* !!!! MUDANÇA IMPORTANTE !!!!
+      'height: 100%' quebrava o layout de cards com conteúdo dinâmico (como 'Novidades').
+      'height: auto' corrige isso, deixando o card crescer.
+      Regras específicas abaixo forçam 'height: 100%' onde é necessário (ex: posters).
+    */
+    height: auto;
 }
 
 .glass-distortion-overlay {
@@ -721,7 +726,7 @@ input[type="range"].player-volume-slider::-webkit-slider-thumb {
 
 /* LOGIN FORM STYLES */
 .glass-form {
-    --bg-color: rgba(0, 0, 0, 0.25);
+    --bg-color: rgba(0, 0, 0, 0.5); /* <-- MUDANÇA (era 0.25) */
     --highlight: rgba(255, 255, 255, 0.15);
     --text: #ffffff;
     --input-bg: rgba(0, 0, 0, 0.2);
@@ -747,8 +752,8 @@ input[type="range"].player-volume-slider::-webkit-slider-thumb {
 
 .glass-form .glass-filter {
     z-index: 1;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(10px); /* <-- MUDANÇA (era 4px) */
+    -webkit-backdrop-filter: blur(10px); /* <-- MUDANÇA (era 4px) */
     filter: url(#glass-distortion) saturate(120%) brightness(1.15);
 }
 
@@ -1152,27 +1157,19 @@ header.header-hidden {
     }
 }
 
-/* --- Correção para Rolagem das Páginas de Conteúdo --- */
+/* --- Correções de Altura do Glass Content --- */
 
-/* 1. Remove a altura fixa de TODOS os cards de vidro (corrigindo 'Novidades') */
-.liquid-glass-card .glass-content {
-    height: auto;
-    /* Permite que o card cresça com o conteúdo */
+/* 1. Força 'height: 100%' para cards de poster (que têm aspect-ratio) */
+.liquid-glass-card[class*="aspect-"] > .glass-content {
+    height: 100%;
 }
 
-/* 2. Aplica a altura correta APENAS para a PÁGINA de 'Pedidos' */
-#requests-view.content-view>.liquid-glass-card {
-    /* Ocupa a tela (menos o header de 100px) */
-    height: calc(100vh - 100px);
-    max-height: calc(100vh - 100px);
-    overflow: hidden;
-    /* Garante que o efeito de vidro não vaze */
+/* 2. Força 'height: 100%' e rolagem para a PÁGINA de Pedidos */
+#requests-view.content-view > .liquid-glass-card {
+    height: calc(100vh - 120px); /* 100px padding-top + 20px de margem */
+    max-height: calc(100vh - 120px);
 }
-
-/* 3. Faz o conteúdo da PÁGINA 'Pedidos' rolar internamente */
-#requests-view.content-view>.liquid-glass-card>.glass-content {
+#requests-view.content-view > .liquid-glass-card > .glass-content {
     height: 100%;
     overflow-y: auto;
 }
-
-/* --- Fim da Correção --- */
