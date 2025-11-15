@@ -19,7 +19,7 @@ body.auth-loading {
 #login-view {
     background-image: url('https://image.tmdb.org/t/p/original/c2dPK558peXs9QzacwzHYQqqS2r.jpg');
     /* ADICIONE ESTA LINHA */
-    animation: slowPan 40s ease-in-out infinite alternate;
+    animation: slowPan 20s ease-in-out infinite alternate;
 }
 
 @media (max-width: 768px) {
@@ -1228,12 +1228,12 @@ header.header-hidden {
 
 @keyframes slowPan {
     0% {
-        /* Começa um pouco à esquerda do centro */
-        background-position: 40% 50%;
+        /* Começa mais à esquerda */
+        background-position: 30% 50%;
     }
 
     100% {
-        /* Termina um pouco à direita do centro */
-        background-position: 60% 50%;
+        /* Termina mais à direita */
+        background-position: 70% 50%;
     }
 }
