@@ -30,7 +30,7 @@ import {
     increment // Para contadores de likes/replies
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     lucide.createIcons();
 
     // Define um hash padrão se nenhum existir e não for #player
@@ -85,6 +85,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let firestoreContent = []; // Cache do conteúdo principal
     let pendingRequests = []; // Cache de pedidos pendentes
     let newsItemsCache = []; // Cache para novidades
+    let dailyShuffledContent = []; // NOVO: Cache para o conteúdo embaralhado
     let unsubscribeNewsListener = null; // Para parar de ouvir novidades ao deslogar
 
     // Elementos DOM frequentemente usados
@@ -147,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
         'https://pbs.twimg.com/media/EcGdw6xXsAANIu1?format=jpg&name=large',
         'https://pbs.twimg.com/media/EcGdw6wXYAUrPu4.jpg',
         'https://pbs.twimg.com/media/EcGdw6uXgAEpGA-.jpg'
-        
+
     ];
 
     // Ícones SVG para os controles do player
@@ -230,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function() {
             await deleteDoc(docRef); // Remove se já estiver na lista
         } else {
             // Adiciona se não estiver, garantindo que 'media_type' esteja presente
-            const itemToAdd = { ...item, media_type: item.media_type || (item.title ? 'movie' : 'tv')};
+            const itemToAdd = { ...item, media_type: item.media_type || (item.title ? 'movie' : 'tv') };
             await setDoc(docRef, itemToAdd);
         }
 
@@ -257,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateListButtons(item) {
         // Verifica se o item modificado é o que está no hero
         if (currentHeroItem?.docId === item.docId) {
-             updateListButton(document.getElementById('hero-add-to-list'), currentHeroItem);
+            updateListButton(document.getElementById('hero-add-to-list'), currentHeroItem);
         }
         // Verifica se o item modificado é o que está na tela de detalhes
         if (currentDetailsItem?.docId === item.docId) {
@@ -351,6 +352,57 @@ document.addEventListener('DOMContentLoaded', function() {
         lucide.createIcons(); // Recria ícones Lucide, se houver
     }
 
+    /**
+ * Retorna uma versão do conteúdo embaralhada, com cache de 24h no localStorage.
+ * @param {Array} originalContent - O array 'firestoreContent' original.
+ * @returns {Array} - O array embaralhado (novo ou do cache).
+ */
+    function getDailyShuffledContent(originalContent) {
+        const CACHE_KEY = 'starlight-shuffled-content';
+        const TIMESTAMP_KEY = 'starlight-shuffle-timestamp';
+        const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000; // 24 horas em milissegundos
+
+        const now = new Date().getTime();
+        const storedTimestamp = localStorage.getItem(TIMESTAMP_KEY);
+        const storedContentJSON = localStorage.getItem(CACHE_KEY);
+
+        // Verifica se o timestamp é válido e se não expirou
+        if (storedTimestamp && storedContentJSON && (now - storedTimestamp < TWENTY_FOUR_HOURS)) {
+            try {
+                const cachedContent = JSON.parse(storedContentJSON);
+                // Validação simples: Se o cache tiver um número diferente de itens, está desatualizado.
+                if (cachedContent.length === originalContent.length) {
+                    console.log("Usando cache de conteúdo embaralhado (válido por 24h).");
+                    return cachedContent; // Retorna o cache
+                } else {
+                    console.log("Cache de conteúdo desatualizado (tamanho mudou). Gerando novo.");
+                }
+            } catch (e) {
+                console.error("Erro ao ler cache do JSON. Gerando novo.", e);
+            }
+        }
+
+        // Se chegou aqui, o cache não existe, expirou, ou falhou
+        console.log("Gerando novo conteúdo embaralhado para o cache de 24h.");
+
+        // Cria uma cópia e embaralha (Algoritmo Fisher-Yates)
+        const newShuffledContent = [...originalContent]; // Copia o array
+
+        for (let i = newShuffledContent.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [newShuffledContent[i], newShuffledContent[j]] = [newShuffledContent[j], newShuffledContent[i]];
+        }
+
+        // Salva o novo conteúdo e o timestamp no localStorage
+        try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify(newShuffledContent));
+            localStorage.setItem(TIMESTAMP_KEY, now.toString());
+        } catch (e) {
+            console.error("Erro ao salvar cache no localStorage:", e);
+        }
+
+        return newShuffledContent;
+    }
     /**
      * Cria o HTML para um card de conteúdo (usado em carrosséis).
      * @param {object} item - O objeto do item (filme/série).
@@ -544,6 +596,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 firestoreContent.push({ docId: doc.id, ...doc.data() });
             });
 
+            // *** ADICIONE ESTA LINHA AQUI ***
+            // Gera ou carrega o conteúdo embaralhado para o cache diário
+            dailyShuffledContent = getDailyShuffledContent(firestoreContent);
+            // **********************************
+
             // Escuta o documento 'featured' na coleção 'config' para saber quais itens destacar
             onSnapshot(doc(db, 'config', 'featured'), (docSnap) => {
                 // Pega a lista de IDs de destaque, ou um array vazio se não existir
@@ -563,21 +620,28 @@ document.addEventListener('DOMContentLoaded', function() {
         carouselsContainer.innerHTML = ''; // Limpa o container
 
         // Carrossel "Adicionado Recentemente"
+        // (ESTA PARTE FICA IGUAL, usando 'firestoreContent' original para ordenar por data)
         const recentlyAdded = [...firestoreContent]
-         // Ordena por data de adição (mais recente primeiro)
-        .sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0))
-        .slice(0, 20); // Pega os 20 mais recentes
+            .sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0))
+            .slice(0, 20); // Pega os 20 mais recentes
         createCarousel(carouselsContainer, "Adicionado Recentemente", recentlyAdded);
 
-      // Carrosséis por Gênero
-      // Pega todos os gêneros únicos de todos os itens
-      const allGenres = [...new Set(firestoreContent.flatMap(item => item.genres || []))];
-      for (const genre of allGenres) {
-          // Filtra os itens que contêm o gênero atual
-          const filteredContent = firestoreContent.filter(item => item.genres && item.genres.includes(genre));
-          // Cria um carrossel para o gênero
-          createCarousel(carouselsContainer, genre, filteredContent);
-      }
+        // Carrosséis por Gênero
+        // *** MODIFIQUE A PARTIR DAQUI ***
+
+        // Pega todos os gêneros únicos DO ARRAY JÁ EMBARALHADO
+        const allGenres = [...new Set(dailyShuffledContent.flatMap(item => item.genres || []))];
+
+        for (const genre of allGenres) {
+            // Filtra os itens DO ARRAY JÁ EMBARALHADO
+            const filteredContent = dailyShuffledContent.filter(item => item.genres && item.genres.includes(genre));
+
+            // Cria um carrossel para o gênero
+            // A ordem já estará aleatória e será a mesma por 24h
+            createCarousel(carouselsContainer, genre, filteredContent);
+        }
+        // *** FIM DAS MODIFICAÇÕES ***
+
         attachGlassButtonListeners(); // Reatacha listeners visuais
     }
 
@@ -605,13 +669,13 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function renderScreenContent(screenId, forceReload = false) {
         const screenElement = document.getElementById(screenId);
-        if (!screenElement ) return; // Sai se a tela não for encontrada
+        if (!screenElement) return; // Sai se a tela não for encontrada
 
         // Lógica de renderização específica para cada tela
         if (screenId === 'home-view') {
             // Pega os itens em destaque e atualiza o hero
             const featuredItems = featuredItemIds.map(id => firestoreContent.find(item => item.docId === id)).filter(Boolean);
-            if(featuredItems.length > 0) {
+            if (featuredItems.length > 0) {
                 updateHero(featuredItems[0]); // Mostra o primeiro item
                 startHeroRotation(); // Inicia a rotação
             }
@@ -672,7 +736,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const genres = data.genres ? data.genres.map(g => `<span class="bg-white/10 text-xs font-semibold px-2 py-1 rounded-full text-white">${g}</span>`).join('') : '';
         let duration = '';
         if (data.type === 'movie' && data.duration) {
-             duration = data.duration;
+            duration = data.duration;
         } else if (data.type === 'tv' && data.seasons) {
             duration = `${Object.keys(data.seasons).length} Temporada(s)`;
         }
@@ -737,7 +801,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 showPlayer({ videoUrl: data.url, title: title, itemData: data });
             } else if (data.type === 'tv' && data.seasons) {
                 // Se for série, encontra o primeiro episódio da primeira temporada
-                const firstSeasonKey = Object.keys(data.seasons).sort((a,b) => parseInt(a) - parseInt(b))[0];
+                const firstSeasonKey = Object.keys(data.seasons).sort((a, b) => parseInt(a) - parseInt(b))[0];
                 const firstEpisode = data.seasons[firstSeasonKey]?.episodes?.[0];
 
                 if (firstEpisode) {
@@ -829,7 +893,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const epTitle = ep.title || `Episódio ${ep.episode_number || index + 1}`;
                 const epOverview = ep.overview || 'Sem descrição.';
                 // Define a imagem do episódio com fallback
-                const stillPath = ep.still_path ? (ep.still_path.startsWith('/') ? `https://image.tmdb.org/t/p/w300${ep.still_path}`: ep.still_path) : 'https://placehold.co/300x168/1c1917/FFFFFF?text=Starlight';
+                const stillPath = ep.still_path ? (ep.still_path.startsWith('/') ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : ep.still_path) : 'https://placehold.co/300x168/1c1917/FFFFFF?text=Starlight';
 
                 return `
                     <div class="episode-item glass-container glass-button rounded-lg overflow-hidden cursor-pointer" data-index="${index}" data-season="${seasonKey}">
@@ -880,7 +944,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Listener para cliques nos itens de episódio
         document.getElementById('episode-list-container').addEventListener('click', (e) => {
             const episodeItem = e.target.closest('.episode-item');
-            if(episodeItem){ // Se clicou em um episódio
+            if (episodeItem) { // Se clicou em um episódio
                 const seasonKey = episodeItem.dataset.season; // Pega a temporada
                 const episodeIndex = parseInt(episodeItem.dataset.index, 10); // Pega o índice do episódio
                 const allEpisodesOfSeason = data.seasons[seasonKey].episodes;
@@ -904,11 +968,11 @@ document.addEventListener('DOMContentLoaded', function() {
     /** Efeito visual: Remove gradiente especular ao tirar o mouse */
     function handleMouseLeave() { const specular = this.querySelector('.glass-specular'); if (specular) specular.style.background = 'none'; }
     /** Adiciona listeners para os efeitos visuais 'glass' a todos os elementos relevantes */
-    function attachGlassButtonListeners() { document.querySelectorAll('.glass-button, .liquid-glass-card, .player-control-btn, .glass-container[style*="--bg-color"], .glass-form, .news-card, .comment-card, .reply-card').forEach(element => { if (!element.hasGlassListener) { element.addEventListener('mousemove', handleMouseMove); element.addEventListener('mouseleave', handleMouseLeave); element.hasGlassListener = true; }}); } // 'hasGlassListener' evita adicionar múltiplos listeners
+    function attachGlassButtonListeners() { document.querySelectorAll('.glass-button, .liquid-glass-card, .player-control-btn, .glass-container[style*="--bg-color"], .glass-form, .news-card, .comment-card, .reply-card').forEach(element => { if (!element.hasGlassListener) { element.addEventListener('mousemove', handleMouseMove); element.addEventListener('mouseleave', handleMouseLeave); element.hasGlassListener = true; } }); } // 'hasGlassListener' evita adicionar múltiplos listeners
     /** Atualiza a posição e tamanho do indicador da navegação mobile */
-    function updateMobileNavIndicator() { const indicator = document.getElementById('mobile-nav-indicator'); const activeItem = document.querySelector('#mobile-nav .mobile-nav-item.active'); if (indicator && activeItem) { const left = activeItem.offsetLeft; const width = activeItem.offsetWidth; indicator.style.width = `${width}px`; indicator.style.transform = `translateX(${left}px)`; }}
+    function updateMobileNavIndicator() { const indicator = document.getElementById('mobile-nav-indicator'); const activeItem = document.querySelector('#mobile-nav .mobile-nav-item.active'); if (indicator && activeItem) { const left = activeItem.offsetLeft; const width = activeItem.offsetWidth; indicator.style.width = `${width}px`; indicator.style.transform = `translateX(${left}px)`; } }
     /** Mostra ou esconde o overlay de busca */
-    function toggleSearchOverlay(show) { if (show) { searchOverlay.classList.remove('hidden'); searchInput.focus(); document.body.style.overflow = 'hidden'; } else { searchOverlay.classList.add('hidden'); searchInput.value = ''; searchResultsContainer.innerHTML = ''; document.body.style.overflow = 'auto'; }}
+    function toggleSearchOverlay(show) { if (show) { searchOverlay.classList.remove('hidden'); searchInput.focus(); document.body.style.overflow = 'hidden'; } else { searchOverlay.classList.add('hidden'); searchInput.value = ''; searchResultsContainer.innerHTML = ''; document.body.style.overflow = 'auto'; } }
 
     /**
      * Realiza a busca no CATÁLOGO LOCAL (firestoreContent) e exibe os resultados.
@@ -921,8 +985,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Garante que firestoreContent está disponível
         if (!firestoreContent || firestoreContent.length === 0) {
-             searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">O catálogo está carregando. Tente novamente em alguns segundos.</p>`;
-             return;
+            searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">O catálogo está carregando. Tente novamente em alguns segundos.</p>`;
+            return;
         }
 
         const lowerCaseQuery = query.toLowerCase();
@@ -976,7 +1040,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Adiciona #player ao histórico do navegador se ainda não estiver lá
         if (window.location.hash !== '#player') {
-            history.pushState({view: 'player'}, '', '#player');
+            history.pushState({ view: 'player' }, '', '#player');
         }
 
         // Mostra a view do player e esconde a barra de rolagem do body
@@ -986,17 +1050,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Processa a URL do vídeo (caso especial para api.anivideo.net)
         let urlToLoad = context.videoUrl;
-         try {
-             const urlObject = new URL(urlToLoad);
-             if (urlObject.hostname.includes('api.anivideo.net') && urlObject.pathname.includes('videohls.php')) {
-                 const videoSrc = urlObject.searchParams.get('d');
-                 if (videoSrc) {
-                     urlToLoad = videoSrc; // Usa a URL extraída do parâmetro 'd'
-                 }
-             }
-         } catch (e) {
-             // URL inválida, usa a original
-         }
+        try {
+            const urlObject = new URL(urlToLoad);
+            if (urlObject.hostname.includes('api.anivideo.net') && urlObject.pathname.includes('videohls.php')) {
+                const videoSrc = urlObject.searchParams.get('d');
+                if (videoSrc) {
+                    urlToLoad = videoSrc; // Usa a URL extraída do parâmetro 'd'
+                }
+            }
+        } catch (e) {
+            // URL inválida, usa a original
+        }
 
         // Configura HLS.js se for um stream .m3u8 e o navegador suportar
         if (Hls.isSupported() && urlToLoad.includes('.m3u8')) {
@@ -1013,7 +1077,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (context.startTime && context.startTime > 5) { // Só pula se for maior que 5s
                     videoPlayer.currentTime = context.startTime;
                 }
-               videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo HLS:", e)); // Tenta iniciar a reprodução
+                videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo HLS:", e)); // Tenta iniciar a reprodução
             });
         } else { // Se não for HLS ou não for suportado, usa a tag <video> nativa
             videoPlayer.src = urlToLoad; // Define a fonte do vídeo
@@ -1021,35 +1085,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (context.startTime && context.startTime > 5) {
                     videoPlayer.currentTime = context.startTime; // Pula se necessário
                 }
-               videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo:", e)); // Tenta iniciar
+                videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo:", e)); // Tenta iniciar
             }, { once: true }); // Executa este listener apenas uma vez
         }
 
         // 2. Lógica de orientação e tela cheia para mobile
         if (window.innerWidth < 768) { // Se for tela pequena (considerado mobile)
-           // MUDANÇA: Lógica ajustada para (re)tentar bloquear a orientação
-           if (!document.fullscreenElement) { // Só tenta entrar em fullscreen se já não estiver
-               try {
-                   await playerView.requestFullscreen();
-               } catch (err) {
-                   console.error("Não foi possível ativar tela cheia:", err);
-               }
-           }
-           // Tenta (re)travar a orientação.
-           // Se foi um clique (nextBtn), funciona.
-           // Se foi 'ended', pode falhar, mas como não demos unlock,
-           // a orientação anterior (landscape) deve ser mantida.
-           try {
-               if (screen.orientation && typeof screen.orientation.lock === 'function') {
-                   await screen.orientation.lock('landscape');
-               }
-           } catch (err) {
-               console.error("Não foi possível bloquear orientação:", err);
-           }
+            // MUDANÇA: Lógica ajustada para (re)tentar bloquear a orientação
+            if (!document.fullscreenElement) { // Só tenta entrar em fullscreen se já não estiver
+                try {
+                    await playerView.requestFullscreen();
+                } catch (err) {
+                    console.error("Não foi possível ativar tela cheia:", err);
+                }
+            }
+            // Tenta (re)travar a orientação.
+            // Se foi um clique (nextBtn), funciona.
+            // Se foi 'ended', pode falhar, mas como não demos unlock,
+            // a orientação anterior (landscape) deve ser mantida.
+            try {
+                if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                    await screen.orientation.lock('landscape');
+                }
+            } catch (err) {
+                console.error("Não foi possível bloquear orientação:", err);
+            }
         }
 
         // Mostra/Esconde botões de episódio anterior/próximo
-        if(context.episodes && context.episodes.length > 1) {
+        if (context.episodes && context.episodes.length > 1) {
             nextEpisodeBtn.classList.remove('hidden');
             prevEpisodeBtn.classList.remove('hidden');
         } else {
@@ -1067,7 +1131,7 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     async function hidePlayer(updateHistory = true, isChangingEpisode = false) { // MUDANÇA: Adicionado isChangingEpisode
         // Salva o progresso se updateHistory for true e houver um contexto válido
-        if(updateHistory && currentPlayerContext.key){
+        if (updateHistory && currentPlayerContext.key) {
             await savePlayerProgress();
         }
 
@@ -1100,7 +1164,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // MUDANÇA: Reseta o aspect ratio para o padrão
         videoPlayer.style.objectFit = 'contain';
         currentAspectRatio = 'contain';
-        if(aspectRatioBtn) aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectContain;
+        if (aspectRatioBtn) aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectContain;
 
         // NÃO chama history.back() aqui. O roteador (`handleNavigation`) fará isso
         // quando o evento 'popstate' for disparado pelo clique no botão voltar do navegador.
@@ -1161,7 +1225,7 @@ document.addEventListener('DOMContentLoaded', function() {
         clearTimeout(controlsTimeout); // Limpa timeout
 
         if (!playerView.classList.contains('controls-active')) {
-             playerView.classList.add('controls-active'); // Se escondidos, apenas mostra
+            playerView.classList.add('controls-active'); // Se escondidos, apenas mostra
         } else {
             togglePlay(); // Se controles visíveis, alterna play/pause
         }
@@ -1193,22 +1257,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Listener para o evento 'play'
         videoPlayer.addEventListener('play', () => {
-             playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.pause;
-             clearTimeout(controlsTimeout); // Limpa timeout ao dar play
-             // Agenda para esconder controles se estiverem visíveis
-             if (playerView.classList.contains('controls-active')) {
-                 controlsTimeout = setTimeout(() => {
-                     playerView.classList.remove('controls-active');
-                 }, 3000);
-             }
-         });
-         // Listener para o evento 'pause'
+            playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.pause;
+            clearTimeout(controlsTimeout); // Limpa timeout ao dar play
+            // Agenda para esconder controles se estiverem visíveis
+            if (playerView.classList.contains('controls-active')) {
+                controlsTimeout = setTimeout(() => {
+                    playerView.classList.remove('controls-active');
+                }, 3000);
+            }
+        });
+        // Listener para o evento 'pause'
         videoPlayer.addEventListener('pause', () => {
             playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
             clearTimeout(controlsTimeout); // Cancela o timeout ao pausar
             // Garante que os controles fiquem visíveis ao pausar manualmente
             if (!videoPlayer.ended) {
-                 playerView.classList.add('controls-active');
+                playerView.classList.add('controls-active');
             }
         });
 
@@ -1227,7 +1291,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Atualiza a barra de progresso e salva progresso periodicamente
         videoPlayer.addEventListener('timeupdate', () => {
-            if(isNaN(videoPlayer.currentTime)) return; // Ignora se currentTime for NaN
+            if (isNaN(videoPlayer.currentTime)) return; // Ignora se currentTime for NaN
             seekBar.value = videoPlayer.currentTime; // Atualiza valor do slider
             if (videoPlayer.duration) { // Atualiza a barra visual
                 const progressPercent = (videoPlayer.currentTime / videoPlayer.duration) * 100;
@@ -1245,7 +1309,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Quando metadados carregam (obtém duração)
         videoPlayer.addEventListener('loadedmetadata', () => {
-            if(isNaN(videoPlayer.duration)) return; // Ignora se duration for NaN
+            if (isNaN(videoPlayer.duration)) return; // Ignora se duration for NaN
             seekBar.max = videoPlayer.duration; // Define o máximo do slider
             durationEl.textContent = formatTime(videoPlayer.duration); // Mostra duração total formatada
         });
@@ -1293,11 +1357,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const episode = currentPlayerContext.episodes[newIndex]; // Pega dados do novo episódio
             // Cria novo contexto com índice atualizado e novo título
             const newContext = {
-                 ...currentPlayerContext,
-                 currentIndex: newIndex,
-                 title: `${currentPlayerContext.itemData.name} - T${episode.season_number} E${episode.episode_number}`,
-                 videoUrl: episode.url // IMPORTANTE: Atualizar a URL do vídeo
-             };
+                ...currentPlayerContext,
+                currentIndex: newIndex,
+                title: `${currentPlayerContext.itemData.name} - T${episode.season_number} E${episode.episode_number}`,
+                videoUrl: episode.url // IMPORTANTE: Atualizar a URL do vídeo
+            };
             showPlayer(newContext); // Mostra o player com o novo episódio
         }
     }
@@ -1323,8 +1387,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Se saiu da tela cheia E o player ainda deveria estar visível
         if (!isFullscreen && !playerView.classList.contains('hidden')) {
-             // Força a volta no histórico (provavelmente para a tela de detalhes)
-             history.back();
+            // Força a volta no histórico (provavelmente para a tela de detalhes)
+            history.back();
         }
     });
 
@@ -1353,14 +1417,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Listener global para fechar painéis (configurações, notificações, seletor de temporada) ao clicar fora
     document.addEventListener('click', (e) => {
-         // Fecha painel de configurações
-         if (!settingsPanel.classList.contains('hidden') && !settingsBtn.contains(e.target) && !settingsPanel.contains(e.target)) { settingsPanel.classList.add('hidden'); }
-         // Fecha painel de notificações
-         if (!notificationPanel.classList.contains('hidden') && !notificationPanel.contains(e.target) && !notificationBtn.contains(e.target)) {
-             notificationPanel.classList.remove('animate-fade-in-down');
-             notificationPanel.classList.add('animate-fade-out-up');
-             setTimeout(() => notificationPanel.classList.add('hidden'), 250); // Adiciona 'hidden' após animação
-         }
+        // Fecha painel de configurações
+        if (!settingsPanel.classList.contains('hidden') && !settingsBtn.contains(e.target) && !settingsPanel.contains(e.target)) { settingsPanel.classList.add('hidden'); }
+        // Fecha painel de notificações
+        if (!notificationPanel.classList.contains('hidden') && !notificationPanel.contains(e.target) && !notificationBtn.contains(e.target)) {
+            notificationPanel.classList.remove('animate-fade-in-down');
+            notificationPanel.classList.add('animate-fade-out-up');
+            setTimeout(() => notificationPanel.classList.add('hidden'), 250); // Adiciona 'hidden' após animação
+        }
         // Fecha seletor de temporada
         const openSelectPanel = document.querySelector('#season-options:not(.hidden)');
         if (openSelectPanel && !openSelectPanel.closest('.custom-select-container').contains(e.target)) {
@@ -1373,7 +1437,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const speedContainer = document.getElementById('settings-speed-options');
         const qualityContainer = document.getElementById('settings-quality-options');
         // Só cria se ainda não existirem (evita duplicação)
-        if(speedContainer.childElementCount > 1) return;
+        if (speedContainer.childElementCount > 1) return;
 
         // Opções de velocidade
         const speeds = [0.5, 1, 1.5, 2];
@@ -1394,7 +1458,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Opções de qualidade (Placeholder - HLS.js pode gerenciar isso dinamicamente)
         const qualities = ["Auto", "1080p", "720p", "480p"];
         qualities.forEach(quality => {
-             const button = document.createElement('button');
+            const button = document.createElement('button');
             button.className = 'settings-option-btn';
             button.textContent = quality;
             if (quality === "Auto") button.classList.add('active'); // Marca Auto como padrão
@@ -1506,7 +1570,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // --- Rota de Seleção de Perfil ---
         if (!currentProfile) { // Se o usuário está logado, MAS NENHUM perfil foi selecionado ainda
-             // Tenta carregar o último perfil usado do localStorage
+            // Tenta carregar o último perfil usado do localStorage
             const lastProfileId = localStorage.getItem(`starlight-lastProfile-${userId}`);
             let autoSelectedProfile = false;
             if (lastProfileId) {
@@ -1532,7 +1596,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 showProfileScreen(); // Mostra a tela de seleção de perfil
                 return; // Interrompe a função aqui
             }
-             // Se um perfil foi auto-selecionado, a função continua para o roteamento do app abaixo
+            // Se um perfil foi auto-selecionado, a função continua para o roteamento do app abaixo
         }
 
 
@@ -1555,13 +1619,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Garante que views especiais (detalhes, player) sejam escondidas ao navegar para views normais
         if (!hash.startsWith('#details/')) {
-             detailsView.classList.add('hidden'); // Esconde detalhes
+            detailsView.classList.add('hidden'); // Esconde detalhes
         }
-         if (hash !== '#player') {
-             if (!playerView.classList.contains('hidden')) {
-                 hidePlayer(false, false); // Esconde player (NÃO está trocando de ep)
-             }
-         }
+        if (hash !== '#player') {
+            if (!playerView.classList.contains('hidden')) {
+                hidePlayer(false, false); // Esconde player (NÃO está trocando de ep)
+            }
+        }
 
         // Esconde todas as views principais antes de mostrar a correta
         document.querySelectorAll('#view-container > .content-view').forEach(view => view.classList.add('hidden'));
@@ -1589,7 +1653,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('home-view').classList.remove('hidden');
                 renderScreenContent('home-view');
                 // Corrige o hash na URL se ele era inválido
-                if(window.location.hash !== '#home-view') {
+                if (window.location.hash !== '#home-view') {
                     history.replaceState(null, '', '#home-view');
                 }
             }
@@ -1657,11 +1721,11 @@ document.addEventListener('DOMContentLoaded', function() {
             // Adiciona botão de dispensar apenas se for 'Novidade'
             const dismissBtn = isDismissable ? `<button class="remove-notification-btn text-stone-500 hover:text-white" data-notif-id="${notif.id}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>` : '';
 
-             // **FIX:** Adiciona data attribute com dados do link
-             let linkDataAttr = '';
-             if (notif.link) {
-                 linkDataAttr = `data-link-type="${notif.link.type}" data-link-value="${notif.link.url || notif.link.docId}"`;
-             }
+            // **FIX:** Adiciona data attribute com dados do link
+            let linkDataAttr = '';
+            if (notif.link) {
+                linkDataAttr = `data-link-type="${notif.link.type}" data-link-value="${notif.link.url || notif.link.docId}"`;
+            }
 
             return `
                 <div class="notification-item flex items-start gap-2 p-2 rounded-md transition-colors hover:bg-white/5 ${notif.link ? 'cursor-pointer' : ''}" ${linkDataAttr}>
@@ -1700,24 +1764,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateNotificationBell(); // Atualiza indicador
             }
             removeBtn.closest('.notification-item').remove(); // Remove o item da UI
-             return; // Impede que o clique no botão acione o clique no item
+            return; // Impede que o clique no botão acione o clique no item
         }
 
         // **FIX: Clique no item da notificação para navegação**
         const notificationItem = e.target.closest('.notification-item[data-link-type]');
         if (notificationItem) {
-             const linkType = notificationItem.dataset.linkType;
-             const linkValue = notificationItem.dataset.linkValue;
+            const linkType = notificationItem.dataset.linkType;
+            const linkValue = notificationItem.dataset.linkValue;
 
-             if (linkType === 'internal' && linkValue) {
-                 window.location.hash = `#details/${linkValue}`; // Navega para detalhes
-             } else if (linkType === 'external' && linkValue) {
-                 window.open(linkValue, '_blank'); // Abre link externo
-             }
-             // Fecha o painel após clicar
-             notificationPanel.classList.remove('animate-fade-in-down');
-             notificationPanel.classList.add('animate-fade-out-up');
-             setTimeout(() => notificationPanel.classList.add('hidden'), 250);
+            if (linkType === 'internal' && linkValue) {
+                window.location.hash = `#details/${linkValue}`; // Navega para detalhes
+            } else if (linkType === 'external' && linkValue) {
+                window.open(linkValue, '_blank'); // Abre link externo
+            }
+            // Fecha o painel após clicar
+            notificationPanel.classList.remove('animate-fade-in-down');
+            notificationPanel.classList.add('animate-fade-out-up');
+            setTimeout(() => notificationPanel.classList.add('hidden'), 250);
         }
     });
 
@@ -1730,11 +1794,11 @@ document.addEventListener('DOMContentLoaded', function() {
             snapshot.forEach((doc) => {
                 pendingRequests.push({ id: doc.id, ...doc.data() });
             });
-             // Ordena no cliente
-             pendingRequests.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+            // Ordena no cliente
+            pendingRequests.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
             // Re-renderiza se a view de pedidos estiver ativa
             if (window.location.hash === '#requests-view') {
-                 renderPendingRequests();
+                renderPendingRequests();
             }
         }, (error) => {
             console.error("Erro ao escutar pedidos: ", error);
@@ -1779,7 +1843,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error("Erro ao processar voto:", error);
             showToast("Ocorreu um erro ao processar seu voto.", true);
         } finally {
-             if (voteButton) voteButton.disabled = false; // Reabilita o botão
+            if (voteButton) voteButton.disabled = false; // Reabilita o botão
         }
     }
 
@@ -1818,9 +1882,9 @@ document.addEventListener('DOMContentLoaded', function() {
                          <div class="glass-specular"></div>
                          <div class="glass-content flex justify-center items-center gap-2 p-2 text-sm">
                              ${userHasVoted /* Muda texto e ícone do botão com base no voto */
-                                 ? '<i data-lucide="minus-circle" class="w-4 h-4"></i> Remover Voto'
-                                 : '<i data-lucide="plus-circle" class="w-4 h-4"></i> Apoiar Pedido'
-                             }
+                    ? '<i data-lucide="minus-circle" class="w-4 h-4"></i> Remover Voto'
+                    : '<i data-lucide="plus-circle" class="w-4 h-4"></i> Apoiar Pedido'
+                }
                          </div>
                      </button>
                 </div>
@@ -1891,7 +1955,7 @@ document.addEventListener('DOMContentLoaded', function() {
             addProfileCard.addEventListener('click', () => showProfileModal());
             profilesGrid.appendChild(addProfileCard);
         }
-         attachGlassButtonListeners(); // Reatacha listeners visuais
+        attachGlassButtonListeners(); // Reatacha listeners visuais
     }
 
     /**
@@ -1950,7 +2014,7 @@ document.addEventListener('DOMContentLoaded', function() {
             deleteBtn.classList.remove('hidden'); // Mostra botão de excluir
             // Marca o avatar atual como selecionado
             const currentAvatar = avatarOptionsContainer.querySelector(`img[data-avatar="${profile.avatar}"]`);
-            if(currentAvatar) currentAvatar.classList.add('!border-purple-500', 'scale-110');
+            if (currentAvatar) currentAvatar.classList.add('!border-purple-500', 'scale-110');
         } else { // Adicionando novo perfil
             modalTitle.textContent = 'Adicionar Perfil';
             nameInput.value = ''; // Limpa nome
@@ -1963,7 +2027,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Listener para seleção de avatar no modal
     avatarOptionsContainer.addEventListener('click', e => {
-        if(e.target.tagName === 'IMG') { // Se clicou em uma imagem de avatar
+        if (e.target.tagName === 'IMG') { // Se clicou em uma imagem de avatar
             // Remove seleção de todos os avatares
             avatarOptionsContainer.querySelectorAll('img').forEach(img => img.classList.remove('!border-purple-500', 'scale-110'));
             // Marca o avatar clicado como selecionado
@@ -2013,7 +2077,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Listener para o botão "Excluir" do modal de perfil
     document.getElementById('delete-profile-btn').addEventListener('click', async () => {
         const profileId = document.getElementById('profile-id-input').value; // Pega o ID do perfil
-         if (profileId && profiles.length > 1) { // Só permite excluir se houver mais de um perfil
+        if (profileId && profiles.length > 1) { // Só permite excluir se houver mais de um perfil
             // Mostra modal de confirmação customizado
             showConfirmationModal(
                 'Excluir Perfil', // Título
@@ -2031,9 +2095,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             );
-         } else { // Se for o único perfil
-             showToast('Não é possível excluir o único perfil.', true);
-         }
+        } else { // Se for o único perfil
+            showToast('Não é possível excluir o único perfil.', true);
+        }
     });
 
     // Listener para o botão "Gerenciar Perfis" / "Concluído"
@@ -2047,13 +2111,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Listener para o botão de perfil no header (leva para a tela de gerenciamento)
     headerProfileBtn.addEventListener('click', () => {
-       // Reseta o estado de edição e força a seleção de perfil ao mudar o hash
-       isEditMode = false;
-       manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
-       document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
-       currentProfile = null; // **IMPORTANTE:** Limpa o perfil atual para forçar seleção
-       localStorage.removeItem(`starlight-lastProfile-${userId}`); // Limpa o perfil salvo
-       window.location.hash = 'manage-profile-view'; // Navega para a tela de gerenciamento
+        // Reseta o estado de edição e força a seleção de perfil ao mudar o hash
+        isEditMode = false;
+        manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
+        document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
+        currentProfile = null; // **IMPORTANTE:** Limpa o perfil atual para forçar seleção
+        localStorage.removeItem(`starlight-lastProfile-${userId}`); // Limpa o perfil salvo
+        window.location.hash = 'manage-profile-view'; // Navega para a tela de gerenciamento
     });
 
     // --- Lógica de Autenticação e Troca de Formulário (Login/Registro) ---
@@ -2094,13 +2158,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const password = document.getElementById('register-password').value;
         createUserWithEmailAndPassword(auth, email, password)
             .then(async (userCredential) => {
-                 // **NOVO:** Cria um perfil padrão após registro bem-sucedido
-                 const user = userCredential.user;
-                 if (user) {
-                     const colRef = collection(db, 'users', user.uid, 'profiles');
-                     await addDoc(colRef, { name: "Usuário", avatar: AVATARS[0] }); // Cria perfil inicial
-                     // Não precisa fazer mais nada aqui, o onAuthStateChanged vai lidar com a navegação
-                 }
+                // **NOVO:** Cria um perfil padrão após registro bem-sucedido
+                const user = userCredential.user;
+                if (user) {
+                    const colRef = collection(db, 'users', user.uid, 'profiles');
+                    await addDoc(colRef, { name: "Usuário", avatar: AVATARS[0] }); // Cria perfil inicial
+                    // Não precisa fazer mais nada aqui, o onAuthStateChanged vai lidar com a navegação
+                }
             })
             .catch((error) => { // Trata erros de registro
                 console.error("Erro de registro:", error);
@@ -2118,9 +2182,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     const profilesCol = collection(db, 'users', user.uid, 'profiles');
                     const snapshot = await getDocs(profilesCol);
                     if (snapshot.empty) { // Se não existem perfis, cria um
-                          await addDoc(profilesCol, { name: user.displayName || "Usuário", avatar: user.photoURL || AVATARS[0] });
+                        await addDoc(profilesCol, { name: user.displayName || "Usuário", avatar: user.photoURL || AVATARS[0] });
                     }
-                     // onAuthStateChanged cuidará da navegação
+                    // onAuthStateChanged cuidará da navegação
                 }
             })
             .catch((error) => { // Trata erros de login com Google
@@ -2144,8 +2208,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             // O onAuthStateChanged vai detectar a mudança e redirecionar para o login
         }).catch((error) => { // Trata erros de logout
-             console.error("Erro ao sair:", error);
-             showToast(`Erro: ${error.message}`, true);
+            console.error("Erro ao sair:", error);
+            showToast(`Erro: ${error.message}`, true);
         });
     });
 
@@ -2322,18 +2386,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /** Mostra a tela de seleção/gerenciamento de perfil */
     async function showProfileScreen() {
-       // Esconde outras views, header e footer
-       document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
-       loginView.classList.add('hidden');
-       manageProfileView.classList.remove('hidden'); // Mostra gerenciamento de perfil
-       document.querySelector('header').classList.add('hidden');
-       document.querySelector('footer').classList.add('hidden');
-       document.getElementById('main-background').style.opacity = 0; // Esconde background
-       // Reseta o modo de edição
-       isEditMode = false;
-       manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
-       document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
-       await loadProfiles(); // Carrega e renderiza os perfis
+        // Esconde outras views, header e footer
+        document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
+        loginView.classList.add('hidden');
+        manageProfileView.classList.remove('hidden'); // Mostra gerenciamento de perfil
+        document.querySelector('header').classList.add('hidden');
+        document.querySelector('footer').classList.add('hidden');
+        document.getElementById('main-background').style.opacity = 0; // Esconde background
+        // Reseta o modo de edição
+        isEditMode = false;
+        manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
+        document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
+        await loadProfiles(); // Carrega e renderiza os perfis
     }
 
     // Listener principal de mudança de estado de autenticação
@@ -2372,8 +2436,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 handleNavigation(); // Roda o roteador (vai cair na condição !currentProfile)
             }
-             // Se um perfil foi selecionado (autoSelectedProfile = true),
-             // selectAndEnterProfile já chamou handleNavigation, então não precisa chamar de novo.
+            // Se um perfil foi selecionado (autoSelectedProfile = true),
+            // selectAndEnterProfile já chamou handleNavigation, então não precisa chamar de novo.
 
         } else { // Se o usuário NÃO está logado
             userId = null;
@@ -2411,57 +2475,57 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /** Escuta por atualizações na coleção 'news' e atualiza o cache */
     function listenForNews() {
-    if (unsubscribeNewsListener) {
-        unsubscribeNewsListener();
-    }
+        if (unsubscribeNewsListener) {
+            unsubscribeNewsListener();
+        }
 
-    const q = query(collection(db, "news"), orderBy("isPinned", "desc"), orderBy("createdAt", "desc"));
-    unsubscribeNewsListener = onSnapshot(q, (snapshot) => {
-        const newsContainer = document.getElementById('news-items-container');
+        const q = query(collection(db, "news"), orderBy("isPinned", "desc"), orderBy("createdAt", "desc"));
+        unsubscribeNewsListener = onSnapshot(q, (snapshot) => {
+            const newsContainer = document.getElementById('news-items-container');
 
-        snapshot.docChanges().forEach((change) => {
-            const changedData = { id: change.doc.id, ...change.doc.data() };
-            const existingCard = newsContainer ? newsContainer.querySelector(`.news-card[data-news-id="${change.doc.id}"]`) : null;
+            snapshot.docChanges().forEach((change) => {
+                const changedData = { id: change.doc.id, ...change.doc.data() };
+                const existingCard = newsContainer ? newsContainer.querySelector(`.news-card[data-news-id="${change.doc.id}"]`) : null;
 
-            if (change.type === "added") {
-                // Adiciona o novo post no cache e na tela
-                if (!existingCard) {
-                    newsItemsCache.unshift(changedData); // Adiciona no início do array
-                    if (window.location.hash === '#news-view' && newsContainer) {
-                         // Remove mensagem de "nenhuma novidade" se existir
-                        const placeholder = newsContainer.querySelector('p');
-                        if(placeholder) placeholder.remove();
+                if (change.type === "added") {
+                    // Adiciona o novo post no cache e na tela
+                    if (!existingCard) {
+                        newsItemsCache.unshift(changedData); // Adiciona no início do array
+                        if (window.location.hash === '#news-view' && newsContainer) {
+                            // Remove mensagem de "nenhuma novidade" se existir
+                            const placeholder = newsContainer.querySelector('p');
+                            if (placeholder) placeholder.remove();
 
-                        const newCard = createNewsCard(changedData);
-                        newsContainer.prepend(newCard); // Adiciona no topo do feed
-                        attachGlassButtonListeners();
-                        lucide.createIcons();
+                            const newCard = createNewsCard(changedData);
+                            newsContainer.prepend(newCard); // Adiciona no topo do feed
+                            attachGlassButtonListeners();
+                            lucide.createIcons();
+                        }
                     }
                 }
-            }
-            if (change.type === "modified") {
-                // Atualiza o post existente no cache e na tela
-                const index = newsItemsCache.findIndex(item => item.id === change.doc.id);
-                if (index > -1) {
-                    newsItemsCache[index] = changedData;
+                if (change.type === "modified") {
+                    // Atualiza o post existente no cache e na tela
+                    const index = newsItemsCache.findIndex(item => item.id === change.doc.id);
+                    if (index > -1) {
+                        newsItemsCache[index] = changedData;
+                    }
+                    if (existingCard) {
+                        // Esta é a função mágica que vamos criar no próximo passo
+                        updateNewsCardUI(existingCard, changedData);
+                    }
                 }
-                if (existingCard) {
-                    // Esta é a função mágica que vamos criar no próximo passo
-                    updateNewsCardUI(existingCard, changedData);
+                if (change.type === "removed") {
+                    // Remove o post do cache e da tela
+                    newsItemsCache = newsItemsCache.filter(item => item.id !== change.doc.id);
+                    if (existingCard) {
+                        existingCard.remove();
+                    }
                 }
-            }
-            if (change.type === "removed") {
-                // Remove o post do cache e da tela
-                newsItemsCache = newsItemsCache.filter(item => item.id !== change.doc.id);
-                if (existingCard) {
-                    existingCard.remove();
-                }
-            }
+            });
+        }, (error) => {
+            console.error("Erro ao escutar novidades: ", error);
         });
-    }, (error) => {
-        console.error("Erro ao escutar novidades: ", error);
-    });
-}
+    }
 
     /** Renderiza o feed de novidades na tela */
     function renderNewsFeed() {
@@ -2474,14 +2538,14 @@ document.addEventListener('DOMContentLoaded', function() {
         let itemsContainer = newsContainer.querySelector(`#${itemsContainerId}`);
         if (!itemsContainer) {
             // Se o container não existe, cria-o (ajuste conforme sua estrutura HTML)
-             newsContainer.innerHTML = `
+            newsContainer.innerHTML = `
                 <div class="max-w-3xl mx-auto pb-16 w-full px-4 md:px-6 space-y-8">
                     <h2 class="text-3xl sm:text-4xl font-bold text-white mb-8">Novidades</h2>
                     <div id="${itemsContainerId}" class="space-y-8"></div>
                 </div>`;
             itemsContainer = newsContainer.querySelector(`#${itemsContainerId}`);
         } else {
-             itemsContainer.innerHTML = ''; // Limpa apenas o container dos itens
+            itemsContainer.innerHTML = ''; // Limpa apenas o container dos itens
         }
 
 
@@ -2504,11 +2568,11 @@ document.addEventListener('DOMContentLoaded', function() {
         card.className = 'news-card liquid-glass-card bg-stone-900/50 rounded-lg overflow-hidden'; // Estilo Liquid Glass
         card.dataset.newsId = item.id; // Guarda o ID
 
-        const date = item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric'}) : 'Data indisponível';
-        
+        const date = item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Data indisponível';
+
         // NOVO: Cria o selo "FIXADO" se o item tiver 'isPinned: true'
-        const pinnedBadge = item.isPinned 
-            ? `<span class="text-xs font-bold bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded-full ml-2">FIXADO</span>` 
+        const pinnedBadge = item.isPinned
+            ? `<span class="text-xs font-bold bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded-full ml-2">FIXADO</span>`
             : '';
 
         let contentHTML = '';
@@ -2530,7 +2594,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const likes = item.likes || [];
         const userHasLiked = userId ? likes.includes(userId) : false;
-        const likeCount = item.likeCount || likes.length; 
+        const likeCount = item.likeCount || likes.length;
 
         card.innerHTML = `
             <div class="glass-filter"></div>
@@ -2567,47 +2631,47 @@ document.addEventListener('DOMContentLoaded', function() {
         return card;
     }
 
-   /** Adiciona listeners aos botões e elementos de um card de novidade */
-function addNewsCardListeners(cardElement) {
-    const likeBtn = cardElement.querySelector('.like-btn');
-    const commentBtn = cardElement.querySelector('.comment-btn');
-    const commentsSection = cardElement.querySelector('.comments-section');
-    const commentInput = cardElement.querySelector('.comment-input');
-    const submitCommentBtn = cardElement.querySelector('.submit-comment-btn');
-    const commentsList = cardElement.querySelector('.comments-list');
-    const newsId = cardElement.dataset.newsId;
+    /** Adiciona listeners aos botões e elementos de um card de novidade */
+    function addNewsCardListeners(cardElement) {
+        const likeBtn = cardElement.querySelector('.like-btn');
+        const commentBtn = cardElement.querySelector('.comment-btn');
+        const commentsSection = cardElement.querySelector('.comments-section');
+        const commentInput = cardElement.querySelector('.comment-input');
+        const submitCommentBtn = cardElement.querySelector('.submit-comment-btn');
+        const commentsList = cardElement.querySelector('.comments-list');
+        const newsId = cardElement.dataset.newsId;
 
-    // NOVO: Variável para armazenar a função que cancela o ouvinte de comentários
-    let unsubscribeCommentsListener = null; 
+        // NOVO: Variável para armazenar a função que cancela o ouvinte de comentários
+        let unsubscribeCommentsListener = null;
 
-    likeBtn.addEventListener('click', () => handleLike(newsId, likeBtn));
-    
-    commentBtn.addEventListener('click', () => {
-        commentsSection.classList.toggle('hidden');
-        
-        if (!commentsSection.classList.contains('hidden')) {
-            // SEÇÃO ABRINDO: Liga o ouvinte em tempo real
-            // loadComments retorna a função de cancelamento.
-            unsubscribeCommentsListener = loadComments(newsId, commentsList); 
-        } else {
-            // SEÇÃO FECHANDO: Cancela o ouvinte se ele estiver ligado
-            if (unsubscribeCommentsListener) {
-                unsubscribeCommentsListener();
-                unsubscribeCommentsListener = null; // Limpa a variável
+        likeBtn.addEventListener('click', () => handleLike(newsId, likeBtn));
+
+        commentBtn.addEventListener('click', () => {
+            commentsSection.classList.toggle('hidden');
+
+            if (!commentsSection.classList.contains('hidden')) {
+                // SEÇÃO ABRINDO: Liga o ouvinte em tempo real
+                // loadComments retorna a função de cancelamento.
+                unsubscribeCommentsListener = loadComments(newsId, commentsList);
+            } else {
+                // SEÇÃO FECHANDO: Cancela o ouvinte se ele estiver ligado
+                if (unsubscribeCommentsListener) {
+                    unsubscribeCommentsListener();
+                    unsubscribeCommentsListener = null; // Limpa a variável
+                }
             }
-        }
-    });
+        });
 
-    submitCommentBtn.addEventListener('click', () => submitComment(newsId, commentInput, commentsList));
+        submitCommentBtn.addEventListener('click', () => submitComment(newsId, commentInput, commentsList));
 
-    // Listener para submeter comentário com Enter (Shift+Enter para nova linha)
-    commentInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault(); 
-            submitComment(newsId, commentInput, commentsList);
-        }
-    });
-}
+        // Listener para submeter comentário com Enter (Shift+Enter para nova linha)
+        commentInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                submitComment(newsId, commentInput, commentsList);
+            }
+        });
+    }
 
     /** Lida com o clique no botão de curtir */
     async function handleLike(newsId, likeBtn) {
@@ -2652,7 +2716,7 @@ function addNewsCardListeners(cardElement) {
             lucide.createIcons({ nodes: [likeIcon] });
             likeCountSpan.textContent = currentCount; // Reverte contagem
         } finally {
-             likeBtn.disabled = false; // Reabilita o botão
+            likeBtn.disabled = false; // Reabilita o botão
         }
     }
 
@@ -2681,63 +2745,63 @@ function addNewsCardListeners(cardElement) {
         if (submitBtn) submitBtn.disabled = true;
 
         try {
-    const commentsColRef = collection(db, 'news', newsId, 'comments');
-    // MUDANÇA 1: Guardamos o resultado do addDoc em uma nova variável "newCommentRef"
-    const newCommentRef = await addDoc(commentsColRef, commentData);
-    
-    inputElement.value = ''; // Limpa input
-    showToast('Comentário adicionado!');
+            const commentsColRef = collection(db, 'news', newsId, 'comments');
+            // MUDANÇA 1: Guardamos o resultado do addDoc em uma nova variável "newCommentRef"
+            const newCommentRef = await addDoc(commentsColRef, commentData);
 
-    // Opcional: Adicionar o comentário localmente na UI imediatamente
-    // MUDANÇA 2: Usamos a ID real (newCommentRef.id) em vez da ID temporária
-    const newCommentCard = createCommentCard({ id: newCommentRef.id, ...commentData }, newsId);
-    
-    commentsListElement.prepend(newCommentCard); // Adiciona no início da lista
-    attachGlassButtonListeners();
-    lucide.createIcons();
-} catch (error) {
+            inputElement.value = ''; // Limpa input
+            showToast('Comentário adicionado!');
+
+            // Opcional: Adicionar o comentário localmente na UI imediatamente
+            // MUDANÇA 2: Usamos a ID real (newCommentRef.id) em vez da ID temporária
+            const newCommentCard = createCommentCard({ id: newCommentRef.id, ...commentData }, newsId);
+
+            commentsListElement.prepend(newCommentCard); // Adiciona no início da lista
+            attachGlassButtonListeners();
+            lucide.createIcons();
+        } catch (error) {
             console.error("Erro ao adicionar comentário:", error);
             showToast("Erro ao enviar comentário.", true);
         } finally {
-             inputElement.disabled = false;
-             if (submitBtn) submitBtn.disabled = false;
+            inputElement.disabled = false;
+            if (submitBtn) submitBtn.disabled = false;
         }
     }
 
-   // CÓDIGO NOVO E CORRIGIDO PARA loadComments
-/** Carrega e escuta os comentários de um post em tempo real. */
-// Esta função NÃO é mais async
-function loadComments(newsId, commentsListElement) {
-    // A query para a coleção de comentários
-    const q = query(collection(db, 'news', newsId, 'comments'), orderBy('createdAt', 'asc'));
+    // CÓDIGO NOVO E CORRIGIDO PARA loadComments
+    /** Carrega e escuta os comentários de um post em tempo real. */
+    // Esta função NÃO é mais async
+    function loadComments(newsId, commentsListElement) {
+        // A query para a coleção de comentários
+        const q = query(collection(db, 'news', newsId, 'comments'), orderBy('createdAt', 'asc'));
 
-    // Configura o ouvinte em tempo real (onSnapshot)
-    // O onSnapshot retorna a função que cancela o ouvinte!
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        // Limpa o conteúdo (Spinner/mensagens) ANTES de reconstruir
-        commentsListElement.innerHTML = ''; 
-        
-        if (snapshot.empty) {
-            commentsListElement.innerHTML = '<p class="text-stone-400 text-sm text-center">Nenhum comentário ainda.</p>';
-            return;
-        }
+        // Configura o ouvinte em tempo real (onSnapshot)
+        // O onSnapshot retorna a função que cancela o ouvinte!
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            // Limpa o conteúdo (Spinner/mensagens) ANTES de reconstruir
+            commentsListElement.innerHTML = '';
 
-        // Reconstrói a lista de comentários
-        snapshot.forEach(doc => {
-            const commentCard = createCommentCard({ id: doc.id, ...doc.data() }, newsId);
-            commentsListElement.appendChild(commentCard);
+            if (snapshot.empty) {
+                commentsListElement.innerHTML = '<p class="text-stone-400 text-sm text-center">Nenhum comentário ainda.</p>';
+                return;
+            }
+
+            // Reconstrói a lista de comentários
+            snapshot.forEach(doc => {
+                const commentCard = createCommentCard({ id: doc.id, ...doc.data() }, newsId);
+                commentsListElement.appendChild(commentCard);
+            });
+
+            attachGlassButtonListeners();
+            lucide.createIcons();
+        }, (error) => {
+            console.error("Erro ao carregar comentários:", error);
+            commentsListElement.innerHTML = '<p class="text-red-400 text-sm text-center">Erro ao carregar comentários.</p>';
         });
-        
-        attachGlassButtonListeners();
-        lucide.createIcons();
-    }, (error) => {
-        console.error("Erro ao carregar comentários:", error);
-        commentsListElement.innerHTML = '<p class="text-red-400 text-sm text-center">Erro ao carregar comentários.</p>';
-    });
-    
-    // RETORNA a função de unsubscribe. Quem chamar 'loadComments' precisa guardar isso.
-    return unsubscribe; 
-}
+
+        // RETORNA a função de unsubscribe. Quem chamar 'loadComments' precisa guardar isso.
+        return unsubscribe;
+    }
 
     /** Cria o HTML para um card de comentário */
     function createCommentCard(comment, newsId) {
@@ -2778,7 +2842,7 @@ function loadComments(newsId, commentsListElement) {
         return card;
     }
 
-     /** Adiciona listeners aos botões de um card de comentário */
+    /** Adiciona listeners aos botões de um card de comentário */
     function addCommentCardListeners(cardElement, newsId, commentId) {
         const replyBtn = cardElement.querySelector('.reply-btn');
         const viewRepliesBtn = cardElement.querySelector('.view-replies-btn');
@@ -2791,10 +2855,10 @@ function loadComments(newsId, commentsListElement) {
         if (viewRepliesBtn) {
             viewRepliesBtn.addEventListener('click', () => {
                 const isHidden = repliesList.classList.toggle('hidden');
-                 viewRepliesBtn.innerHTML = isHidden
-                     ? `<i data-lucide="messages-square" class="w-3 h-3"></i> Ver ${viewRepliesBtn.dataset.count} ${viewRepliesBtn.dataset.count == 1 ? 'resposta' : 'respostas'}`
-                     : `<i data-lucide="chevron-up" class="w-3 h-3"></i> Ocultar respostas`;
-                 lucide.createIcons({ nodes: [viewRepliesBtn] });
+                viewRepliesBtn.innerHTML = isHidden
+                    ? `<i data-lucide="messages-square" class="w-3 h-3"></i> Ver ${viewRepliesBtn.dataset.count} ${viewRepliesBtn.dataset.count == 1 ? 'resposta' : 'respostas'}`
+                    : `<i data-lucide="chevron-up" class="w-3 h-3"></i> Ocultar respostas`;
+                lucide.createIcons({ nodes: [viewRepliesBtn] });
                 if (!isHidden && repliesList.innerHTML === '') {
                     loadReplies(newsId, commentId, repliesList); // Carrega respostas ao expandir
                 }
@@ -2803,16 +2867,16 @@ function loadComments(newsId, commentsListElement) {
         submitReplyBtn.addEventListener('click', () => submitReply(newsId, commentId, replyInput, repliesList, viewRepliesBtn));
 
         replyInput.addEventListener('keydown', (e) => {
-             if (e.key === 'Enter' && !e.shiftKey) {
-                 e.preventDefault();
-                 submitReply(newsId, commentId, replyInput, repliesList, viewRepliesBtn);
-             }
-         });
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                submitReply(newsId, commentId, replyInput, repliesList, viewRepliesBtn);
+            }
+        });
     }
 
     /** Submete uma nova resposta a um comentário */
     async function submitReply(newsId, commentId, inputElement, repliesListElement, viewRepliesBtn) {
-         if (!userId || !currentProfile) {
+        if (!userId || !currentProfile) {
             showToast("Você precisa estar logado para responder.", true);
             return;
         }
@@ -2831,7 +2895,7 @@ function loadComments(newsId, commentsListElement) {
 
         inputElement.disabled = true;
         const submitBtn = inputElement.nextElementSibling;
-        if(submitBtn) submitBtn.disabled = true;
+        if (submitBtn) submitBtn.disabled = true;
 
         try {
             const repliesColRef = collection(db, 'news', newsId, 'comments', commentId, 'replies');
@@ -2844,21 +2908,21 @@ function loadComments(newsId, commentsListElement) {
             inputElement.value = '';
             inputElement.closest('.reply-input-area').classList.add('hidden'); // Esconde input area
             showToast('Resposta adicionada!');
-             // Opcional: Adicionar resposta localmente na UI imediatamente
-             const newReplyCard = createReplyCard({ id: 'temp-reply-' + Date.now(), ...replyData });
-             repliesListElement.prepend(newReplyCard); // Adiciona no início
-             repliesListElement.classList.remove('hidden'); // Garante que a lista esteja visível
-             // Atualiza o botão "Ver respostas"
-             const newCount = (parseInt(viewRepliesBtn?.dataset.count || '0') + 1);
-             if (viewRepliesBtn) {
-                 viewRepliesBtn.dataset.count = newCount;
-                 viewRepliesBtn.innerHTML = `<i data-lucide="chevron-up" class="w-3 h-3"></i> Ocultar respostas`; // Assume que está expandido
-                 lucide.createIcons({ nodes: [viewRepliesBtn] });
-             } else {
-                 // Se não havia botão (0 respostas), cria um agora (simplificado)
-                 const commentCard = inputElement.closest('.comment-card');
-                 const buttonContainer = commentCard.querySelector('.flex.items-center.gap-4'); // Container dos botões
-                 if (buttonContainer) {
+            // Opcional: Adicionar resposta localmente na UI imediatamente
+            const newReplyCard = createReplyCard({ id: 'temp-reply-' + Date.now(), ...replyData });
+            repliesListElement.prepend(newReplyCard); // Adiciona no início
+            repliesListElement.classList.remove('hidden'); // Garante que a lista esteja visível
+            // Atualiza o botão "Ver respostas"
+            const newCount = (parseInt(viewRepliesBtn?.dataset.count || '0') + 1);
+            if (viewRepliesBtn) {
+                viewRepliesBtn.dataset.count = newCount;
+                viewRepliesBtn.innerHTML = `<i data-lucide="chevron-up" class="w-3 h-3"></i> Ocultar respostas`; // Assume que está expandido
+                lucide.createIcons({ nodes: [viewRepliesBtn] });
+            } else {
+                // Se não havia botão (0 respostas), cria um agora (simplificado)
+                const commentCard = inputElement.closest('.comment-card');
+                const buttonContainer = commentCard.querySelector('.flex.items-center.gap-4'); // Container dos botões
+                if (buttonContainer) {
                     const newViewRepliesBtn = document.createElement('button');
                     newViewRepliesBtn.className = "view-replies-btn text-xs text-stone-400 hover:text-indigo-400 flex items-center gap-1";
                     newViewRepliesBtn.dataset.count = 1;
@@ -2867,15 +2931,15 @@ function loadComments(newsId, commentsListElement) {
                     // Adiciona listener ao novo botão (importante!)
                     addCommentCardListeners(commentCard, newsId, commentId);
                     lucide.createIcons({ nodes: [newViewRepliesBtn] });
-                 }
-             }
+                }
+            }
 
         } catch (error) {
             console.error("Erro ao adicionar resposta:", error);
             showToast("Erro ao enviar resposta.", true);
         } finally {
             inputElement.disabled = false;
-            if(submitBtn) submitBtn.disabled = false;
+            if (submitBtn) submitBtn.disabled = false;
         }
     }
 
@@ -2895,22 +2959,22 @@ function loadComments(newsId, commentsListElement) {
                 const replyCard = createReplyCard({ id: doc.id, ...doc.data() });
                 repliesListElement.appendChild(replyCard);
             });
-             attachGlassButtonListeners(); // Reanexa se houver botões futuros na resposta
-             lucide.createIcons();
+            attachGlassButtonListeners(); // Reanexa se houver botões futuros na resposta
+            lucide.createIcons();
         }, (error) => {
-             console.error("Erro ao carregar respostas:", error);
-             repliesListElement.innerHTML = '<p class="text-red-400 text-xs text-center">Erro ao carregar respostas.</p>';
+            console.error("Erro ao carregar respostas:", error);
+            repliesListElement.innerHTML = '<p class="text-red-400 text-xs text-center">Erro ao carregar respostas.</p>';
         });
     }
 
     /** Cria o HTML para um card de resposta */
     function createReplyCard(reply) {
-         const card = document.createElement('div');
-         card.className = 'reply-card liquid-glass-card bg-stone-700/30 rounded-md p-2';
-         card.dataset.replyId = reply.id;
-         const date = reply.createdAt?.toDate ? reply.createdAt.toDate().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+        const card = document.createElement('div');
+        card.className = 'reply-card liquid-glass-card bg-stone-700/30 rounded-md p-2';
+        card.dataset.replyId = reply.id;
+        const date = reply.createdAt?.toDate ? reply.createdAt.toDate().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
 
-         card.innerHTML = `
+        card.innerHTML = `
              <div class="glass-filter"></div>
              <div class="glass-overlay" style="--bg-color: rgba(40, 40, 40, 0.2);"></div>
              <div class="glass-specular"></div>
@@ -2922,7 +2986,7 @@ function loadComments(newsId, commentsListElement) {
                 <p class="text-xs text-stone-300 whitespace-pre-wrap">${reply.text}</p>
              </div>
         `;
-         return card;
+        return card;
     }
 
 
@@ -2934,11 +2998,11 @@ function loadComments(newsId, commentsListElement) {
             snapshot.forEach((doc) => {
                 pendingRequests.push({ id: doc.id, ...doc.data() });
             });
-             // Ordena no cliente por data de criação (mais recente primeiro)
-             pendingRequests.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+            // Ordena no cliente por data de criação (mais recente primeiro)
+            pendingRequests.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
             // Re-renderiza se a view de pedidos estiver ativa
             if (window.location.hash === '#requests-view') {
-                 renderPendingRequests();
+                renderPendingRequests();
             }
         }, (error) => {
             console.error("Erro ao escutar pedidos: ", error);
@@ -2968,18 +3032,18 @@ function loadComments(newsId, commentsListElement) {
 
     /** Mostra a tela de seleção/gerenciamento de perfil */
     async function showProfileScreen() {
-       // Esconde outras views, header e footer
-       document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
-       loginView.classList.add('hidden');
-       manageProfileView.classList.remove('hidden'); // Mostra gerenciamento de perfil
-       document.querySelector('header').classList.add('hidden');
-       document.querySelector('footer').classList.add('hidden');
-       document.getElementById('main-background').style.opacity = 0; // Esconde background
-       // Reseta o modo de edição
-       isEditMode = false;
-       manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
-       document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
-       await loadProfiles(); // Carrega e renderiza os perfis
+        // Esconde outras views, header e footer
+        document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
+        loginView.classList.add('hidden');
+        manageProfileView.classList.remove('hidden'); // Mostra gerenciamento de perfil
+        document.querySelector('header').classList.add('hidden');
+        document.querySelector('footer').classList.add('hidden');
+        document.getElementById('main-background').style.opacity = 0; // Esconde background
+        // Reseta o modo de edição
+        isEditMode = false;
+        manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
+        document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
+        await loadProfiles(); // Carrega e renderiza os perfis
     }
 
     // Listener principal de mudança de estado de autenticação
@@ -3019,8 +3083,8 @@ function loadComments(newsId, commentsListElement) {
                 }
                 handleNavigation(); // Roda o roteador (vai cair na condição !currentProfile)
             }
-             // Se um perfil foi selecionado (autoSelectedProfile = true),
-             // selectAndEnterProfile já chamou handleNavigation, então não precisa chamar de novo.
+            // Se um perfil foi selecionado (autoSelectedProfile = true),
+            // selectAndEnterProfile já chamou handleNavigation, então não precisa chamar de novo.
 
         } else { // Se o usuário NÃO está logado
             userId = null;
@@ -3042,40 +3106,40 @@ function loadComments(newsId, commentsListElement) {
         // Re-avalia qual listener de clique do player adicionar (mobile vs desktop)
         addPlayerEventListeners();
     });
-// CÓDIGO NOVO (ADICIONAR ESTA FUNÇÃO)
-/**
- * Atualiza apenas os elementos visuais de um card de novidade que mudaram,
- * sem recriar o card inteiro.
- * @param {HTMLElement} cardElement - O elemento do card que já está na página.
- * @param {object} updatedData - Os novos dados do post vindos do Firestore.
- */
-function updateNewsCardUI(cardElement, updatedData) {
-    // --- Atualiza o contador de curtidas ---
-    const likeCountSpan = cardElement.querySelector('.like-count');
-    const likeBtn = cardElement.querySelector('.like-btn');
-    const likeIcon = likeBtn ? likeBtn.firstElementChild : null;
+    // CÓDIGO NOVO (ADICIONAR ESTA FUNÇÃO)
+    /**
+     * Atualiza apenas os elementos visuais de um card de novidade que mudaram,
+     * sem recriar o card inteiro.
+     * @param {HTMLElement} cardElement - O elemento do card que já está na página.
+     * @param {object} updatedData - Os novos dados do post vindos do Firestore.
+     */
+    function updateNewsCardUI(cardElement, updatedData) {
+        // --- Atualiza o contador de curtidas ---
+        const likeCountSpan = cardElement.querySelector('.like-count');
+        const likeBtn = cardElement.querySelector('.like-btn');
+        const likeIcon = likeBtn ? likeBtn.firstElementChild : null;
 
-    if (likeCountSpan) {
-        likeCountSpan.textContent = updatedData.likeCount || 0;
-    }
-
-    // --- Atualiza o ícone de curtida para o usuário atual ---
-    if (likeBtn && likeIcon) {
-        const userHasLiked = userId && (updatedData.likes || []).includes(userId);
-        const isCurrentlyLiked = likeBtn.classList.contains('text-pink-500');
-
-        if (userHasLiked && !isCurrentlyLiked) {
-            likeBtn.classList.add('text-pink-500');
-            likeIcon.setAttribute('data-lucide', 'heart-handshake');
-            lucide.createIcons({ nodes: [likeIcon] });
-        } else if (!userHasLiked && isCurrentlyLiked) {
-            likeBtn.classList.remove('text-pink-500');
-            likeIcon.setAttribute('data-lucide', 'heart');
-            lucide.createIcons({ nodes: [likeIcon] });
+        if (likeCountSpan) {
+            likeCountSpan.textContent = updatedData.likeCount || 0;
         }
-    }
 
-    // --- Atualiza o contador de respostas (se existir no futuro) ---
-    // Poderíamos adicionar lógica aqui para atualizar contadores de comentários/respostas se quiséssemos.
-}
+        // --- Atualiza o ícone de curtida para o usuário atual ---
+        if (likeBtn && likeIcon) {
+            const userHasLiked = userId && (updatedData.likes || []).includes(userId);
+            const isCurrentlyLiked = likeBtn.classList.contains('text-pink-500');
+
+            if (userHasLiked && !isCurrentlyLiked) {
+                likeBtn.classList.add('text-pink-500');
+                likeIcon.setAttribute('data-lucide', 'heart-handshake');
+                lucide.createIcons({ nodes: [likeIcon] });
+            } else if (!userHasLiked && isCurrentlyLiked) {
+                likeBtn.classList.remove('text-pink-500');
+                likeIcon.setAttribute('data-lucide', 'heart');
+                lucide.createIcons({ nodes: [likeIcon] });
+            }
+        }
+
+        // --- Atualiza o contador de respostas (se existir no futuro) ---
+        // Poderíamos adicionar lógica aqui para atualizar contadores de comentários/respostas se quiséssemos.
+    }
 }); // Fim do DOMContentLoaded
