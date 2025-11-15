@@ -652,13 +652,13 @@ document.addEventListener('DOMContentLoaded', function () {
             .slice(0, 20); // Pega os 20 mais recentes
         createCarousel(carouselsContainer, "Adicionado Recentemente", recentlyAdded);
 
-        a       // Carrosséis por Gênero
+        // Carrosséis por Gênero
         // *** MODIFIQUE A PARTIR DAQUI ***
 
         // 1. Pega todos os gêneros únicos do CONTEÚDO ORIGINAL
         const allGenres = [...new Set(firestoreContent.flatMap(item => item.genres || []))];
 
-        for (const genre of allGenres) { // <--- CORRIGIDO (removido 's' daqui)
+        for (const genre of allGenres) {
             // 2. Filtra o CONTEÚDO ORIGINAL para obter a lista APENAS daquele gênero
             const originalGenreList = firestoreContent.filter(item => item.genres && item.genres.includes(genre));
 
@@ -666,13 +666,12 @@ document.addEventListener('DOMContentLoaded', function () {
             // A chave de cache (o nome do gênero) garante um embaralhamento único por gênero
             const shuffledGenreList = getDailyShuffledList(originalGenreList, genre);
 
-            a         // 4. Cria o carrossel com a lista de gênero embaralhada e cacheada
+            // 4. Cria o carrossel com a lista de gênero embaralhada e cacheada
             createCarousel(carouselsContainer, genre, shuffledGenreList);
         }
         // *** FIM DAS MODIFICAÇÕES ***
 
-        attachGlassButtonListeners(); // Reatacha listeners visuais (linha 674) <--- CORRIGIDO (removido 's' daqui)
-        attachDragToScrollListeners(); // <-- ADICIONADO AQUI
+        attachGlassButtonListeners(); // Reatacha listeners visuais
     }
 
     // --- Navegação e Gerenciamento de Views ---
@@ -3178,44 +3177,6 @@ document.addEventListener('DOMContentLoaded', function () {
         // Re-avalia qual listener de clique do player adicionar (mobile vs desktop)
         addPlayerEventListeners();
     });
-    /** Adiciona a funcionalidade de "arrastar para rolar" aos carrosséis */
-    function attachDragToScrollListeners() {
-        const sliders = document.querySelectorAll('.carousel');
-        sliders.forEach(slider => {
-            // Evita adicionar o listener múltiplas vezes se a função for chamada de novo
-            if (slider.hasDragListener) return;
-            slider.hasDragListener = true;
-
-            let isDown = false;
-            let startX;
-            let scrollLeft;
-
-            slider.addEventListener('mousedown', (e) => {
-                isDown = true;
-                slider.classList.add('active-drag');
-                startX = e.pageX - slider.offsetLeft;
-                scrollLeft = slider.scrollLeft;
-            });
-
-            slider.addEventListener('mouseleave', () => {
-                isDown = false;
-                slider.classList.remove('active-drag');
-            });
-
-            slider.addEventListener('mouseup', () => {
-                isDown = false;
-                slider.classList.remove('active-drag');
-            });
-
-            slider.addEventListener('mousemove', (e) => {
-                if (!isDown) return;
-                e.preventDefault();
-                const x = e.pageX - slider.offsetLeft;
-                const walk = (x - startX) * 2; // Multiplicar por 2 torna o arrastar mais rápido
-                slider.scrollLeft = scrollLeft - walk;
-            });
-        });
-    }
     // CÓDIGO NOVO (ADICIONAR ESTA FUNÇÃO)
     /**
      * Atualiza apenas os elementos visuais de um card de novidade que mudaram,

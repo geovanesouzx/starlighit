@@ -55,8 +55,7 @@ body.auth-loading {
 
     /* Aplica para telas até 767px de largura (smartphones) */
     .main-background {
-        background-position: 51% top;
-        /* 50% é centro. 40% é um pouco à esquerda. */
+        background-position: 51% top; /* 50% é centro. 40% é um pouco à esquerda. */
         /* Move a imagem para a esquerda no mobile */
     }
 }
@@ -1051,23 +1050,4 @@ header.header-hidden {
     opacity: 0;
     pointer-events: none;
     /* Impede cliques no header oculto */
-}
-
-/* Estilos para o "arrastar para rolar" do carrossel */
-.carousel {
-    cursor: grab;
-    /* Mãozinha aberta */
-    cursor: -webkit-grab;
-    user-select: none;
-    /* Impede a seleção de texto */
-    transition: transform 0.2s ease;
-    /* Efeito sutil */
-}
-
-.carousel.active-drag {
-    cursor: grabbing;
-    /* Mãozinha fechada */
-    cursor: -webkit-grabbing;
-    transform: scale(1.01);
-    /* Efeito sutil de "levantar" o carrossel */
 }
