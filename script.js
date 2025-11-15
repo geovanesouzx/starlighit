@@ -101,6 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const notificationBtn = document.getElementById('notification-btn');
     const notificationPanel = document.getElementById('notification-panel');
     let debounceTimer; // Timer para debounce de busca
+    const playerLoadingOverlay = document.getElementById('player-loading-overlay');
 
     // Elementos do Player
     const playerView = document.getElementById('player-view');
@@ -1176,9 +1177,9 @@ document.addEventListener('DOMContentLoaded', function () {
         videoPlayer.load();
 
         playerView.classList.add('hidden'); // Esconde a view do player
+        playerLoadingOverlay.classList.add('hidden'); // <--- ADICIONE A LINHA AQUI
         document.body.style.overflow = 'auto'; // Restaura a rolagem do body
         currentPlayerContext = {}; // Limpa o contexto do player
-
         // 3. Sai da tela cheia e desbloqueia a orientação
         // MUDANÇA: Só executa se NÃO estiver trocando de episódio
         if (!isChangingEpisode) {
@@ -1278,7 +1279,20 @@ document.addEventListener('DOMContentLoaded', function () {
             videoPlayer.removeEventListener('click', handlePlayerClick); // Remove listener desktop antigo
             videoPlayer.addEventListener('click', handlePlayerClick); // Adiciona listener desktop correto
         }
+        
+        // Esconde o loading overlay QUANDO o vídeo começar a tocar
+        videoPlayer.addEventListener('playing', () => {
+            if (playerLoadingOverlay) {
+                playerLoadingOverlay.classList.add('hidden');
+            }
+        });
 
+        // MOSTRA o loading overlay se o vídeo parar para bufferizar
+        videoPlayer.addEventListener('waiting', () => {
+            if (playerLoadingOverlay) {
+                playerLoadingOverlay.classList.remove('hidden');
+            }
+        });
 
         // Listener para o evento 'play'
         videoPlayer.addEventListener('play', () => {

@@ -55,7 +55,8 @@ body.auth-loading {
 
     /* Aplica para telas até 767px de largura (smartphones) */
     .main-background {
-        background-position: 51% top; /* 50% é centro. 40% é um pouco à esquerda. */
+        background-position: 51% top;
+        /* 50% é centro. 40% é um pouco à esquerda. */
         /* Move a imagem para a esquerda no mobile */
     }
 }
@@ -1050,4 +1051,103 @@ header.header-hidden {
     opacity: 0;
     pointer-events: none;
     /* Impede cliques no header oculto */
+}
+
+/* Glass Spinner Container */
+.glass-spinner {
+    --bg-color: rgba(255, 255, 255, 0.25);
+    --highlight: rgba(255, 255, 255, 0.75);
+    --spinner-size: 80px;
+    --ring-size: 64px;
+    --core-size: 24px;
+
+    position: relative;
+    width: var(--spinner-size);
+    height: var(--spinner-size);
+    border-radius: 50%;
+    overflow: hidden;
+    background: transparent;
+}
+
+.glass-filter,
+.glass-overlay,
+.glass-specular {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+}
+
+.glass-filter {
+    z-index: 1;
+    backdrop-filter: blur(4px);
+    filter: url(#glass-distortion) saturate(120%) brightness(1.15);
+}
+
+.glass-overlay {
+    z-index: 2;
+    background: var(--bg-color);
+}
+
+.glass-specular {
+    z-index: 3;
+    box-shadow: inset 1px 1px 1px var(--highlight);
+}
+
+.glass-content {
+    position: relative;
+    z-index: 4;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.spinner-ring {
+    position: absolute;
+    width: var(--ring-size);
+    height: var(--ring-size);
+    border: 2px solid transparent;
+    border-top-color: rgba(255, 255, 255, 0.8);
+    border-right-color: rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.spinner-core {
+    width: var(--core-size);
+    height: var(--core-size);
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulse {
+    from {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+}
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+    .glass-spinner {
+        --bg-color: rgba(0, 0, 0, 0.25);
+        --highlight: rgba(255, 255, 255, 0.15);
+    }
 }
