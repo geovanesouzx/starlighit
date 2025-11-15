@@ -149,8 +149,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'https://pbs.twimg.com/media/EcGdw6wXYAUrPu4.jpg',
         'https://pbs.twimg.com/media/EcGdw6uXgAEpGA-.jpg',
         'https://pbs.twimg.com/media/FRnvb21XEAIHLL3?format=jpg&name=4096x4096',
-        'https://pbs.twimg.com/media/FRnvdVzWUAAZweZ?format=jpg&name=4096x4096',
-    ];
+        
     ];
 
     // Ícones SVG para os controles do player
