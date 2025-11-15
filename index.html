@@ -201,7 +201,6 @@
                                         Detalhes
                                     </div>
                                 </button>
-                                </button>
                                 <button id="hero-add-to-list"
                                     class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3">
                                     <div class="glass-filter"></div>
@@ -534,29 +533,34 @@
     </div>
 
 
+    <!-- Bloco <footer> CORRIGIDO -->
     <footer class="fixed bottom-0 left-0 right-0 z-50 p-4 lg:hidden hidden">
         <div id="mobile-nav-container" class="glass-container max-w-sm mx-auto rounded-full">
             <div class="glass-filter"></div>
             <div class="glass-overlay"></div>
             <div class="glass-specular"></div>
-            <nav class="glass-content w-full overflow-x-auto hide-scrollbar px-2 relative">
-                <div id="mobile-nav-indicator"
-                    class="absolute h-[70%] top-[15%] bg-white/10 rounded-full transition-all duration-300 ease-in-out">
+            <!-- 1. NAV (glass-content) NÃO deve rolar -->
+            <nav class="glass-content w-full px-2">
+                <!-- 2. Este DIV interno é quem vai rolar -->
+                <div class="w-full overflow-x-auto hide-scrollbar relative">
+                    <div id="mobile-nav-indicator"
+                        class="absolute h-[70%] top-[15%] bg-white/10 rounded-full transition-all duration-300 ease-in-out">
+                    </div>
+                    <ul id="mobile-nav" class="relative z-10 flex flex-nowrap justify-start items-center gap-2 py-3">
+                        <!-- 3. Tags corrigidas -->
+                        <li><a href="#" class="mobile-nav-item active text-sm px-4 py-2" data-target="home-view">Início</a></li>
+                        <li><a href="#" id="mobile-search-btn" class="mobile-nav-item text-sm px-4 py-2">Buscar</a></li>
+                        <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="series-view">Séries</a></li>
+                        <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="movies-view">Filmes</a></li>
+                        <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="mylist-view">Lista</a></li>
+                        <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="news-view">Novidades</a></li>
+                        <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="requests-view">Pedidos</a></li>
+                    </ul>
                 </div>
-                <ul id="mobile-nav" class="relative z-10 flex flex-nowrap justify-start items-center gap-2 py-3">
-                    <li><a href="#" class="mobile-nav-item active text-sm px-4 py-2" data-target="home-view">Início</a>
-                    </li>
-                    <li><a href="#" id="mobile-search-btn" class="mobile-nav-item text-sm px-4 py-2">Buscar</a></li>
-                    <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="series-view">Séries</a></li>
-                    <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="movies-view">Filmes</a></li>
-                    <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="mylist-view">Lista</a></li>
-                    <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="news-view">Novidades</a></li>
-                    <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="requests-view">Pedidos</a>
-                    </li>
-                </ul>
             </nav>
         </div>
     </footer>
+    <!-- Fim do bloco <footer> CORRIGIDO -->
 
     <div id="notification-toast"
         class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-[300] px-4 py-2 rounded-full text-white text-sm font-semibold transition-all duration-300 opacity-0 backdrop-blur-sm shadow-lg">
@@ -595,7 +599,6 @@
         </div>
     </div>
 
-    <script type="module" src="script.js"></script>
     <script type="module" src="script.js"></script>
 </body>
 
