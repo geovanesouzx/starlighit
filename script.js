@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let firestoreContent = []; // Cache do conteúdo principal
     let pendingRequests = []; // Cache de pedidos pendentes
     let newsItemsCache = []; // Cache para novidades
-    let dailyShuffledContent = []; // NOVO: Cache para o conteúdo embaralhado
+    // let dailyShuffledContent = []; // <-- REMOVA ESTA LINHA
     let unsubscribeNewsListener = null; // Para parar de ouvir novidades ao deslogar
 
     // Elementos DOM frequentemente usados
@@ -353,55 +353,59 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
- * Retorna uma versão do conteúdo embaralhada, com cache de 24h no localStorage.
- * @param {Array} originalContent - O array 'firestoreContent' original.
- * @returns {Array} - O array embaralhado (novo ou do cache).
- */
-    function getDailyShuffledContent(originalContent) {
-        const CACHE_KEY = 'starlight-shuffled-content';
-        const TIMESTAMP_KEY = 'starlight-shuffle-timestamp';
+     * Retorna uma versão embaralhada de uma lista específica (ex: um gênero),
+     * com cache de 24h no localStorage, usando uma chave única.
+     * @param {Array} originalList - O array a ser embaralhado (ex: todos os filmes de "Animação").
+     * @param {string} cacheKey - Uma chave única para este cache (ex: "Animação").
+     * @returns {Array} - O array embaralhado (novo ou do cache).
+     */
+    function getDailyShuffledList(originalList, cacheKey) {
+        // Define chaves únicas para esta lista específica
+        const CACHE_KEY_PREFIX = 'starlight-shuffled-list-';
+        const TIMESTAMP_KEY_PREFIX = 'starlight-shuffle-timestamp-';
         const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000; // 24 horas em milissegundos
 
+        const finalCacheKey = CACHE_KEY_PREFIX + cacheKey;
+        const finalTimestampKey = TIMESTAMP_KEY_PREFIX + cacheKey;
+
         const now = new Date().getTime();
-        const storedTimestamp = localStorage.getItem(TIMESTAMP_KEY);
-        const storedContentJSON = localStorage.getItem(CACHE_KEY);
+        const storedTimestamp = localStorage.getItem(finalTimestampKey);
+        const storedContentJSON = localStorage.getItem(finalCacheKey);
 
         // Verifica se o timestamp é válido e se não expirou
         if (storedTimestamp && storedContentJSON && (now - storedTimestamp < TWENTY_FOUR_HOURS)) {
             try {
                 const cachedContent = JSON.parse(storedContentJSON);
-                // Validação simples: Se o cache tiver um número diferente de itens, está desatualizado.
-                if (cachedContent.length === originalContent.length) {
-                    console.log("Usando cache de conteúdo embaralhado (válido por 24h).");
+                // Validação: Se o cache tiver um número diferente de itens, está desatualizado.
+                if (cachedContent.length === originalList.length) {
+                    // console.log(`Usando cache de 24h para: ${cacheKey}`); // (Opcional: para debug)
                     return cachedContent; // Retorna o cache
-                } else {
-                    console.log("Cache de conteúdo desatualizado (tamanho mudou). Gerando novo.");
                 }
             } catch (e) {
-                console.error("Erro ao ler cache do JSON. Gerando novo.", e);
+                console.error(`Erro ao ler cache JSON para ${cacheKey}. Gerando novo.`, e);
             }
         }
 
         // Se chegou aqui, o cache não existe, expirou, ou falhou
-        console.log("Gerando novo conteúdo embaralhado para o cache de 24h.");
+        // console.log(`Gerando novo cache de 24h para: ${cacheKey}`); // (Opcional: para debug)
 
         // Cria uma cópia e embaralha (Algoritmo Fisher-Yates)
-        const newShuffledContent = [...originalContent]; // Copia o array
+        const newShuffledList = [...originalList]; // Copia o array
 
-        for (let i = newShuffledContent.length - 1; i > 0; i--) {
+        for (let i = newShuffledList.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [newShuffledContent[i], newShuffledContent[j]] = [newShuffledContent[j], newShuffledContent[i]];
+            [newShuffledList[i], newShuffledList[j]] = [newShuffledList[j], newShuffledList[i]];
         }
 
         // Salva o novo conteúdo e o timestamp no localStorage
         try {
-            localStorage.setItem(CACHE_KEY, JSON.stringify(newShuffledContent));
-            localStorage.setItem(TIMESTAMP_KEY, now.toString());
+            localStorage.setItem(finalCacheKey, JSON.stringify(newShuffledList));
+            localStorage.setItem(finalTimestampKey, now.toString());
         } catch (e) {
-            console.error("Erro ao salvar cache no localStorage:", e);
+            console.error(`Erro ao salvar cache no localStorage para ${cacheKey}:`, e);
         }
 
-        return newShuffledContent;
+        return newShuffledList;
     }
     /**
      * Cria o HTML para um card de conteúdo (usado em carrosséis).
@@ -596,10 +600,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 firestoreContent.push({ docId: doc.id, ...doc.data() });
             });
 
-            // *** ADICIONE ESTA LINHA AQUI ***
-            // Gera ou carrega o conteúdo embaralhado para o cache diário
-            dailyShuffledContent = getDailyShuffledContent(firestoreContent);
-            // **********************************
+            // *** A linha abaixo foi REMOVIDA ***
+            // dailyShuffledContent = getDailyShuffledContent(firestoreContent); 
 
             // Escuta o documento 'featured' na coleção 'config' para saber quais itens destacar
             onSnapshot(doc(db, 'config', 'featured'), (docSnap) => {
@@ -610,7 +612,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     }
-
     /**
      * Popula a tela inicial com carrosséis (adicionados recentemente, por gênero).
      */
@@ -629,16 +630,19 @@ document.addEventListener('DOMContentLoaded', function () {
         // Carrosséis por Gênero
         // *** MODIFIQUE A PARTIR DAQUI ***
 
-        // Pega todos os gêneros únicos DO ARRAY JÁ EMBARALHADO
-        const allGenres = [...new Set(dailyShuffledContent.flatMap(item => item.genres || []))];
+        // 1. Pega todos os gêneros únicos do CONTEÚDO ORIGINAL
+        const allGenres = [...new Set(firestoreContent.flatMap(item => item.genres || []))];
 
         for (const genre of allGenres) {
-            // Filtra os itens DO ARRAY JÁ EMBARALHADO
-            const filteredContent = dailyShuffledContent.filter(item => item.genres && item.genres.includes(genre));
+            // 2. Filtra o CONTEÚDO ORIGINAL para obter a lista APENAS daquele gênero
+            const originalGenreList = firestoreContent.filter(item => item.genres && item.genres.includes(genre));
 
-            // Cria um carrossel para o gênero
-            // A ordem já estará aleatória e será a mesma por 24h
-            createCarousel(carouselsContainer, genre, filteredContent);
+            // 3. Passa essa lista de gênero específica para a função de embaralhamento diário
+            // A chave de cache (o nome do gênero) garante um embaralhamento único por gênero
+            const shuffledGenreList = getDailyShuffledList(originalGenreList, genre);
+
+            // 4. Cria o carrossel com a lista de gênero embaralhada e cacheada
+            createCarousel(carouselsContainer, genre, shuffledGenreList);
         }
         // *** FIM DAS MODIFICAÇÕES ***
 
