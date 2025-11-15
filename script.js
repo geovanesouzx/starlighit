@@ -54,31 +54,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const auth = getAuth(app);
     const db = getFirestore(app);
     const googleProvider = new GoogleAuthProvider();
-    // (NOVO) Lida com o resultado do login com Google (redirect)
-    // Isso roda toda vez que a página carrega para verificar se viemos de um redirect
-    getRedirectResult(auth)
-        .then(async (result) => {
-            if (result) {
-                // Login bem-sucedido via redirect
-                const user = result.user;
-                // Lógica de criação de perfil (copiada do antigo popup)
-                if (user) {
-                    const profilesCol = collection(db, 'users', user.uid, 'profiles');
-                    const snapshot = await getDocs(profilesCol);
-                    if (snapshot.empty) {
-                        await addDoc(profilesCol, { name: user.displayName || "Usuário", avatar: user.photoURL || AVATARS[0] });
-                    }
-                }
-                // O onAuthStateChanged vai ser disparado automaticamente
-                // e vai lidar com a navegação.
-            }
-            // Se 'result' for null, significa que não foi um redirect,
-            // então não fazemos nada.
-        })
-        .catch((error) => {
-            // CORREÇÃO: Removido o console.error duplicado e o showToast
-            console.error("Erro ao obter resultado do redirect:", error.message);
-        });
 
     let isFirstNavigation = true; // ADICIONADO AQUI
 
@@ -1304,7 +1279,7 @@ document.addEventListener('DOMContentLoaded', function () {
             videoPlayer.removeEventListener('click', handlePlayerClick); // Remove listener desktop antigo
             videoPlayer.addEventListener('click', handlePlayerClick); // Adiciona listener desktop correto
         }
-
+        
         // Esconde o loading overlay QUANDO o vídeo começar a tocar
         videoPlayer.addEventListener('playing', () => {
             if (playerLoadingOverlay) {
@@ -2263,8 +2238,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Login com Google
     document.getElementById('google-signin-btn').addEventListener('click', () => {
-        // MUDANÇA: Inicia o fluxo de redirect em vez de popup
-        signInWithRedirect(auth, googleProvider);
+        signInWithPopup(auth, googleProvider)
+            .then(async (result) => {
+                // **NOVO:** Verifica se é o primeiro login com Google e cria perfil se necessário
+                const user = result.user;
+                if (user) {
+                    const profilesCol = collection(db, 'users', user.uid, 'profiles');
+                    const snapshot = await getDocs(profilesCol);
+                    if (snapshot.empty) { // Se não existem perfis, cria um
+                        await addDoc(profilesCol, { name: user.displayName || "Usuário", avatar: user.photoURL || AVATARS[0] });
+                    }
+                    // onAuthStateChanged cuidará da navegação
+                }
+            })
+            .catch((error) => { // Trata erros de login com Google
+                console.error("Erro de login com Google:", error);
+                showToast(`Erro: ${error.message}`, true);
+            });
     });
 
     // Logout
