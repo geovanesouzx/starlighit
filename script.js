@@ -2030,6 +2030,9 @@ document.addEventListener('DOMContentLoaded', function () {
         listenToFirestoreContent();
         listenToRequests(); // Escuta pedidos após selecionar perfil
         listenForNews(); // Escuta novidades após selecionar perfil
+
+        // NOVO: Força a navegação para a tela de início
+        window.location.hash = 'home-view';
     }
 
     /**
