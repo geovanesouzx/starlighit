@@ -546,6 +546,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Atualiza o botão "Minha Lista"
             await updateListButton(document.getElementById('hero-add-to-list'), item);
+            // NOVO: Adiciona listener para o botão "Mais Detalhes"
+            const detailsBtn = document.getElementById('hero-details-btn');
+            if (detailsBtn) {
+                // Remove listener antigo para evitar duplicação (boa prática)
+                if (detailsBtn.clickHandler) {
+                    detailsBtn.removeEventListener('click', detailsBtn.clickHandler);
+                }
+                // Define o novo click handler
+                detailsBtn.clickHandler = () => {
+                    if (currentHeroItem && currentHeroItem.docId) {
+                        // Navega para a tela de detalhes usando o hash
+                        window.location.hash = `#details/${currentHeroItem.docId}`;
+                    }
+                };
+                detailsBtn.addEventListener('click', detailsBtn.clickHandler);
+
+                // Recria o ícone 'info' do Lucide que adicionamos no HTML
+                const icon = detailsBtn.querySelector('i[data-lucide]');
+                if (icon) {
+                    lucide.createIcons({ nodes: [icon] });
+                }
+            }
 
             // Inicia a transição de fade-in
             mainBackground.style.opacity = 1;
@@ -1478,17 +1500,6 @@ document.addEventListener('DOMContentLoaded', function () {
             qualityContainer.appendChild(button);
         });
     }
-
-    // Listener para o botão "Assistir" na seção hero
-    document.getElementById('hero-watch-btn').addEventListener('click', () => {
-        if (!currentHeroItem) return; // Sai se não houver item no hero
-        // Pega a URL do item no Firestore e inicia o player
-        showPlayer({
-            videoUrl: currentHeroItem.url, // Usa a URL do item do Firestore
-            title: currentHeroItem.title || currentHeroItem.name,
-            itemData: currentHeroItem
-        });
-    });
 
     /** Inicializa a UI do player (define ícones iniciais, adiciona listeners) */
     function initializePlayerUI() {
