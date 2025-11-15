@@ -2031,10 +2031,15 @@ document.addEventListener('DOMContentLoaded', function () {
         listenToRequests(); // Escuta pedidos após selecionar perfil
         listenForNews(); // Escuta novidades após selecionar perfil
 
-        // NOVO: Força a navegação para a tela de início
-        window.location.hash = 'home-view';
+        // NOVO: Força a navegação para a tela de início,
+        // MAS SÓ SE o usuário estiver vindo da tela de perfil/login.
+        const currentHash = window.location.hash;
+        if (currentHash === '#manage-profile-view' || currentHash === '#login-view' || currentHash === '') {
+            window.location.hash = 'home-view';
+        }
+        // Se o hash já for #details/..., #series, etc., não fazemos nada.
+        // O handleNavigation() que é chamado no onAuthStateChanged vai cuidar de carregar a página certa.
     }
-
     /**
      * Mostra o modal para adicionar ou editar um perfil.
      * @param {string|null} [profileId=null] - O ID do perfil a ser editado, ou null para adicionar.
