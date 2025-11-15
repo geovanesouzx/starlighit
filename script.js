@@ -93,6 +93,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Elementos DOM frequentemente usados
     const loginView = document.getElementById('login-view');
     const searchOverlay = document.getElementById('search-overlay');
+    const headerElement = document.querySelector('header');
     const searchInput = document.getElementById('search-input');
     const searchResultsContainer = document.getElementById('search-results');
     const searchIconBtn = document.getElementById('search-icon-btn');
@@ -1714,6 +1715,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 heroCarouselInterval = null;
             }
         }
+        // Força a checagem do header no final da navegação
+        handleHeaderScroll();
     }
 
     // Adiciona os listeners de navegação do navegador (botão voltar/avançar, mudança de hash)
@@ -3131,9 +3134,34 @@ document.addEventListener('DOMContentLoaded', function () {
             handleNavigation(); // Roda o roteador (vai cair na condição !userId)
         }
     });
+    /** Controla a visibilidade do header com base no scroll (específico da home) */
+    function handleHeaderScroll() {
+        // Se o header não for encontrado ou o player estiver ativo, não faça nada
+        if (!headerElement || !playerView.classList.contains('hidden')) return;
 
+        const currentHash = window.location.hash;
+        const scrollY = window.scrollY;
+        // Distância pequena de scroll para acionar (50 pixels)
+        const threshold = 50;
+
+        // Se estivermos na home (#home-view, #, ou vazio)
+        if (currentHash === '#home-view' || currentHash === '' || currentHash === '#') {
+            if (scrollY > threshold) {
+                // Rolou para baixo: MOSTRA header
+                headerElement.classList.remove('header-hidden');
+            } else {
+                // Está no topo: ESCONDE header
+                headerElement.classList.add('header-hidden');
+            }
+        } else {
+            // Em QUALQUER outra tela (séries, filmes, etc.),
+            // o header deve estar sempre visível (remove a classe de esconder)
+            headerElement.classList.remove('header-hidden');
+        }
+    }
     // --- Inicialização ---
     attachGlassButtonListeners(); // Adiciona listeners visuais iniciais
+    window.addEventListener('scroll', handleHeaderScroll); // <-- LINHA ADICIONADA
     window.addEventListener('resize', () => { // Listener para resize
         updateMobileNavIndicator(); // Atualiza nav mobile
         // Re-avalia qual listener de clique do player adicionar (mobile vs desktop)
