@@ -55,8 +55,7 @@ body.auth-loading {
 
     /* Aplica para telas até 767px de largura (smartphones) */
     .main-background {
-        background-position: 51% top;
-        /* 50% é centro. 40% é um pouco à esquerda. */
+        background-position: 51% top; /* 50% é centro. 40% é um pouco à esquerda. */
         /* Move a imagem para a esquerda no mobile */
     }
 }
@@ -292,8 +291,7 @@ body.auth-loading {
 
 /* Liquid Glass Effect & Profile Card styles*/
 .liquid-glass-card {
-    --bg-color: rgba(0, 0, 0, 0.5);
-    /* Mais opaco */
+    --bg-color: rgba(0, 0, 0, 0.25);
     --highlight: rgba(255, 255, 255, 0.15);
     --text: #ffffff;
     position: relative;
@@ -748,10 +746,8 @@ input[type="range"].player-volume-slider::-webkit-slider-thumb {
 
 .glass-form .glass-filter {
     z-index: 1;
-    backdrop-filter: blur(10px);
-    /* Mais fosco */
-    -webkit-backdrop-filter: blur(10px);
-    /* Mais fosco */
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     filter: url(#glass-distortion) saturate(120%) brightness(1.15);
 }
 
