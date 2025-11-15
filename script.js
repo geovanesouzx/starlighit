@@ -1268,8 +1268,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function addPlayerEventListeners() {
         // Remove listeners antigos antes de adicionar novos para evitar duplicidade
         // Garantir que a referência da função é a mesma
-        const isMobile = window.innerWidth < 768;
-        if (isMobile) {
+        const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        if (isTouchDevice) {
             videoPlayer.removeEventListener('click', handlePlayerClick); // Remove listener desktop se existir
             videoPlayer.removeEventListener('click', handleMobilePlayerClick); // Remove listener mobile antigo
             videoPlayer.addEventListener('click', handleMobilePlayerClick); // Adiciona listener mobile correto
