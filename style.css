@@ -18,6 +18,8 @@ body.auth-loading {
 
 #login-view {
     background-image: url('https://image.tmdb.org/t/p/original/c2dPK558peXs9QzacwzHYQqqS2r.jpg');
+    /* ADICIONE ESTA LINHA */
+    animation: slowPan 40s ease-in-out infinite alternate;
 }
 
 @media (max-width: 768px) {
@@ -1182,7 +1184,7 @@ header.header-hidden {
   Força 'height: 100%' de volta para cards de poster 
   (que são os únicos que usam 'aspect-')
 */
-.liquid-glass-card[class*="aspect-"] > .glass-content {
+.liquid-glass-card[class*="aspect-"]>.glass-content {
     height: 100%;
 }
 
@@ -1190,14 +1192,15 @@ header.header-hidden {
   Força a página de Pedidos a ocupar a tela e rolar internamente.
   (100px de padding-top + 32px de padding-bottom da view)
 */
-#requests-view.content-view > .liquid-glass-card {
+#requests-view.content-view>.liquid-glass-card {
     height: calc(100vh - 132px);
     max-height: calc(100vh - 132px);
-    overflow: hidden; /* Mantém o efeito de vidro contido */
+    overflow: hidden;
+    /* Mantém o efeito de vidro contido */
 }
 
 /* Faz o CONTEÚDO da página Pedidos rolar */
-#requests-view.content-view > .liquid-glass-card > .glass-content {
+#requests-view.content-view>.liquid-glass-card>.glass-content {
     height: 100%;
     overflow-y: auto;
 }
@@ -1208,16 +1211,29 @@ header.header-hidden {
 @media (max-width: 767px) {
     #news-view.content-view {
         /* Garante que o padding não bugue o cálculo de altura */
-        padding-bottom: 0; 
+        padding-bottom: 0;
     }
-    #news-view.content-view > .liquid-glass-card {
+
+    #news-view.content-view>.liquid-glass-card {
         height: calc(100vh - 132px);
         max-height: calc(100vh - 132px);
         overflow: hidden;
     }
-    #news-view.content-view > .liquid-glass-card > .glass-content {
+
+    #news-view.content-view>.liquid-glass-card>.glass-content {
         height: 100%;
         overflow-y: auto;
     }
 }
-/* --- FIM DAS CORREÇÕES --- */
+
+@keyframes slowPan {
+    0% {
+        /* Começa um pouco à esquerda do centro */
+        background-position: 40% 50%;
+    }
+
+    100% {
+        /* Termina um pouco à direita do centro */
+        background-position: 60% 50%;
+    }
+}
