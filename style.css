@@ -337,15 +337,17 @@ body.auth-loading {
     transition: background 0.5s ease;
 }
 
+/* * -----------------------------------------------------------------
+ * !!!! CORREÇÃO IMPORTANTE !!!!
+ * -----------------------------------------------------------------
+ * 'height: auto' é o padrão. Isso conserta "Novidades".
+ * Regras específicas no fim do arquivo vão forçar 'height: 100%'
+ * onde for necessário (posters, página de pedidos, etc.).
+*/
 .liquid-glass-card .glass-content {
     position: relative;
     z-index: 4;
     color: var(--text);
-    /* !!!! MUDANÇA IMPORTANTE !!!!
-      'height: 100%' quebrava o layout de cards com conteúdo dinâmico (como 'Novidades').
-      'height: auto' corrige isso, deixando o card crescer.
-      Regras específicas abaixo forçam 'height: 100%' onde é necessário (ex: posters).
-    */
     height: auto;
 }
 
@@ -726,7 +728,8 @@ input[type="range"].player-volume-slider::-webkit-slider-thumb {
 
 /* LOGIN FORM STYLES */
 .glass-form {
-    --bg-color: rgba(0, 0, 0, 0.5); /* <-- MUDANÇA (era 0.25) */
+    --bg-color: rgba(0, 0, 0, 0.5);
+    /* <-- MUDANÇA (era 0.25) */
     --highlight: rgba(255, 255, 255, 0.15);
     --text: #ffffff;
     --input-bg: rgba(0, 0, 0, 0.2);
@@ -752,8 +755,10 @@ input[type="range"].player-volume-slider::-webkit-slider-thumb {
 
 .glass-form .glass-filter {
     z-index: 1;
-    backdrop-filter: blur(10px); /* <-- MUDANÇA (era 4px) */
-    -webkit-backdrop-filter: blur(10px); /* <-- MUDANÇA (era 4px) */
+    backdrop-filter: blur(10px);
+    /* <-- MUDANÇA (era 4px) */
+    -webkit-backdrop-filter: blur(10px);
+    /* <-- MUDANÇA (era 4px) */
     filter: url(#glass-distortion) saturate(120%) brightness(1.15);
 }
 
@@ -1082,23 +1087,37 @@ header.header-hidden {
     border-radius: inherit;
 }
 
-.glass-filter {
+/* * -----------------------------------------------------------------
+ * !!!! CORREÇÃO IMPORTANTE !!!!
+ * -----------------------------------------------------------------
+ * O seletor foi corrigido para '.glass-spinner .glass-filter'
+ * para não afetar os outros filtros de vidro.
+*/
+.glass-spinner .glass-filter {
     z-index: 1;
     backdrop-filter: blur(4px);
     filter: url(#glass-distortion) saturate(120%) brightness(1.15);
 }
 
-.glass-overlay {
+/* Corrigido para '.glass-spinner .glass-overlay' */
+.glass-spinner .glass-overlay {
     z-index: 2;
     background: var(--bg-color);
 }
 
-.glass-specular {
+/* Corrigido para '.glass-spinner .glass-specular' */
+.glass-spinner .glass-specular {
     z-index: 3;
     box-shadow: inset 1px 1px 1px var(--highlight);
 }
 
-.glass-content {
+/* * -----------------------------------------------------------------
+ * !!!! CORREÇÃO IMPORTANTE !!!!
+ * -----------------------------------------------------------------
+ * O seletor foi corrigido para '.glass-spinner .glass-content'
+ * para não quebrar os layouts das outras páginas.
+*/
+.glass-spinner .glass-content {
     position: relative;
     z-index: 4;
     width: 100%;
@@ -1157,19 +1176,48 @@ header.header-hidden {
     }
 }
 
-/* --- Correções de Altura do Glass Content --- */
+/* --- CORREÇÕES DE LAYOUT (Início) --- */
 
-/* 1. Força 'height: 100%' para cards de poster (que têm aspect-ratio) */
+/* 1. EXCEÇÃO PARA POSTERS: 
+  Força 'height: 100%' de volta para cards de poster 
+  (que são os únicos que usam 'aspect-')
+*/
 .liquid-glass-card[class*="aspect-"] > .glass-content {
     height: 100%;
 }
 
-/* 2. Força 'height: 100%' e rolagem para a PÁGINA de Pedidos */
+/* 2. CORREÇÃO DE ROLAGEM (Pedidos):
+  Força a página de Pedidos a ocupar a tela e rolar internamente.
+  (100px de padding-top + 32px de padding-bottom da view)
+*/
 #requests-view.content-view > .liquid-glass-card {
-    height: calc(100vh - 120px); /* 100px padding-top + 20px de margem */
-    max-height: calc(100vh - 120px);
+    height: calc(100vh - 132px);
+    max-height: calc(100vh - 132px);
+    overflow: hidden; /* Mantém o efeito de vidro contido */
 }
+
+/* Faz o CONTEÚDO da página Pedidos rolar */
 #requests-view.content-view > .liquid-glass-card > .glass-content {
     height: 100%;
     overflow-y: auto;
 }
+
+/* 3. CORREÇÃO DE ROLAGEM (Novidades - Mobile):
+  Em telas pequenas, a página de Novidades também deve rolar por dentro.
+*/
+@media (max-width: 767px) {
+    #news-view.content-view {
+        /* Garante que o padding não bugue o cálculo de altura */
+        padding-bottom: 0; 
+    }
+    #news-view.content-view > .liquid-glass-card {
+        height: calc(100vh - 132px);
+        max-height: calc(100vh - 132px);
+        overflow: hidden;
+    }
+    #news-view.content-view > .liquid-glass-card > .glass-content {
+        height: 100%;
+        overflow-y: auto;
+    }
+}
+/* --- FIM DAS CORREÇÕES --- */
