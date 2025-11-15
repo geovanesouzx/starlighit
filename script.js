@@ -55,6 +55,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const db = getFirestore(app);
     const googleProvider = new GoogleAuthProvider();
 
+    let isFirstNavigation = true; // ADICIONADO AQUI
+
     let userId = null;
     let userEmail = null; // Guardar email para referência
     let userDisplayName = null; // Guardar nome para comentários/respostas
@@ -1561,6 +1563,41 @@ document.addEventListener('DOMContentLoaded', function () {
     async function handleNavigation() {
         const hash = window.location.hash; // Pega o hash atual (ex: #home-view, #details/123)
 
+        // --- NOVA LÓGICA DE INTERCEPTAÇÃO DE "VOLTAR" ---
+
+        // 1. Detecta a primeira navegação da sessão
+        if (isFirstNavigation) {
+            isFirstNavigation = false; // Desativa a flag para que não rode de novo
+            const currentHash = window.location.hash;
+            if (currentHash.startsWith('#details/') || currentHash === '#player') {
+                // Se o usuário Pousou aqui, ativa a flag da sessão
+                sessionStorage.setItem('landedOnDetails', 'true');
+            } else {
+                // Se o usuário pousou na home ou outro lugar, desativa a flag
+                sessionStorage.setItem('landedOnDetails', 'false');
+            }
+        }
+
+        // 2. Intercepta o clique no botão "voltar" do navegador
+        // (Se a flag estiver 'true' E o usuário estiver voltando para a "raiz" do site)
+        if (sessionStorage.getItem('landedOnDetails') === 'true' && (hash === '' || hash === '#')) {
+            // Limpa a flag
+            sessionStorage.removeItem('landedOnDetails');
+            // Usa replaceState para mudar a URL para #home-view SEM adicionar ao histórico
+            history.replaceState(null, '', '#home-view');
+            // Roda a navegação novamente, mas agora com o hash corrigido
+            await handleNavigation();
+            return; // Interrompe a execução atual
+        }
+
+        // 3. Limpa a flag se o usuário navegar para a home manualmente
+        // (Isso desativa a interceptação do "voltar")
+        if (!hash.startsWith('#details/') && hash !== '#player' && hash !== '' && hash !== '#') {
+            sessionStorage.setItem('landedOnDetails', 'false');
+        }
+
+        // --- FIM DA NOVA LÓGICA ---
+
         // --- Rota de Autenticação ---
         if (!userId) { // Se o usuário NÃO está logado
             // Garante que a view de login seja exibida
@@ -1571,7 +1608,6 @@ document.addEventListener('DOMContentLoaded', function () {
             showLoginScreen(); // Mostra a tela de login
             return; // Interrompe a função aqui
         }
-
         // --- Rota de Seleção de Perfil ---
         if (!currentProfile) { // Se o usuário está logado, MAS NENHUM perfil foi selecionado ainda
             // Tenta carregar o último perfil usado do localStorage
