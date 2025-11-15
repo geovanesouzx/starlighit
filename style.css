@@ -32,7 +32,7 @@ body.auth-loading {
     top: 0;
     left: 0;
     right: 0;
-    height: 100vh;
+    height: 100dvh; /* Use 'dvh' (dynamic) ao invés de 'vh' (viewport) */
     background-size: cover;
     background-position: center;
     transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in-out;
