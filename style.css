@@ -55,7 +55,7 @@ body.auth-loading {
 
     /* Aplica para telas até 767px de largura (smartphones) */
     .main-background {
-        background-position: 20% top; /* 50% é centro. 40% é um pouco à esquerda. */
+        background-position: 55% top; /* 50% é centro. 40% é um pouco à esquerda. */
         /* Move a imagem para a esquerda no mobile */
     }
 }
