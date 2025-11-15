@@ -51,6 +51,15 @@ body.auth-loading {
         linear-gradient(to right, #0c0a09 2%, transparent 50%);
 }
 
+@media (max-width: 767px) {
+
+    /* Aplica para telas até 767px de largura (smartphones) */
+    .main-background {
+        background-position: left center;
+        /* Move a imagem para a esquerda no mobile */
+    }
+}
+
 .glass-container {
     position: relative;
     overflow: hidden;
