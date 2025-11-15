@@ -837,9 +837,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (firstEpisode) {
                     // Prepara o contexto do player com informações da série e episódio
                     const allEpisodesOfSeason = data.seasons[firstSeasonKey].episodes;
+
+                    // Pega o título do episódio, com fallback
+                    const epTitle = firstEpisode.title ? ` - ${firstEpisode.title}` : '';
+
                     const context = {
                         videoUrl: firstEpisode.url,
-                        title: `${title} - T${firstSeasonKey} E${firstEpisode.episode_number || 1}`,
+                        // CORRIGIDO: Adiciona o epTitle
+                        title: `${title} - T${firstSeasonKey} E${firstEpisode.episode_number || 1}${epTitle}`,
                         itemData: data,
                         episodes: allEpisodesOfSeason,
                         currentIndex: 0 // Começa no primeiro episódio
@@ -980,10 +985,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 const allEpisodesOfSeason = data.seasons[seasonKey].episodes;
                 const episode = allEpisodesOfSeason[episodeIndex]; // Pega os dados do episódio
 
+                // Pega o título do episódio, com fallback
+                const epTitle = episode.title ? ` - ${episode.title}` : '';
+
                 // Prepara o contexto para o player
                 const context = {
                     videoUrl: episode.url, // URL do vídeo do episódio
-                    title: `${data.name} - T${seasonKey} E${episode.episode_number || episodeIndex + 1}`, // Título para o player
+                    // CORREÇÃO: Usa (data.title || data.name) e adiciona o epTitle
+                    title: `${data.title || data.name} - T${seasonKey} E${episode.episode_number || episodeIndex + 1}${epTitle}`,
                     itemData: data, // Dados gerais da série
                     episodes: allEpisodesOfSeason, // Lista de todos os episódios da temporada
                     currentIndex: episodeIndex // Índice do episódio clicado
@@ -1279,7 +1288,7 @@ document.addEventListener('DOMContentLoaded', function () {
             videoPlayer.removeEventListener('click', handlePlayerClick); // Remove listener desktop antigo
             videoPlayer.addEventListener('click', handlePlayerClick); // Adiciona listener desktop correto
         }
-        
+
         // Esconde o loading overlay QUANDO o vídeo começar a tocar
         videoPlayer.addEventListener('playing', () => {
             if (playerLoadingOverlay) {
@@ -1385,20 +1394,24 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     /**
-     * Muda para o episódio anterior ou próximo.
-     * @param {number} direction - 1 para próximo, -1 para anterior.
-     */
+      * Muda para o episódio anterior ou próximo.
+      * @param {number} direction - 1 para próximo, -1 para anterior.
+      */
     function changeEpisode(direction) {
         if (!currentPlayerContext.episodes) return; // Sai se não for série
         const newIndex = currentPlayerContext.currentIndex + direction; // Calcula novo índice
         // Verifica se o novo índice é válido
         if (newIndex >= 0 && newIndex < currentPlayerContext.episodes.length) {
             const episode = currentPlayerContext.episodes[newIndex]; // Pega dados do novo episódio
+            // Pega o título do episódio, com fallback
+            const epTitle = episode.title ? ` - ${episode.title}` : '';
+
             // Cria novo contexto com índice atualizado e novo título
             const newContext = {
                 ...currentPlayerContext,
                 currentIndex: newIndex,
-                title: `${currentPlayerContext.itemData.name} - T${episode.season_number} E${episode.episode_number}`,
+                // CORREÇÃO: Usa (itemData.title || itemData.name) e adiciona o epTitle
+                title: `${currentPlayerContext.itemData.title || currentPlayerContext.itemData.name} - T${episode.season_number} E${episode.episode_number}${epTitle}`,
                 videoUrl: episode.url // IMPORTANTE: Atualizar a URL do vídeo
             };
             showPlayer(newContext); // Mostra o player com o novo episódio
