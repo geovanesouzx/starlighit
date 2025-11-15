@@ -1230,21 +1230,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /** Manipula cliques na área do vídeo em dispositivos móveis */
     function handleMobilePlayerClick() {
-        clearTimeout(controlsTimeout); // Limpa qualquer timeout anterior ao detectar um toque
+        // 1. Limpa qualquer timeout anterior para esconder os controles
+        clearTimeout(controlsTimeout);
 
-        if (!playerView.classList.contains('controls-active')) {
-            // Se controles escondidos -> PRIMEIRO TOQUE: Apenas MOSTRA os controles
-            playerView.classList.add('controls-active');
-            // Define novo timeout para esconder controles após 3s (somente se estiver tocando)
-            if (!videoPlayer.paused) {
-                controlsTimeout = setTimeout(() => {
-                    playerView.classList.remove('controls-active');
-                }, 3000);
-            }
-        } else {
-            // Se controles visíveis -> SEGUNDO TOQUE: PAUSA/RETOMA o vídeo
-            togglePlay(); // A função togglePlay já lida com play/pause
-            // O listener 'play'/'pause' no addPlayerEventListeners vai gerenciar o timeout
+        // 2. Apenas MOSTRA os controles
+        playerView.classList.add('controls-active');
+
+        // 3. Define um novo timeout para esconder os controles (somente se o vídeo estiver tocando)
+        if (!videoPlayer.paused) {
+            controlsTimeout = setTimeout(() => {
+                playerView.classList.remove('controls-active');
+            }, 3000); // 3 segundos
         }
     }
 
