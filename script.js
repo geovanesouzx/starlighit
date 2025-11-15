@@ -1677,9 +1677,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 clearInterval(heroCarouselInterval);
                 heroCarouselInterval = null;
             }
-
-            // *** ADICIONE ESTA LINHA ABAIXO ***
-            updateHeaderVisibility(); // Garante que o estado do header seja verificado ao navegar
         }
     }
 
@@ -2677,32 +2674,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 e.preventDefault();
                 submitComment(newsId, commentInput, commentsList);
             }
-            // --- Lógica de Scroll do Header ---
-            const headerElement = document.querySelector('header');
-
-            /**
-             * Verifica a posição da rolagem e decide se o header
-             * deve ficar oculto (no topo) ou visível (após rolar).
-             */
-            function updateHeaderVisibility() {
-                if (!headerElement) return; // Se o header não for encontrado
-
-                // Se a classe 'hidden' estiver presente (ex: tela de login, player, etc.), NÃO FAÇA NADA.
-                // A lógica de navegação (handleNavigation) tem prioridade.
-                if (headerElement.classList.contains('hidden')) {
-                    return;
-                }
-
-                // Se a barra de navegação ESTÁ visível (não está em 'hidden'):
-                if (window.scrollY > 50) { // Se rolou mais de 50px
-                    headerElement.classList.remove('header-at-top');
-                } else { // Se está no topo (0 a 50px)
-                    headerElement.classList.add('header-at-top');
-                }
-            }
-
-            // Adiciona o listener de scroll para verificar a posição
-            window.addEventListener('scroll', updateHeaderVisibility);
         });
     }
 
