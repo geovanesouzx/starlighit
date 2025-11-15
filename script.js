@@ -76,8 +76,8 @@ document.addEventListener('DOMContentLoaded', function () {
             // então não fazemos nada.
         })
         .catch((error) => {
-            console.error("Erro ao obter resultado do redirect:", error);
-            showToast(`Erro no login: ${error.message}`, true);
+            // CORREÇÃO: Removido o console.error duplicado e o showToast
+            console.error("Erro ao obter resultado do redirect:", error.message);
         });
 
     let isFirstNavigation = true; // ADICIONADO AQUI
