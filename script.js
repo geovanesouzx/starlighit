@@ -57,10 +57,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let isFirstNavigation = true; // ADICIONADO AQUI
 
-    let publicNotifications = []; // Substitui a antiga 'notifications'
-    let userNotifications = [];
-    let unsubscribePublicNotifs = null;
-    let unsubscribeUserNotifs = null;
+    let userId = null;
     let userEmail = null; // Guardar email para referência
     let userDisplayName = null; // Guardar nome para comentários/respostas
 
@@ -1586,30 +1583,16 @@ document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => notificationPanel.classList.add('hidden'), 250);
         }
 
-        // --- INÍCIO DAS MUDANÇAS ---
-
-        // 1. Marca notificações PÚBLICAS como lidas (lógica antiga)
-        const latestPublicNotification = publicNotifications[0];
-        if (latestPublicNotification && latestPublicNotification.createdAt) {
-            const latestTimestamp = latestPublicNotification.createdAt.toMillis ? latestPublicNotification.createdAt.toMillis() : new Date(latestPublicNotification.createdAt).getTime();
-            if (latestTimestamp > lastNotificationCheck) {
-                lastNotificationCheck = latestTimestamp; // Atualiza variável local
-                localStorage.setItem('starlight-lastNotificationCheck', latestTimestamp); // Salva no localStorage
-            }
+        // Marca notificações como lidas (atualiza timestamp da última verificação)
+        if (notifications.length > 0 && notifications[0].createdAt) {
+            // Pega o timestamp da notificação mais recente
+            const latestTimestamp = notifications[0].createdAt.toMillis ? notifications[0].createdAt.toMillis() : new Date(notifications[0].createdAt).getTime();
+            lastNotificationCheck = latestTimestamp; // Atualiza variável local
+            localStorage.setItem('starlight-lastNotificationCheck', latestTimestamp); // Salva no localStorage
+            updateNotificationBell(); // Atualiza indicador visual (ponto vermelho)
         }
-
-        // 2. Marca notificações DO USUÁRIO como lidas (NOVA LÓGICA)
-        const unreadUserNotifications = userNotifications.filter(n => n.isRead === false);
-        if (unreadUserNotifications.length > 0 && userId && currentProfile) {
-            unreadUserNotifications.forEach(notif => {
-                const notifRef = doc(db, 'users', userId, 'profiles', currentProfile.id, 'notifications', notif.id);
-                updateDoc(notifRef, { isRead: true }).catch(err => console.error(`Erro ao marcar notif ${notif.id} como lida:`, err));
-            });
-        }
-
-        updateNotificationBell(); // Atualiza indicador visual (ponto vermelho)
-        // --- FIM DAS MUDANÇAS ---
     });
+
     // --- Roteador Central ---
     /** Função principal que lida com a navegação baseada no hash da URL */
     async function handleNavigation() {
@@ -1776,87 +1759,43 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Lógica de Notificações ---
     function listenForNotifications() {
-        if (!userId) return; // Não faz nada se o usuário não estiver logado
-
-        // Limpa listeners antigos (importante ao trocar de perfil/usuário)
-        if (unsubscribePublicNotifs) unsubscribePublicNotifs();
-        if (unsubscribeUserNotifs) unsubscribeUserNotifs();
-
-        // 1. Listener para Notificações PÚBLICAS (Avisos do Admin)
-        const publicQuery = query(collection(db, "notifications"), orderBy("createdAt", "desc"));
-        unsubscribePublicNotifs = onSnapshot(publicQuery, (snapshot) => {
-            publicNotifications = [];
+        const q = query(collection(db, "notifications")); // Query sem orderBy
+        onSnapshot(q, (snapshot) => {
+            notifications = [];
             snapshot.forEach((doc) => {
-                // Adiciona apenas 'Aviso', 'Novidade' pública
-                const data = doc.data();
-                if (data.type === 'Aviso' || data.type === 'Novidade') {
-                    publicNotifications.push({ id: doc.id, ...data });
-                }
+                notifications.push({ id: doc.id, ...doc.data() });
             });
-            combineAndSortNotifications();
+            // Ordena no cliente
+            notifications.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+            updateNotificationBell(); // Atualiza indicador
         });
-
-        // 2. Listener para Notificações DO PERFIL (Pedidos, etc.)
-        if (currentProfile && currentProfile.id) {
-            const userQuery = query(collection(db, 'users', userId, 'profiles', currentProfile.id, 'notifications'), orderBy("createdAt", "desc"));
-            unsubscribeUserNotifs = onSnapshot(userQuery, (snapshot) => {
-                userNotifications = [];
-                snapshot.forEach((doc) => {
-                    // Adiciona um marcador para sabermos que é uma notificação do usuário
-                    userNotifications.push({ id: doc.id, ...doc.data(), isUserSpecific: true });
-                });
-                combineAndSortNotifications();
-            });
-        }
-    }
-
-    function combineAndSortNotifications() {
-        // Combina as duas listas
-        notifications = [...publicNotifications, ...userNotifications];
-        // Ordena a lista combinada pela data de criação
-        notifications.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-        updateNotificationBell();
-
-        // Se o painel de notificação estiver aberto, re-renderiza
-        if (!notificationPanel.classList.contains('hidden')) {
-            renderNotifications();
-        }
     }
 
     function updateNotificationBell() {
         // Verifica se há notificações não lidas e não dispensadas
         const hasNew = notifications.some(n => {
             const notifTime = n.createdAt ? (n.createdAt.toMillis ? n.createdAt.toMillis() : new Date(n.createdAt).getTime()) : 0;
-
-            // É "nova" se for pública E mais recente que o check
-            // OU se for do usuário E marcada como 'isRead: false'
-            const isNewPublic = (!n.isUserSpecific && notifTime > lastNotificationCheck);
-            const isNewUser = (n.isUserSpecific && n.isRead === false);
-
-            // Novidades PÚBLICAS podem ser dispensadas
-            const isDismissed = !n.isUserSpecific && n.type === 'Novidade' && dismissedNotifications.includes(n.id);
-
-            return (isNewPublic || isNewUser) && !isDismissed;
+            const isNew = notifTime > lastNotificationCheck;
+            // Novidades podem ser dispensadas
+            const isDismissed = n.type === 'Novidade' && dismissedNotifications.includes(n.id);
+            return isNew && !isDismissed;
         });
         // Adiciona/remove classe para mostrar o indicador visual
         notificationBtn.classList.toggle('has-new', hasNew);
     }
+
     function renderNotifications() {
         const avisosContainer = document.getElementById('notifications-avisos');
         const novidadesContainer = document.getElementById('notifications-novidades');
 
         // Filtra notificações por tipo
         const avisos = notifications.filter(n => n.type === 'Aviso');
-
-        // Inclui "Novidade" PÚBLICA (que pode ser dispensada) E "Pedido" (que é do usuário)
-        const novidades = notifications.filter(n =>
-            (n.type === 'Novidade' && !n.isUserSpecific && !dismissedNotifications.includes(n.id)) ||
-            (n.isUserSpecific && (n.type === 'Pedido' || n.type === 'Novidade')) // Inclui Pedidos e Novidades do usuário
-        );
+        // Filtra novidades não dispensadas
+        const novidades = notifications.filter(n => n.type === 'Novidade' && !dismissedNotifications.includes(n.id));
 
         // Função para criar o HTML de um item de notificação
         const createNotifHTML = (notif, isDismissable) => {
-            // Adiciona botão de dispensar apenas se for 'Novidade' PÚBLICA
+            // Adiciona botão de dispensar apenas se for 'Novidade'
             const dismissBtn = isDismissable ? `<button class="remove-notification-btn text-stone-500 hover:text-white" data-notif-id="${notif.id}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>` : '';
 
             // **FIX:** Adiciona data attribute com dados do link
@@ -1866,23 +1805,18 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             return `
-            <div class="notification-item flex items-start gap-2 p-2 rounded-md transition-colors hover:bg-white/5 ${notif.link ? 'cursor-pointer' : ''}" ${linkDataAttr}>
-                <div class="flex-grow">
-                    <p class="font-bold text-white">${notif.title}</p>
-                    <p class="text-stone-300 text-sm notification-message">${notif.message}</p>
-                </div>
-                ${dismissBtn}
-            </div>`;
+                <div class="notification-item flex items-start gap-2 p-2 rounded-md transition-colors hover:bg-white/5 ${notif.link ? 'cursor-pointer' : ''}" ${linkDataAttr}>
+                    <div class="flex-grow">
+                        <p class="font-bold text-white">${notif.title}</p>
+                        <p class="text-stone-300 text-sm notification-message">${notif.message}</p>
+                    </div>
+                    ${dismissBtn}
+                </div>`;
         };
 
         // Popula os containers das abas
         avisosContainer.innerHTML = avisos.length > 0 ? avisos.map(n => createNotifHTML(n, false)).join('') : '<p class="text-stone-400 text-center p-4">Nenhum aviso.</p>';
-
-        novidadesContainer.innerHTML = novidades.length > 0 ? novidades.map(n => {
-            // Só "Novidade" PÚBLICA é dispensável
-            const isDismissable = (n.type === 'Novidade' && !n.isUserSpecific);
-            return createNotifHTML(n, isDismissable);
-        }).join('') : '<p class="text-stone-400 text-center p-4">Nenhuma novidade.</p>';
+        novidadesContainer.innerHTML = novidades.length > 0 ? novidades.map(n => createNotifHTML(n, true)).join('') : '<p class="text-stone-400 text-center p-4">Nenhuma novidade.</p>';
     }
 
     // Listener para o painel de notificações (troca de abas, dispensar, **FIX: click no item**)
@@ -1966,9 +1900,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const requestData = docSnap.data();
             const requesters = requestData.requesters || []; // Array de quem pediu/votou
             // Verifica se o usuário atual já votou
-            const userVoteIndex = requesters.findIndex(r => r.userId === userId && r.profileId === currentProfile.id);
-            // MODIFICADO AQUI: Adiciona o profileId ao voto
-            const userVote = { userId: userId, profileId: currentProfile.id, userName: currentProfile.name };
+            const userVoteIndex = requesters.findIndex(r => r.userId === userId);
+            const userVote = { userId: userId, userName: currentProfile.name }; // Dados do voto
 
             if (userVoteIndex > -1) { // Se já votou
                 // Remove o voto do array
@@ -2124,7 +2057,6 @@ document.addEventListener('DOMContentLoaded', function () {
         listenToFirestoreContent();
         listenToRequests(); // Escuta pedidos após selecionar perfil
         listenForNews(); // Escuta novidades após selecionar perfil
-        listenForNotifications(); // <-- ADICIONE ESTA LINHA
 
         // NOVO: Força a navegação para a tela de início,
         // MAS SÓ SE o usuário estiver vindo da tela de perfil/login.
@@ -2351,11 +2283,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 unsubscribeNewsListener();
                 unsubscribeNewsListener = null;
             }
-            // --- ADICIONE ESTAS LINHAS ---
-            if (unsubscribePublicNotifs) unsubscribePublicNotifs();
-            if (unsubscribeUserNotifs) unsubscribeUserNotifs();
-            unsubscribePublicNotifs = null;
-            unsubscribeUserNotifs = null;
             // O onAuthStateChanged vai detectar a mudança e redirecionar para o login
         }).catch((error) => { // Trata erros de logout
             console.error("Erro ao sair:", error);
@@ -2479,7 +2406,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (existingRequest) { // Se já existe um pedido
                     // Verifica se o usuário atual já votou
-                    const userHasRequested = existingRequest.requesters && existingRequest.requesters.some(r => r.userId === userId && r.profileId === currentProfile.id);
+                    const userHasRequested = existingRequest.requesters && existingRequest.requesters.some(r => r.userId === userId);
                     if (userHasRequested) {
                         showToast('Você já apoiou este pedido.', true); // Informa se já votou
                         return;
@@ -2487,9 +2414,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     // Se não votou, adiciona o voto ao pedido existente
                     try {
                         const docRef = doc(db, 'pedidos', existingRequest.id);
-                        // MODIFICADO AQUI: Adiciona profileId
                         await updateDoc(docRef, {
-                            requesters: arrayUnion({ userId: userId, profileId: currentProfile.id, userName: currentProfile.name }) // Adiciona ao array
+                            requesters: arrayUnion({ userId: userId, userName: currentProfile.name }) // Adiciona ao array
                         });
                         showToast('Seu apoio ao pedido foi adicionado!');
                     } catch (error) {
@@ -2505,8 +2431,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         mediaType: item.media_type,
                         status: 'pending', // Status inicial
                         createdAt: serverTimestamp(), // Data de criação
-                        // MODIFICADO AQUI: Adiciona profileId
-                        requesters: [{ userId: userId, profileId: currentProfile.id, userName: currentProfile.name }] // Array inicial de votantes
+                        requesters: [{ userId: userId, userName: currentProfile.name }] // Array inicial de votantes
                     };
 
                     // Adiciona o novo pedido ao Firestore
@@ -2602,11 +2527,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 unsubscribeNewsListener();
                 unsubscribeNewsListener = null;
             }
-            // --- ADICIONE ESTAS LINHAS ---
-            if (unsubscribePublicNotifs) unsubscribePublicNotifs();
-            if (unsubscribeUserNotifs) unsubscribeUserNotifs();
-            unsubscribePublicNotifs = null;
-            unsubscribeUserNotifs = null;
             // Garante que o hash seja #login-view
             if (window.location.hash !== '#login-view') {
                 history.replaceState(null, '', '#login-view');
@@ -3212,7 +3132,8 @@ document.addEventListener('DOMContentLoaded', function () {
             userEmail = user.email; // Guarda email
             userDisplayName = user.displayName; // Guarda nome do Google (se houver)
 
-            // Inicia listeners do Firestore que dependem do usuári
+            // Inicia listeners do Firestore que dependem do usuário
+            listenForNotifications();
             // listenToRequests(); // Movido para depois da seleção de perfil
             // listenForNews(); // Movido para depois da seleção de perfil
 
