@@ -78,8 +78,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let heroCarouselInterval;
     let featuredItemIds = [];
-    let featuredMovieIds = []; // <--- ADICIONE ESTA LINHA
-    let featuredSeriesIds = []; // <--- ADICIONE ESTA LINHA
 
     let hls = null; // Instância do HLS.js
     let notifications = []; // Cache de notificações
@@ -579,77 +577,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 500); // Tempo correspondente à duração da animação CSS
     }
 
-    // --- ADICIONE ESTA NOVA FUNÇÃO ABAIXO ---
-
-    /**
-     * Atualiza um container de destaque (Filmes ou Séries) com um item.
-     * @param {string} containerId - O ID do container (ex: 'movies-featured-container').
-     * @param {object} item - O item a ser exibido.
-     */
-    async function updatePageFeature(containerId, item) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-
-        // Se não houver item, esconde o container e sai
-        if (!item) {
-            container.classList.add('hidden');
-            container.innerHTML = '';
-            return;
-        }
-
-        container.classList.remove('hidden');
-        const backgroundUrl = item.backdrop;
-        const releaseYear = item.year;
-        const overview = item.synopsis.length > 200 ? item.synopsis.substring(0, 200) + '...' : item.synopsis;
-
-        // Cria o HTML interno, muito similar ao da 'home-view'
-        container.innerHTML = `
-        	 	         	 	 <div class="main-background" style="background-image: url('${backgroundUrl}'); opacity: 1;"></div>
-        	 	         	 	 <div class="relative flex items-center h-full">
-        	 	 	 <div class="w-full max-w-7xl px-8 sm:px-12 md:px-16 lg:px-24">
-        	 	 	 	 <div class="max-w-xl text-white">
-        	 	 	 	 	 <h2 class="text-4xl sm:text-5xl md:text-6xl font-black my-4 drop-shadow-lg">${item.title}</h2>
-        	 	 	 	 	 <div class="page-feature-meta flex flex-wrap items-center gap-x-3 gap-y-2 text-gray-300 text-sm">
-        	 	 	 	 	 	 <span>${releaseYear}</span>
-        	 	 	 	 	 </div>
-        	 	 	 	 	 <p class="mt-4 text-sm sm:text-base leading-relaxed text-gray-200 drop-shadow-md max-w-prose">${overview}</p>
-        	 	 	 	 	 <div class="mt-8 flex items-center gap-2 sm:gap-4">
-        	 	 	 	 	 	 <button class="page-feature-details-btn glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3">
-        	 	 	 	   	 	 	 <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-        	 	 	 	 	 	 	 <div class="glass-content flex items-center justify-center gap-2">
-        	 	 	 	 	 	 	 	 <i data-lucide="info" class="w-5 h-5 sm:w-6 sm:h-6"></i> Detalhes
-        	 	 	 	 	 	 	 </div>
-        	 	 	 	 	 	 </button>
-        	 	   	 	 	 	 <button class="page-feature-add-to-list glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3">
-        	 	 	 	 	 	 	 <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-        	 	 	 	 	 	 	 <div class="glass-content flex items-center justify-center gap-2"></div>
-        	 	 	 	 	 	 </button>
-        	 	 	 	 	 </div>
-        	 	 	 	 </div>
-        	 	 	 </div>
-        	 	 </div>
-        	 `;
-
-        // Adiciona os listeners e ícones aos botões que acabamos de criar
-        const detailsBtn = container.querySelector('.page-feature-details-btn');
-        const addToListBtn = container.querySelector('.page-feature-add-to-list');
-        const metaContainer = container.querySelector('.page-feature-meta');
-
-        if (detailsBtn) {
-            detailsBtn.addEventListener('click', () => {
-                window.location.hash = `#details/${item.docId}`;
-            });
-        }
-        if (addToListBtn) {
-            await updateListButton(addToListBtn, item);
-        }
-        if (metaContainer) {
-            await displayContentRating(item, metaContainer);
-        }
-        lucide.createIcons();
-        attachGlassButtonListeners();
-    }
-
     /**
      * Atualiza a aparência (ícone e texto) de um botão "Minha Lista".
      * @param {HTMLElement} button - O elemento do botão.
@@ -714,55 +641,63 @@ document.addEventListener('DOMContentLoaded', function () {
     /**
      * Popula a tela inicial com carrosséis (adicionados recentemente, por gênero).
      */
-    async function listenToFirestoreContent() {
-        // Escuta a coleção 'content'
-        onSnapshot(collection(db, 'content'), (snapshot) => {
-            firestoreContent = []; // Limpa o cache local
-            snapshot.forEach(doc => {
-                // Adiciona cada item ao cache com seu ID do Firestore
-                firestoreContent.push({ docId: doc.id, ...doc.data() });
-            });
+    async function populateAllViews() {
+        const carouselsContainer = document.getElementById('home-carousels-container');
+        if (!carouselsContainer) return; // Sai se o container não existir
+        carouselsContainer.innerHTML = ''; // Limpa o container
 
-            // *** A linha abaixo foi REMOVIDA ***
-            // dailyShuffledContent = getDailyShuffledContent(firestoreContent); 
+        // Carrossel "Adicionado Recentemente"
+        // (ESTA PARTE FICA IGUAL, usando 'firestoreContent' original para ordenar por data)
+        const recentlyAdded = [...firestoreContent]
+            .sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0))
+            .slice(0, 20); // Pega os 20 mais recentes
+        createCarousel(carouselsContainer, "Adicionado Recentemente", recentlyAdded);
 
-            // Listener para DESTAQUE DA HOME
-            onSnapshot(doc(db, 'config', 'featured'), (docSnap) => {
-                // Pega a lista de IDs de destaque, ou um array vazio se não existir
-                featuredItemIds = docSnap.exists() ? (docSnap.data().items || []) : [];
-                // Re-renderiza a tela atual com base nos novos dados
-                handleNavigation();
-            });
+        // Carrosséis por Gênero
+        // *** MODIFIQUE A PARTIR DAQUI ***
 
-            // --- INÍCIO DA MODIFICAÇÃO ---
-            // Listener para DESTAQUE DE FILMES
-            onSnapshot(doc(db, 'config', 'featured_movies'), (docSnap) => {
-                featuredMovieIds = docSnap.exists() ? (docSnap.data().items || []) : [];
-                // Re-renderiza a tela se já estivermos nela
-                if (window.location.hash === '#movies-view') {
-                    handleNavigation();
-                }
-            });
+        // 1. Pega todos os gêneros únicos do CONTEÚDO ORIGINAL
+        const allGenres = [...new Set(firestoreContent.flatMap(item => item.genres || []))];
 
-            // Listener para DESTAQUE DE SÉRIES
-            onSnapshot(doc(db, 'config', 'featured_series'), (docSnap) => {
-                featuredSeriesIds = docSnap.exists() ? (docSnap.data().items || []) : [];
-                // Re-renderiza a tela se já estivermos nela
-                if (window.location.hash === '#series-view') {
-                    handleNavigation();
-                }
-            });
-            // --- FIM DA MODIFICAÇÃO ---
+        for (const genre of allGenres) {
+            // 2. Filtra o CONTEÚDO ORIGINAL para obter a lista APENAS daquele gênero
+            const originalGenreList = firestoreContent.filter(item => item.genres && item.genres.includes(genre));
 
-        });
+            // 3. Passa essa lista de gênero específica para a função de embaralhamento diário
+            // A chave de cache (o nome do gênero) garante um embaralhamento único por gênero
+            const shuffledGenreList = getDailyShuffledList(originalGenreList, genre);
+
+            // 4. Cria o carrossel com a lista de gênero embaralhada e cacheada
+            createCarousel(carouselsContainer, genre, shuffledGenreList);
+        }
+        // *** FIM DAS MODIFICAÇÕES ***
+
+        attachGlassButtonListeners(); // Reatacha listeners visuais
     }
+
+    // --- Navegação e Gerenciamento de Views ---
+
+    // Listener para cliques nos links de navegação (desktop e mobile)
+    const navLinks = document.querySelectorAll('.nav-item, .mobile-nav-item');
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault(); // Impede a navegação padrão do link
+            const targetId = link.getAttribute('data-target'); // Pega o ID da view alvo
+            if (!targetId) return; // Sai se não houver alvo
+
+            // Muda o hash da URL. O listener 'hashchange' cuidará da lógica de mostrar/esconder.
+            if (window.location.hash !== `#${targetId}`) {
+                window.location.hash = targetId;
+            }
+        });
+    });
+
     /**
      * Renderiza o conteúdo específico de uma tela principal (Home, Séries, Filmes, etc.).
      * @param {string} screenId - O ID da tela a ser renderizada.
      * @param {boolean} [forceReload=false] - Se true, força o recarregamento (não usado atualmente).
      */
-    // ⬇️⬇️⬇️ ADICIONADO "async" AQUI ⬇️⬇️⬇️
-    async function renderScreenContent(screenId, forceReload = false) {
+    function renderScreenContent(screenId, forceReload = false) {
         const screenElement = document.getElementById(screenId);
         if (!screenElement) return; // Sai se a tela não for encontrada
 
@@ -771,47 +706,20 @@ document.addEventListener('DOMContentLoaded', function () {
             // Pega os itens em destaque e atualiza o hero
             const featuredItems = featuredItemIds.map(id => firestoreContent.find(item => item.docId === id)).filter(Boolean);
             if (featuredItems.length > 0) {
-                // ⬇️⬇️⬇️ ADICIONADO "await" AQUI ⬇️⬇️⬇️
-                await updateHero(featuredItems[0]); // Mostra o primeiro item
+                updateHero(featuredItems[0]); // Mostra o primeiro item
                 startHeroRotation(); // Inicia a rotação
             }
-            // ⬇️⬇️⬇️ ADICIONADO "await" AQUI ⬇️⬇️⬇️
-            await populateAllViews(); // Popula os carrosséis da home
+            populateAllViews(); // Popula os carrosséis da home
         } else if (screenId === 'series-view') {
-            // NOVO: Renderiza o destaque da página de séries
-            if (featuredSeriesIds.length > 0) {
-                const featuredId = featuredSeriesIds[0]; // Pega o primeiro item da lista
-                const item = firestoreContent.find(i => i.docId === featuredId);
-                // ⬇️⬇️⬇️ ADICIONADO "await" AQUI ⬇️⬇️⬇️
-                await updatePageFeature('series-featured-container', item);
-            } else {
-                // ⬇️⬇️⬇️ ADICIONADO "await" AQUI ⬇️⬇️⬇️
-                await updatePageFeature('series-featured-container', null); // Esconde o container
-            }
-
-            // Renderiza a grid normal
             const grid = document.getElementById('series-grid');
             const series = firestoreContent.filter(item => item.type === 'tv'); // Filtra apenas séries
             grid.innerHTML = series.map(createGridCard).join(''); // Cria a grid de séries
         } else if (screenId === 'movies-view') {
-            // NOVO: Renderiza o destaque da página de filmes
-            if (featuredMovieIds.length > 0) {
-                const featuredId = featuredMovieIds[0]; // Pega o primeiro item da lista
-                const item = firestoreContent.find(i => i.docId === featuredId);
-                // ⬇️⬇️⬇️ ADICIONADO "await" AQUI ⬇️⬇️⬇️
-                await updatePageFeature('movies-featured-container', item);
-            } else {
-                // ⬇️⬇️⬇️ ADICIONADO "await" AQUI ⬇️⬇️⬇️
-                await updatePageFeature('movies-featured-container', null); // Esconde o container
-            }
-
-            // Renderiza a grid normal
             const grid = document.getElementById('movies-grid');
             const movies = firestoreContent.filter(item => item.type === 'movie'); // Filtra apenas filmes
             grid.innerHTML = movies.map(createGridCard).join(''); // Cria a grid de filmes
         } else if (screenId === 'mylist-view') {
-            // ⬇️⬇️⬇️ ADICIONADO "await" AQUI ⬇️⬇️⬇️
-            await populateMyList(); // Popula a grid da "Minha Lista"
+            populateMyList(); // Popula a grid da "Minha Lista"
         } else if (screenId === 'requests-view') {
             renderPendingRequests(); // Renderiza os pedidos pendentes
         } else if (screenId === 'news-view') {
@@ -820,6 +728,7 @@ document.addEventListener('DOMContentLoaded', function () {
         lucide.createIcons(); // Recria ícones
         attachGlassButtonListeners(); // Reatacha listeners visuais
     }
+
     // Listener global para cliques em links de detalhes (cards de conteúdo)
     document.body.addEventListener('click', (e) => {
         const anchor = e.target.closest('a'); // Encontra o link pai mais próximo
@@ -1684,8 +1593,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // --- Roteador Central ---
     /** Função principal que lida com a navegação baseada no hash da URL */
-    // ⬇️⬇️⬇️ ADICIONADO "async" AQUI ⬇️⬇️⬇️
     async function handleNavigation() {
         const hash = window.location.hash; // Pega o hash atual (ex: #home-view, #details/123)
 
@@ -1712,7 +1621,6 @@ document.addEventListener('DOMContentLoaded', function () {
             // Usa replaceState para mudar a URL para #home-view SEM adicionar ao histórico
             history.replaceState(null, '', '#home-view');
             // Roda a navegação novamente, mas agora com o hash corrigido
-            // ⬇️⬇️⬇️ ADICIONADO "await" AQUI ⬇️⬇️⬇️
             await handleNavigation();
             return; // Interrompe a execução atual
         }
@@ -1800,8 +1708,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // --- Lógica de Roteamento ---
         if (hash.startsWith('#details/')) { // Se for uma rota de detalhes
             const docId = hash.split('/')[1]; // Extrai o ID do item do hash
-            // ⬇️⬇️⬇️ ADICIONADO "await" AQUI ⬇️⬇️⬇️
-            await showDetailsView({ docId }); // Chama a função para renderizar detalhes
+            showDetailsView({ docId }); // Chama a função para renderizar detalhes
         } else if (hash === '#player') { // Se for a rota do player
             // O player é mostrado pela função showPlayer(). O roteador apenas garante
             // que outras views estejam escondidas. Se o usuário recarregar em #player,
@@ -1815,13 +1722,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (targetView && targetView.classList.contains('content-view')) { // Se a view existe e é válida
                 targetView.classList.remove('hidden'); // Mostra a view
-                // ⬇️⬇️⬇️ ADICIONADO "await" AQUI ⬇️⬇️⬇️
-                await renderScreenContent(targetId); // Renderiza o conteúdo específico da view
+                renderScreenContent(targetId); // Renderiza o conteúdo específico da view
             } else { // Se a view não existe ou hash é inválido
                 // Fallback para a tela inicial
                 document.getElementById('home-view').classList.remove('hidden');
-                // ⬇️⬇️⬇️ ADICIONADO "await" AQUI ⬇️⬇️⬇️
-                await renderScreenContent('home-view');
+                renderScreenContent('home-view');
                 // Corrige o hash na URL se ele era inválido
                 if (window.location.hash !== '#home-view') {
                     history.replaceState(null, '', '#home-view');
