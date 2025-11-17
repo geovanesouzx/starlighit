@@ -152,6 +152,8 @@ document.addEventListener('DOMContentLoaded', function () {
         'https://pbs.twimg.com/media/EcGdw6xXsAANIu1?format=jpg&name=large',
         'https://pbs.twimg.com/media/EcGdw6wXYAUrPu4.jpg',
         'https://pbs.twimg.com/media/EcGdw6uXgAEpGA-.jpg',
+        'https://acteia.ca/avatars/avatar_174.png',
+        'https://acteia.ca/avatars/avatar_322.png',
 
     ];
 
