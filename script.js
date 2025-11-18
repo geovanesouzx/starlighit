@@ -2365,12 +2365,19 @@ document.addEventListener('DOMContentLoaded', function () {
         attachGlassButtonListeners(); // Reatacha listeners visuais
     }
 
-    // Listener para cliques nos resultados da busca TMDB
+    // Listener para cliques nos resultados da busca TMDB (ATUALIZADO)
     document.getElementById('tmdb-search-results').addEventListener('click', (e) => {
         const itemElement = e.target.closest('.tmdb-result-item');
         if (itemElement) { // Se clicou em um item
             const itemData = JSON.parse(itemElement.dataset.item); // Pega os dados armazenados
-            confirmAndAddRequest(itemData); // Chama função para confirmar e adicionar pedido
+
+            if (itemData.media_type === 'movie') {
+                // Se for filme, segue o fluxo antigo
+                confirmAndAddRequest(itemData);
+            } else if (itemData.media_type === 'tv') {
+                // Se for série, ABRE O NOVO MODAL
+                openTvRequestModal(itemData);
+            }
         }
     });
 
@@ -2383,70 +2390,74 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    /** Confirma e adiciona um pedido (ou voto) para um item do TMDB */
-    async function confirmAndAddRequest(item) {
-        const title = item.title || item.name; // Título do item
-        // Mostra modal de confirmação
-        showConfirmationModal(
-            'Confirmar Pedido', // Título do modal
-            `Deseja solicitar a adição de "${title}"?`, // Mensagem
-            async () => { // Callback de confirmação
-                if (!userId || !currentProfile) { // Verifica login e perfil
-                    showToast("Você precisa estar logado e ter um perfil selecionado.", true);
+    /** Confirma e adiciona um pedido (ou voto) - ATUALIZADA */
+    async function confirmAndAddRequest(item, isFromModal = false) {
+        // Define o título e poster final (pode vir modificado do modal de série)
+        const titleToDisplay = item.displayTitle || item.title || item.name;
+        const posterToSave = item.fullPosterUrl || (item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem');
+
+        // Função interna para executar o salvamento
+        const executeAdd = async () => {
+            if (!userId || !currentProfile) {
+                showToast("Você precisa estar logado e ter um perfil selecionado.", true);
+                return;
+            }
+
+            // Verifica duplicidade pelo TÍTULO EXIBIDO (ex: "Dark - T1 E1")
+            const existingRequest = pendingRequests.find(r => r.title === titleToDisplay);
+
+            if (existingRequest) {
+                const userHasRequested = existingRequest.requesters && existingRequest.requesters.some(r => r.userId === userId);
+                if (userHasRequested) {
+                    showToast('Você já apoiou este pedido.', true);
                     return;
                 }
-
-                // Verifica se o item já existe no catálogo principal
-                const alreadyInCatalog = firestoreContent.some(c => c.tmdb_id === item.id);
-                if (alreadyInCatalog) {
-                    showToast('Este item já está disponível no catálogo.', true);
-                    return;
+                try {
+                    const docRef = doc(db, 'pedidos', existingRequest.id);
+                    await updateDoc(docRef, {
+                        requesters: arrayUnion({ userId: userId, userName: currentProfile.name })
+                    });
+                    showToast('Apoio adicionado!');
+                } catch (error) {
+                    console.error("Erro ao apoiar:", error);
+                    showToast('Ocorreu um erro.', true);
                 }
+            } else {
+                // Cria novo pedido com dados detalhados
+                const requestData = {
+                    tmdbId: item.id,
+                    title: titleToDisplay, // Ex: "Breaking Bad - T5 E14"
+                    originalTitle: item.title || item.name, // Ex: "Breaking Bad"
+                    year: (item.release_date || item.first_air_date || '').substring(0, 4),
+                    posterUrl: posterToSave,
+                    mediaType: item.media_type,
 
-                // Verifica se já existe um pedido pendente para este item
-                const existingRequest = pendingRequests.find(r => r.tmdbId === item.id);
+                    // Novos campos para identificar o tipo de pedido
+                    requestType: item.requestDetail?.type || 'movie',
+                    seasonNumber: item.requestDetail?.season || null,
+                    episodeNumber: item.requestDetail?.episode || null,
 
-                if (existingRequest) { // Se já existe um pedido
-                    // Verifica se o usuário atual já votou
-                    const userHasRequested = existingRequest.requesters && existingRequest.requesters.some(r => r.userId === userId);
-                    if (userHasRequested) {
-                        showToast('Você já apoiou este pedido.', true); // Informa se já votou
-                        return;
-                    }
-                    // Se não votou, adiciona o voto ao pedido existente
-                    try {
-                        const docRef = doc(db, 'pedidos', existingRequest.id);
-                        await updateDoc(docRef, {
-                            requesters: arrayUnion({ userId: userId, userName: currentProfile.name }) // Adiciona ao array
-                        });
-                        showToast('Seu apoio ao pedido foi adicionado!');
-                    } catch (error) {
-                        console.error("Erro ao apoiar pedido:", error);
-                        showToast('Ocorreu um erro ao apoiar o pedido.', true);
-                    }
-                } else { // Se não existe pedido, cria um novo
-                    const requestData = { // Dados do novo pedido
-                        tmdbId: item.id,
-                        title: item.title || item.name,
-                        year: (item.release_date || item.first_air_date || '').substring(0, 4), // Pega o ano
-                        posterUrl: item.poster_path ? `${IMG_URL_POSTER}${item.poster_path}` : 'https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem',
-                        mediaType: item.media_type,
-                        status: 'pending', // Status inicial
-                        createdAt: serverTimestamp(), // Data de criação
-                        requesters: [{ userId: userId, userName: currentProfile.name }] // Array inicial de votantes
-                    };
+                    status: 'pending',
+                    createdAt: serverTimestamp(),
+                    requesters: [{ userId: userId, userName: currentProfile.name }]
+                };
 
-                    // Adiciona o novo pedido ao Firestore
-                    try {
-                        await addDoc(collection(db, 'pedidos'), requestData);
-                        showToast('Pedido enviado com sucesso!');
-                    } catch (error) {
-                        console.error("Erro ao adicionar pedido:", error);
-                        showToast('Ocorreu um erro ao enviar o pedido.', true);
-                    }
+                try {
+                    await addDoc(collection(db, 'pedidos'), requestData);
+                    showToast('Pedido enviado com sucesso!');
+                } catch (error) {
+                    console.error("Erro ao adicionar pedido:", error);
+                    showToast('Ocorreu um erro ao enviar o pedido.', true);
                 }
             }
-        );
+        };
+
+        // Se veio do modal, já teve interação, então salva direto. Se não, pede confirmação.
+        if (isFromModal) {
+            executeAdd();
+        } else {
+            showConfirmationModal('Confirmar Pedido', `Deseja solicitar "${titleToDisplay}"?`, executeAdd);
+        }
     }
 
     // --- Estado Inicial e Listener de Autenticação ---
@@ -3244,7 +3255,117 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // --- Atualiza o contador de respostas (se existir no futuro) ---
-        // Poderíamos adicionar lógica aqui para atualizar contadores de comentários/respostas se quiséssemos.
+
     }
-}); // Fim do DOMContentLoaded
+    // --- LÓGICA DO MODAL DE PEDIDO DE SÉRIE (NOVO) ---
+    const tvReqModal = document.getElementById('tv-request-modal');
+    const reqSeasonSelect = document.getElementById('req-season-select');
+    const reqEpisodeSelect = document.getElementById('req-episode-select');
+    let currentRequestType = 'series';
+
+    // Função para buscar dados do TMDB (Reutilizando a constante API_KEY e API_URL do escopo global se existirem, senão definindo aqui para garantir)
+    // Se sua função fetchFromTMDB já existe e funciona globalmente dentro deste escopo, ótimo.
+    // Caso precise garantir o funcionamento aqui dentro, vamos usar a fetchFromTMDB que já existe no seu script.
+
+    async function openTvRequestModal(item) {
+        // Preenche dados ocultos
+        document.getElementById('req-tmdb-id').value = item.id;
+        document.getElementById('req-title').value = item.name;
+        document.getElementById('req-year').value = (item.first_air_date || '').substring(0, 4);
+        document.getElementById('req-poster').value = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : '';
+
+        // Reseta UI
+        currentRequestType = 'series';
+        document.querySelectorAll('.req-type-btn').forEach(btn => {
+            btn.classList.remove('active', 'border-purple-500/50');
+            if (btn.dataset.type === 'series') btn.classList.add('active', 'border-purple-500/50');
+        });
+        document.getElementById('req-season-container').classList.add('hidden');
+        document.getElementById('req-episode-container').classList.add('hidden');
+        reqSeasonSelect.innerHTML = '<option>Carregando...</option>';
+
+        tvReqModal.classList.remove('hidden'); // Abre o modal
+
+        // Busca temporadas usando a função fetchFromTMDB que já existe no seu script
+        const data = await fetchFromTMDB(`tv/${item.id}`);
+        reqSeasonSelect.innerHTML = '<option value="">Selecione...</option>';
+        if (data && data.seasons) {
+            data.seasons.forEach(season => {
+                if (season.season_number > 0) {
+                    reqSeasonSelect.innerHTML += `<option value="${season.season_number}">Temporada ${season.season_number}</option>`;
+                }
+            });
+        }
+    }
+
+    // Botões de Tipo (Série, Temporada, Episódio)
+    document.querySelectorAll('.req-type-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.req-type-btn').forEach(b => b.classList.remove('active', 'border-purple-500/50'));
+            btn.classList.add('active', 'border-purple-500/50');
+            currentRequestType = btn.dataset.type;
+
+            const sCont = document.getElementById('req-season-container');
+            const eCont = document.getElementById('req-episode-container');
+
+            if (currentRequestType === 'series') { sCont.classList.add('hidden'); eCont.classList.add('hidden'); }
+            else if (currentRequestType === 'season') { sCont.classList.remove('hidden'); eCont.classList.add('hidden'); }
+            else if (currentRequestType === 'episode') { sCont.classList.remove('hidden'); eCont.classList.remove('hidden'); }
+        });
+    });
+
+    // Ao mudar temporada, carrega episódios
+    reqSeasonSelect.addEventListener('change', async () => {
+        if (currentRequestType !== 'episode') return;
+        const tmdbId = document.getElementById('req-tmdb-id').value;
+        const seasonNum = reqSeasonSelect.value;
+        reqEpisodeSelect.innerHTML = '<option>Carregando...</option>';
+        reqEpisodeSelect.disabled = true;
+
+        if (seasonNum) {
+            const data = await fetchFromTMDB(`tv/${tmdbId}/season/${seasonNum}`);
+            reqEpisodeSelect.innerHTML = '<option value="">Selecione...</option>';
+            if (data && data.episodes) {
+                data.episodes.forEach(ep => {
+                    reqEpisodeSelect.innerHTML += `<option value="${ep.episode_number}">Ep ${ep.episode_number}: ${ep.name}</option>`;
+                });
+                reqEpisodeSelect.disabled = false;
+            }
+        }
+    });
+
+    document.getElementById('cancel-tv-req-btn').addEventListener('click', () => tvReqModal.classList.add('hidden'));
+
+    document.getElementById('confirm-tv-req-btn').addEventListener('click', () => {
+        const title = document.getElementById('req-title').value;
+        const seasonNum = reqSeasonSelect.value;
+        const episodeNum = reqEpisodeSelect.value;
+        let finalTitle = title;
+        let type = 'series';
+
+        if (currentRequestType === 'season') {
+            if (!seasonNum) return showToast('Selecione a temporada.', true);
+            finalTitle = `${title} - Temporada ${seasonNum}`;
+            type = 'season';
+        } else if (currentRequestType === 'episode') {
+            if (!seasonNum || !episodeNum) return showToast('Selecione Temporada e Episódio.', true);
+            finalTitle = `${title} - T${seasonNum} E${episodeNum}`;
+            type = 'episode';
+        }
+
+        const customItem = {
+            id: parseInt(document.getElementById('req-tmdb-id').value),
+            title: title,
+            displayTitle: finalTitle, // Título para exibir na lista
+            name: title,
+            first_air_date: document.getElementById('req-year').value,
+            fullPosterUrl: document.getElementById('req-poster').value,
+            media_type: 'tv',
+            requestDetail: { type, season: seasonNum, episode: episodeNum }
+        };
+
+        tvReqModal.classList.add('hidden');
+        // Chama a função confirmAndAddRequest passando true para indicar que veio do modal
+        confirmAndAddRequest(customItem, true);
+    });
+}); 

@@ -605,6 +605,65 @@
         </div>
     </div>
 
+    <div id="tv-request-modal"
+        class="hidden fixed inset-0 z-[350] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="liquid-glass-card w-full max-w-md">
+            <div class="glass-filter"></div>
+            <div class="glass-overlay"></div>
+            <div class="glass-specular"></div>
+            <div class="glass-content p-6 space-y-6">
+                <h3 class="text-2xl font-bold text-white mb-2">Detalhes do Pedido</h3>
+                <p class="text-stone-300 text-sm">O que você deseja solicitar desta série?</p>
+
+                <input type="hidden" id="req-tmdb-id">
+                <input type="hidden" id="req-title">
+                <input type="hidden" id="req-poster">
+                <input type="hidden" id="req-year">
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-stone-400 mb-2">Eu quero...</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button"
+                                class="req-type-btn active glass-button rounded-md py-2 text-xs bg-white/10 border border-purple-500/50"
+                                data-type="series">A Série Toda</button>
+                            <button type="button"
+                                class="req-type-btn glass-button rounded-md py-2 text-xs bg-black/20 hover:bg-white/5"
+                                data-type="season">Temporada</button>
+                            <button type="button"
+                                class="req-type-btn glass-button rounded-md py-2 text-xs bg-black/20 hover:bg-white/5"
+                                data-type="episode">Episódio</button>
+                        </div>
+                    </div>
+
+                    <div id="req-season-container" class="hidden">
+                        <label class="block text-xs font-medium text-stone-400 mb-2">Qual Temporada?</label>
+                        <select id="req-season-select"
+                            class="w-full p-3 bg-black/40 rounded-lg text-white border border-white/10 outline-none focus:border-purple-500">
+                        </select>
+                    </div>
+
+                    <div id="req-episode-container" class="hidden">
+                        <label class="block text-xs font-medium text-stone-400 mb-2">Qual Episódio?</label>
+                        <select id="req-episode-select"
+                            class="w-full p-3 bg-black/40 rounded-lg text-white border border-white/10 outline-none focus:border-purple-500"
+                            disabled>
+                            <option value="">Selecione a temporada primeiro</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button id="cancel-tv-req-btn"
+                        class="flex-1 py-3 rounded-full bg-white/5 hover:bg-white/10 text-white text-sm font-bold transition">Cancelar</button>
+                    <button id="confirm-tv-req-btn"
+                        class="flex-1 py-3 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-sm font-bold transition shadow-lg shadow-purple-900/20">Confirmar
+                        Pedido</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="script.js"></script>
 </body>
 
