@@ -3257,43 +3257,131 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     }
-    // --- LÓGICA DO MODAL DE PEDIDO DE SÉRIE (NOVO) ---
+    // --- LÓGICA DO MODAL DE PEDIDO DE SÉRIE (ATUALIZADA - CUSTOM SELECT) ---
     const tvReqModal = document.getElementById('tv-request-modal');
-    const reqSeasonSelect = document.getElementById('req-season-select');
-    const reqEpisodeSelect = document.getElementById('req-episode-select');
+
+    // Elementos dos inputs escondidos (onde guardamos os valores reais)
+    const reqSeasonValue = document.getElementById('req-season-value');
+    const reqEpisodeValue = document.getElementById('req-episode-value');
+
+    // Elementos visuais (Triggers e Dropdowns)
+    const reqSeasonTrigger = document.getElementById('req-season-trigger');
+    const reqSeasonText = document.getElementById('req-season-text');
+    const reqSeasonDropdown = document.getElementById('req-season-dropdown');
+    const reqSeasonOptionsList = document.getElementById('req-season-options-list');
+
+    const reqEpisodeTrigger = document.getElementById('req-episode-trigger');
+    const reqEpisodeText = document.getElementById('req-episode-text');
+    const reqEpisodeDropdown = document.getElementById('req-episode-dropdown');
+    const reqEpisodeOptionsList = document.getElementById('req-episode-options-list');
+
     let currentRequestType = 'series';
 
-    // Função para buscar dados do TMDB (Reutilizando a constante API_KEY e API_URL do escopo global se existirem, senão definindo aqui para garantir)
-    // Se sua função fetchFromTMDB já existe e funciona globalmente dentro deste escopo, ótimo.
-    // Caso precise garantir o funcionamento aqui dentro, vamos usar a fetchFromTMDB que já existe no seu script.
+    // Função auxiliar para fechar dropdowns ao clicar fora
+    document.addEventListener('click', (e) => {
+        if (!reqSeasonTrigger.contains(e.target)) reqSeasonDropdown.classList.add('hidden');
+        if (!reqEpisodeTrigger.contains(e.target)) reqEpisodeDropdown.classList.add('hidden');
+    });
+
+    // Abrir/Fechar Dropdown Temporada
+    reqSeasonTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        reqEpisodeDropdown.classList.add('hidden'); // Fecha o outro
+        reqSeasonDropdown.classList.toggle('hidden');
+    });
+
+    // Abrir/Fechar Dropdown Episódio
+    reqEpisodeTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (reqEpisodeTrigger.disabled) return;
+        reqSeasonDropdown.classList.add('hidden'); // Fecha o outro
+        reqEpisodeDropdown.classList.toggle('hidden');
+    });
 
     async function openTvRequestModal(item) {
-        // Preenche dados ocultos
+        // Preenche dados ocultos do filme/série
         document.getElementById('req-tmdb-id').value = item.id;
         document.getElementById('req-title').value = item.name;
         document.getElementById('req-year').value = (item.first_air_date || '').substring(0, 4);
         document.getElementById('req-poster').value = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : '';
 
-        // Reseta UI
+        // Reseta UI (Botões e Inputs)
         currentRequestType = 'series';
         document.querySelectorAll('.req-type-btn').forEach(btn => {
-            btn.classList.remove('active', 'border-purple-500/50');
-            if (btn.dataset.type === 'series') btn.classList.add('active', 'border-purple-500/50');
+            btn.classList.remove('active');
+            if (btn.dataset.type === 'series') btn.classList.add('active');
         });
+
+        // Esconde os containers
         document.getElementById('req-season-container').classList.add('hidden');
         document.getElementById('req-episode-container').classList.add('hidden');
-        reqSeasonSelect.innerHTML = '<option>Carregando...</option>';
+
+        // Reseta Textos e Valores
+        reqSeasonText.textContent = 'Carregando...';
+        reqSeasonValue.value = '';
+        reqSeasonTrigger.disabled = true;
+
+        reqEpisodeText.textContent = 'Selecione a temporada primeiro';
+        reqEpisodeValue.value = '';
+        reqEpisodeTrigger.disabled = true;
+
+        reqSeasonOptionsList.innerHTML = '';
+        reqEpisodeOptionsList.innerHTML = '';
 
         tvReqModal.classList.remove('hidden'); // Abre o modal
 
-        // Busca temporadas usando a função fetchFromTMDB que já existe no seu script
+        // Busca temporadas
         const data = await fetchFromTMDB(`tv/${item.id}`);
-        reqSeasonSelect.innerHTML = '<option value="">Selecione...</option>';
+        reqSeasonText.textContent = 'Selecione...';
+        reqSeasonTrigger.disabled = false;
+
         if (data && data.seasons) {
             data.seasons.forEach(season => {
                 if (season.season_number > 0) {
-                    reqSeasonSelect.innerHTML += `<option value="${season.season_number}">Temporada ${season.season_number}</option>`;
+                    // Cria opção div
+                    const option = document.createElement('div');
+                    option.className = 'req-option';
+                    option.textContent = season.name || `Temporada ${season.season_number}`;
+                    option.onclick = () => {
+                        // Ao clicar na opção de temporada
+                        reqSeasonText.textContent = option.textContent;
+                        reqSeasonValue.value = season.season_number;
+                        reqSeasonDropdown.classList.add('hidden');
+
+                        // Dispara carregamento de episódios se necessário
+                        if (currentRequestType === 'episode') {
+                            loadEpisodesForDropdown(item.id, season.season_number);
+                        }
+                    };
+                    reqSeasonOptionsList.appendChild(option);
                 }
+            });
+        }
+    }
+
+    // Carregar Episódios para o Custom Select
+    async function loadEpisodesForDropdown(tmdbId, seasonNum) {
+        reqEpisodeText.textContent = 'Carregando...';
+        reqEpisodeTrigger.disabled = true;
+        reqEpisodeOptionsList.innerHTML = '';
+        reqEpisodeValue.value = '';
+
+        const data = await fetchFromTMDB(`tv/${tmdbId}/season/${seasonNum}`);
+
+        reqEpisodeText.textContent = 'Selecione...';
+        reqEpisodeTrigger.disabled = false;
+
+        if (data && data.episodes) {
+            data.episodes.forEach(ep => {
+                const option = document.createElement('div');
+                option.className = 'req-option';
+                option.textContent = `Ep ${ep.episode_number}: ${ep.name}`;
+                option.onclick = () => {
+                    reqEpisodeText.textContent = option.textContent;
+                    reqEpisodeValue.value = ep.episode_number;
+                    reqEpisodeDropdown.classList.add('hidden');
+                };
+                reqEpisodeOptionsList.appendChild(option);
             });
         }
     }
@@ -3301,8 +3389,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Botões de Tipo (Série, Temporada, Episódio)
     document.querySelectorAll('.req-type-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.req-type-btn').forEach(b => b.classList.remove('active', 'border-purple-500/50'));
-            btn.classList.add('active', 'border-purple-500/50');
+            document.querySelectorAll('.req-type-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
             currentRequestType = btn.dataset.type;
 
             const sCont = document.getElementById('req-season-container');
@@ -3310,36 +3398,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (currentRequestType === 'series') { sCont.classList.add('hidden'); eCont.classList.add('hidden'); }
             else if (currentRequestType === 'season') { sCont.classList.remove('hidden'); eCont.classList.add('hidden'); }
-            else if (currentRequestType === 'episode') { sCont.classList.remove('hidden'); eCont.classList.remove('hidden'); }
-        });
-    });
-
-    // Ao mudar temporada, carrega episódios
-    reqSeasonSelect.addEventListener('change', async () => {
-        if (currentRequestType !== 'episode') return;
-        const tmdbId = document.getElementById('req-tmdb-id').value;
-        const seasonNum = reqSeasonSelect.value;
-        reqEpisodeSelect.innerHTML = '<option>Carregando...</option>';
-        reqEpisodeSelect.disabled = true;
-
-        if (seasonNum) {
-            const data = await fetchFromTMDB(`tv/${tmdbId}/season/${seasonNum}`);
-            reqEpisodeSelect.innerHTML = '<option value="">Selecione...</option>';
-            if (data && data.episodes) {
-                data.episodes.forEach(ep => {
-                    reqEpisodeSelect.innerHTML += `<option value="${ep.episode_number}">Ep ${ep.episode_number}: ${ep.name}</option>`;
-                });
-                reqEpisodeSelect.disabled = false;
+            else if (currentRequestType === 'episode') {
+                sCont.classList.remove('hidden');
+                eCont.classList.remove('hidden');
+                // Se já tiver temporada selecionada, recarrega episodios
+                if (reqSeasonValue.value) {
+                    loadEpisodesForDropdown(document.getElementById('req-tmdb-id').value, reqSeasonValue.value);
+                }
             }
-        }
+        });
     });
 
     document.getElementById('cancel-tv-req-btn').addEventListener('click', () => tvReqModal.classList.add('hidden'));
 
     document.getElementById('confirm-tv-req-btn').addEventListener('click', () => {
         const title = document.getElementById('req-title').value;
-        const seasonNum = reqSeasonSelect.value;
-        const episodeNum = reqEpisodeSelect.value;
+        const seasonNum = reqSeasonValue.value; // Pega do input hidden
+        const episodeNum = reqEpisodeValue.value; // Pega do input hidden
         let finalTitle = title;
         let type = 'series';
 
@@ -3356,7 +3431,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const customItem = {
             id: parseInt(document.getElementById('req-tmdb-id').value),
             title: title,
-            displayTitle: finalTitle, // Título para exibir na lista
+            displayTitle: finalTitle,
             name: title,
             first_air_date: document.getElementById('req-year').value,
             fullPosterUrl: document.getElementById('req-poster').value,
@@ -3365,7 +3440,6 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         tvReqModal.classList.add('hidden');
-        // Chama a função confirmAndAddRequest passando true para indicar que veio do modal
         confirmAndAddRequest(customItem, true);
     });
 }); 

@@ -1237,3 +1237,38 @@ header.header-hidden {
         background-position: 70% 50%;
     }
 }
+
+/* Estilos para os Custom Selects do Modal */
+.req-option {
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 0.9rem;
+    color: #d6d3d1;
+    /* stone-300 */
+}
+
+.req-option:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.req-option.selected {
+    background-color: rgba(147, 51, 234, 0.2);
+    /* Roxo suave */
+    color: #e9d5ff;
+    /* Roxo claro */
+    font-weight: 600;
+}
+
+/* Scrollbar bonita para o dropdown */
+#req-season-dropdown::-webkit-scrollbar,
+#req-episode-dropdown::-webkit-scrollbar {
+    width: 4px;
+}
+
+#req-season-dropdown::-webkit-scrollbar-thumb,
+#req-episode-dropdown::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
