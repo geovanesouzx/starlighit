@@ -606,12 +606,13 @@
     </div>
 
     <div id="tv-request-modal"
-        class="hidden fixed inset-0 z-[350] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300">
+        class="hidden fixed inset-0 z-[350] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300">
         <div class="liquid-glass-card w-full max-w-md overflow-visible">
             <div class="glass-filter"></div>
             <div class="glass-overlay"></div>
             <div class="glass-specular"></div>
-            <div class="glass-content p-6 space-y-6">
+
+            <div class="glass-content p-6 space-y-6 relative z-10">
                 <h3 class="text-2xl font-bold text-white mb-2">Detalhes do Pedido</h3>
                 <p class="text-stone-300 text-sm">O que você deseja solicitar?</p>
 
@@ -623,51 +624,31 @@
                 <div class="space-y-5">
                     <div>
                         <label class="block text-xs font-medium text-stone-400 mb-2">Eu quero...</label>
-                        <div class="grid grid-cols-3 gap-2 p-1 bg-black/20 rounded-xl relative">
+                        <div class="grid grid-cols-3 gap-2 p-1 bg-black/40 rounded-xl relative">
                             <button type="button"
-                                class="req-type-btn active relative overflow-hidden rounded-lg py-2.5 text-xs font-bold text-stone-400 transition-all duration-300 group"
+                                class="req-type-btn active rounded-lg py-2.5 text-xs font-bold text-stone-400"
                                 data-type="series">
-                                <div
-                                    class="absolute inset-0 bg-gradient-to-tr from-purple-500/20 to-pink-500/20 opacity-0 group-[.active]:opacity-100 transition-opacity duration-300">
-                                </div>
-                                <div
-                                    class="absolute inset-0 border border-white/20 rounded-lg opacity-0 group-[.active]:opacity-100 transition-opacity duration-300">
-                                </div>
-                                <span class="relative z-10 group-[.active]:text-white">A Série Toda</span>
+                                A Série Toda
                             </button>
-
                             <button type="button"
-                                class="req-type-btn relative overflow-hidden rounded-lg py-2.5 text-xs font-bold text-stone-400 transition-all duration-300 group"
+                                class="req-type-btn rounded-lg py-2.5 text-xs font-bold text-stone-400"
                                 data-type="season">
-                                <div
-                                    class="absolute inset-0 bg-gradient-to-tr from-purple-500/20 to-pink-500/20 opacity-0 group-[.active]:opacity-100 transition-opacity duration-300">
-                                </div>
-                                <div
-                                    class="absolute inset-0 border border-white/20 rounded-lg opacity-0 group-[.active]:opacity-100 transition-opacity duration-300">
-                                </div>
-                                <span class="relative z-10 group-[.active]:text-white">Temporada</span>
+                                Temporada
                             </button>
-
                             <button type="button"
-                                class="req-type-btn relative overflow-hidden rounded-lg py-2.5 text-xs font-bold text-stone-400 transition-all duration-300 group"
+                                class="req-type-btn rounded-lg py-2.5 text-xs font-bold text-stone-400"
                                 data-type="episode">
-                                <div
-                                    class="absolute inset-0 bg-gradient-to-tr from-purple-500/20 to-pink-500/20 opacity-0 group-[.active]:opacity-100 transition-opacity duration-300">
-                                </div>
-                                <div
-                                    class="absolute inset-0 border border-white/20 rounded-lg opacity-0 group-[.active]:opacity-100 transition-opacity duration-300">
-                                </div>
-                                <span class="relative z-10 group-[.active]:text-white">Episódio</span>
+                                Episódio
                             </button>
                         </div>
                     </div>
 
-                    <div id="req-season-container" class="hidden relative z-20"> <label
-                            class="block text-xs font-medium text-stone-400 mb-2">Qual Temporada?</label>
+                    <div id="req-season-container" class="hidden relative z-[50]">
+                        <label class="block text-xs font-medium text-stone-400 mb-2">Qual Temporada?</label>
 
-                        <div class="relative" id="custom-season-wrapper">
+                        <div class="relative">
                             <button type="button" id="req-season-trigger"
-                                class="w-full p-3 bg-black/30 rounded-lg text-white border border-white/10 flex justify-between items-center hover:bg-black/40 transition-colors">
+                                class="w-full p-3 bg-black/50 rounded-lg text-white border border-white/10 flex justify-between items-center hover:bg-black/70 transition-colors">
                                 <span id="req-season-text">Selecione...</span>
                                 <svg class="w-4 h-4 text-stone-400" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
@@ -677,22 +658,20 @@
                             </button>
 
                             <div id="req-season-dropdown"
-                                class="hidden absolute top-full left-0 right-0 mt-2 max-h-48 overflow-y-auto rounded-xl border border-white/10 shadow-2xl z-50 liquid-glass-card">
-                                <div class="glass-filter"></div>
-                                <div class="glass-overlay" style="--bg-color: rgba(10, 10, 10, 0.95);"></div>
-                                <div class="glass-content py-1" id="req-season-options-list">
+                                class="hidden custom-dropdown-solid absolute top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto rounded-xl">
+                                <div id="req-season-options-list">
                                 </div>
                             </div>
                         </div>
                         <input type="hidden" id="req-season-value">
                     </div>
 
-                    <div id="req-episode-container" class="hidden relative z-10">
+                    <div id="req-episode-container" class="hidden relative z-[40]">
                         <label class="block text-xs font-medium text-stone-400 mb-2">Qual Episódio?</label>
 
-                        <div class="relative" id="custom-episode-wrapper">
+                        <div class="relative">
                             <button type="button" id="req-episode-trigger"
-                                class="w-full p-3 bg-black/30 rounded-lg text-white border border-white/10 flex justify-between items-center disabled:opacity-50 cursor-pointer"
+                                class="w-full p-3 bg-black/50 rounded-lg text-white border border-white/10 flex justify-between items-center disabled:opacity-50 cursor-not-allowed transition-colors"
                                 disabled>
                                 <span id="req-episode-text">Selecione a temporada primeiro</span>
                                 <svg class="w-4 h-4 text-stone-400" fill="none" stroke="currentColor"
@@ -703,10 +682,8 @@
                             </button>
 
                             <div id="req-episode-dropdown"
-                                class="hidden absolute top-full left-0 right-0 mt-2 max-h-48 overflow-y-auto rounded-xl border border-white/10 shadow-2xl z-50 liquid-glass-card">
-                                <div class="glass-filter"></div>
-                                <div class="glass-overlay" style="--bg-color: rgba(10, 10, 10, 0.95);"></div>
-                                <div class="glass-content py-1" id="req-episode-options-list">
+                                class="hidden custom-dropdown-solid absolute top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto rounded-xl">
+                                <div id="req-episode-options-list">
                                 </div>
                             </div>
                         </div>
@@ -716,9 +693,9 @@
 
                 <div class="flex gap-3 pt-4 relative z-0">
                     <button id="cancel-tv-req-btn"
-                        class="flex-1 py-3 rounded-full bg-white/5 hover:bg-white/10 text-white text-sm font-bold transition border border-white/5">Cancelar</button>
+                        class="flex-1 py-3 rounded-full bg-stone-800 hover:bg-stone-700 text-white text-sm font-bold transition border border-white/5">Cancelar</button>
                     <button id="confirm-tv-req-btn"
-                        class="flex-1 py-3 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-sm font-bold transition shadow-lg shadow-purple-900/20 border border-white/10">Confirmar
+                        class="flex-1 py-3 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-sm font-bold transition shadow-lg shadow-purple-900/30 border border-white/10">Confirmar
                         Pedido</button>
                 </div>
             </div>

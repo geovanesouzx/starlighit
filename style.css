@@ -1272,3 +1272,56 @@ header.header-hidden {
     background: rgba(255, 255, 255, 0.2);
     border-radius: 4px;
 }
+
+/* --- CORREÇÃO DAS ABAS E DROPDOWNS DO MODAL --- */
+
+/* Estilo do Botão de Tipo (Abas) */
+.req-type-btn {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+}
+
+/* Quando o botão está ATIVO */
+.req-type-btn.active {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: white;
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+    /* Brilho roxo suave */
+}
+
+/* Fundo gradiente sutil quando ativo */
+.req-type-btn.active::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top right, rgba(168, 85, 247, 0.2), rgba(236, 72, 153, 0.2));
+    z-index: -1;
+}
+
+/* Correção para o Dropdown ficar SÓLIDO e legível */
+.custom-dropdown-solid {
+    background-color: #0f0f0f;
+    /* Fundo quase preto sólido */
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8);
+    z-index: 100 !important;
+    /* Garante que fique em cima de tudo */
+}
+
+.req-option {
+    padding: 12px 16px;
+    color: #a8a29e;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.2s;
+}
+
+.req-option:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    padding-left: 20px;
+    /* Efeito de movimentozinho ao passar o mouse */
+}
