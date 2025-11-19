@@ -3312,25 +3312,30 @@ document.addEventListener('DOMContentLoaded', function () {
         reqEpisodeDropdown.classList.toggle('hidden');
     });
 
+    // Variável global auxiliar para passar dados da série existente para a função de episódios
+    let currentExistingSeriesData = null;
+
     async function openTvRequestModal(item) {
-        // Preenche dados ocultos do filme/série
+        // Preenche dados ocultos
         document.getElementById('req-tmdb-id').value = item.id;
         document.getElementById('req-title').value = item.name;
         document.getElementById('req-year').value = (item.first_air_date || '').substring(0, 4);
         document.getElementById('req-poster').value = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : '';
 
-        // Reseta UI (Botões e Inputs)
+        // --- LÓGICA NOVA: Verifica se a série já existe no catálogo local ---
+        currentExistingSeriesData = firestoreContent.find(c => c.tmdb_id === item.id && c.type === 'tv');
+        // -------------------------------------------------------------------
+
+        // Reseta UI
         currentRequestType = 'series';
         document.querySelectorAll('.req-type-btn').forEach(btn => {
             btn.classList.remove('active');
             if (btn.dataset.type === 'series') btn.classList.add('active');
         });
 
-        // Esconde os containers
         document.getElementById('req-season-container').classList.add('hidden');
         document.getElementById('req-episode-container').classList.add('hidden');
 
-        // Reseta Textos e Valores
         reqSeasonText.textContent = 'Carregando...';
         reqSeasonValue.value = '';
         reqSeasonTrigger.disabled = true;
@@ -3342,9 +3347,9 @@ document.addEventListener('DOMContentLoaded', function () {
         reqSeasonOptionsList.innerHTML = '';
         reqEpisodeOptionsList.innerHTML = '';
 
-        tvReqModal.classList.remove('hidden'); // Abre o modal
+        tvReqModal.classList.remove('hidden');
 
-        // Busca temporadas
+        // Busca temporadas do TMDB
         const data = await fetchFromTMDB(`tv/${item.id}`);
         reqSeasonText.textContent = 'Selecione...';
         reqSeasonTrigger.disabled = false;
@@ -3352,21 +3357,45 @@ document.addEventListener('DOMContentLoaded', function () {
         if (data && data.seasons) {
             data.seasons.forEach(season => {
                 if (season.season_number > 0) {
-                    // Cria opção div
                     const option = document.createElement('div');
-                    option.className = 'req-option';
-                    option.textContent = season.name || `Temporada ${season.season_number}`;
+                    option.className = 'req-option'; // Classe base
+
+                    // --- VERIFICAÇÃO: A temporada já existe? ---
+                    let isSeasonAdded = false;
+                    if (currentExistingSeriesData &&
+                        currentExistingSeriesData.seasons &&
+                        currentExistingSeriesData.seasons[season.season_number]) {
+                        isSeasonAdded = true;
+                    }
+
+                    // Texto da opção
+                    const seasonName = season.name || `Temporada ${season.season_number}`;
+
+                    if (isSeasonAdded) {
+                        // Estiliza visualmente se já existir
+                        option.innerHTML = `<span class="text-stone-500 line-through">${seasonName}</span> <span class="text-green-500 text-xs ml-2">(Já Disponível)</span>`;
+                        option.style.cursor = 'not-allowed';
+                    } else {
+                        option.textContent = seasonName;
+                    }
+
                     option.onclick = () => {
-                        // Ao clicar na opção de temporada
-                        reqSeasonText.textContent = option.textContent;
+                        // Se a temporada já existe e o usuário quer pedir a TEMPORADA inteira, impede o clique
+                        if (isSeasonAdded && currentRequestType === 'season') {
+                            showToast('Esta temporada já está disponível no catálogo.', true);
+                            return;
+                        }
+
+                        reqSeasonText.textContent = seasonName; // Mostra o nome mesmo se bloqueado (para selecionar episódios)
                         reqSeasonValue.value = season.season_number;
                         reqSeasonDropdown.classList.add('hidden');
 
-                        // Dispara carregamento de episódios se necessário
+                        // Carrega episódios (mesmo se a temporada existir, pode faltar episódio)
                         if (currentRequestType === 'episode') {
                             loadEpisodesForDropdown(item.id, season.season_number);
                         }
                     };
+
                     reqSeasonOptionsList.appendChild(option);
                 }
             });
@@ -3385,16 +3414,45 @@ document.addEventListener('DOMContentLoaded', function () {
         reqEpisodeText.textContent = 'Selecione...';
         reqEpisodeTrigger.disabled = false;
 
+        // Pega os episódios JÁ EXISTENTES dessa temporada específica
+        let existingEpisodesNumbers = [];
+        if (currentExistingSeriesData &&
+            currentExistingSeriesData.seasons &&
+            currentExistingSeriesData.seasons[seasonNum] &&
+            currentExistingSeriesData.seasons[seasonNum].episodes) {
+
+            // Cria um array apenas com os números dos episódios existentes
+            existingEpisodesNumbers = currentExistingSeriesData.seasons[seasonNum].episodes.map(e => e.episode_number);
+        }
+
         if (data && data.episodes) {
             data.episodes.forEach(ep => {
                 const option = document.createElement('div');
                 option.className = 'req-option';
-                option.textContent = `Ep ${ep.episode_number}: ${ep.name}`;
+
+                // Verifica se este episódio específico já existe
+                const isEpAdded = existingEpisodesNumbers.includes(ep.episode_number);
+
+                const epName = `Ep ${ep.episode_number}: ${ep.name}`;
+
+                if (isEpAdded) {
+                    // Bloqueia visualmente
+                    option.innerHTML = `<span class="text-stone-500 line-through">${epName}</span> <span class="text-green-500 text-xs ml-2">(No Catálogo)</span>`;
+                    option.style.cursor = 'not-allowed';
+                } else {
+                    option.textContent = epName;
+                }
+
                 option.onclick = () => {
-                    reqEpisodeText.textContent = option.textContent;
+                    if (isEpAdded) {
+                        showToast('Este episódio já está disponível para assistir.', true);
+                        return;
+                    }
+                    reqEpisodeText.textContent = `Ep ${ep.episode_number}: ${ep.name}`;
                     reqEpisodeValue.value = ep.episode_number;
                     reqEpisodeDropdown.classList.add('hidden');
                 };
+
                 reqEpisodeOptionsList.appendChild(option);
             });
         }
