@@ -682,27 +682,26 @@
                             </button>
 
                             <div id="req-episode-dropdown"
-                                class="hidden custom-dropdown-solid absolute top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto rounded-xl">
+                                class="hidden custom-dropdown-solid absolute bottom-full left-0 right-0 mb-2 max-h-60 overflow-y-auto rounded-xl shadow-xl">
                                 <div id="req-episode-options-list">
                                 </div>
                             </div>
+                            <input type="hidden" id="req-episode-value">
                         </div>
-                        <input type="hidden" id="req-episode-value">
                     </div>
-                </div>
 
-                <div class="flex gap-3 pt-4 relative z-0">
-                    <button id="cancel-tv-req-btn"
-                        class="flex-1 py-3 rounded-full bg-stone-800 hover:bg-stone-700 text-white text-sm font-bold transition border border-white/5">Cancelar</button>
-                    <button id="confirm-tv-req-btn"
-                        class="flex-1 py-3 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-sm font-bold transition shadow-lg shadow-purple-900/30 border border-white/10">Confirmar
-                        Pedido</button>
+                    <div class="flex gap-3 pt-4 relative z-0">
+                        <button id="cancel-tv-req-btn"
+                            class="flex-1 py-3 rounded-full bg-stone-800 hover:bg-stone-700 text-white text-sm font-bold transition border border-white/5">Cancelar</button>
+                        <button id="confirm-tv-req-btn"
+                            class="flex-1 py-3 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-sm font-bold transition shadow-lg shadow-purple-900/30 border border-white/10">Confirmar
+                            Pedido</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <script type="module" src="script.js"></script>
+        <script type="module" src="script.js"></script>
 </body>
 
 </html>
