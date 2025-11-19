@@ -1899,20 +1899,31 @@ document.addEventListener('DOMContentLoaded', function () {
                 showToast("Este pedido não existe mais.", true);
                 return;
             }
+
             const requestData = docSnap.data();
             const requesters = requestData.requesters || []; // Array de quem pediu/votou
-            // Verifica se o usuário atual já votou
-            const userVoteIndex = requesters.findIndex(r => r.userId === userId);
-            const userVote = { userId: userId, userName: currentProfile.name }; // Dados do voto
 
-            if (userVoteIndex > -1) { // Se já votou
-                // Remove o voto do array
-                await updateDoc(docRef, {
-                    requesters: arrayRemove(requesters[userVoteIndex])
-                });
-                showToast('Voto removido.');
-            } else { // Se não votou
-                // Adiciona o voto ao array
+            // Verifica se o usuário atual já votou
+            const userHasVoted = requesters.some(r => r.userId === userId);
+
+            if (userHasVoted) { // SE JÁ VOTOU -> REMOVER O VOTO
+                // Filtra a lista para criar uma nova SEM o usuário atual
+                const newRequesters = requesters.filter(r => r.userId !== userId);
+
+                if (newRequesters.length === 0) {
+                    // Se a lista ficou vazia, apaga o pedido inteiro do banco
+                    await deleteDoc(docRef);
+                    showToast('Pedido excluído (sem votos).');
+                } else {
+                    // Se ainda tem votos, apenas atualiza a lista
+                    await updateDoc(docRef, {
+                        requesters: newRequesters
+                    });
+                    showToast('Voto removido.');
+                }
+
+            } else { // SE NÃO VOTOU -> ADICIONAR O VOTO
+                const userVote = { userId: userId, userName: currentProfile.name };
                 await updateDoc(docRef, {
                     requesters: arrayUnion(userVote)
                 });
@@ -1922,7 +1933,10 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error("Erro ao processar voto:", error);
             showToast("Ocorreu um erro ao processar seu voto.", true);
         } finally {
-            if (voteButton) voteButton.disabled = false; // Reabilita o botão
+            // Reabilita o botão se ele ainda existir na tela
+            if (voteButton && document.body.contains(voteButton)) {
+                voteButton.disabled = false;
+            }
         }
     }
 
