@@ -20,7 +20,7 @@ import {
     deleteDoc,
     query,
     where,
-    orderBy, // RE-ADICIONADO PARA ORDENAR NOVIDADES E COMENTÁRIOS
+    orderBy, // READICIONADO PARA ORDENAR NOVIDADES E COMENTÁRIOS
     limit,   // Para paginação de comentários (opcional)
     startAfter, // Para paginação de comentários (opcional)
     onSnapshot,
