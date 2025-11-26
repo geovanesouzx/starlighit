@@ -27,7 +27,9 @@ import {
     serverTimestamp,
     arrayUnion,
     arrayRemove,
-    increment // Para contadores de likes/replies
+    increment, // Para contadores de likes/replies
+    enableIndexedDbPersistence
+
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -53,6 +55,35 @@ document.addEventListener('DOMContentLoaded', function () {
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    // --- SISTEMA OFFLINE (PWA) ---
+
+    // 1. Ativar Banco de Dados Offline
+    enableIndexedDbPersistence(db)
+        .catch((err) => {
+            if (err.code == 'failed-precondition') {
+                console.log('Erro offline: Múltiplas abas abertas.');
+            } else if (err.code == 'unimplemented') {
+                console.log('Navegador não suporta modo offline.');
+            }
+        });
+
+    // 2. Registrar o Service Worker
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then((reg) => console.log('Service Worker registrado:', reg.scope))
+                .catch((err) => console.log('Falha no Service Worker:', err));
+        });
+    }
+
+    // 3. Avisar se cair a net
+    window.addEventListener('offline', () => {
+        showToast("Você está offline. Usando dados salvos.", true);
+    });
+
+    window.addEventListener('online', () => {
+        showToast("Conexão restaurada!");
+    });
     const googleProvider = new GoogleAuthProvider();
 
     let isFirstNavigation = true; // ADICIONADO AQUI
