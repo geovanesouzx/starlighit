@@ -832,21 +832,60 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="flex-1 mt-6 md:mt-0 text-center md:text-left">
                             <h1 class="text-3xl md:text-5xl lg:text-6xl font-black text-white" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.7);">${title}</h1>
                             <div id="details-meta" class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300">
-                                <!-- Metadados (ano, duração, classificação) serão inseridos aqui -->
-                            </div>
+                                </div>
                             <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genres}</div>
+                            
                             <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
                                 <button id="details-watch-btn" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"><svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>Assistir</div></button>
                                 <button id="details-add-to-list" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"></div></button>
+                                
+                                <button id="details-download-btn" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3">
+                                    <div class="glass-filter"></div>
+                                    <div class="glass-overlay"></div>
+                                    <div class="glass-specular"></div>
+                                    <div class="glass-content flex items-center gap-2">
+                                        <i data-lucide="download" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+                                        Baixar
+                                    </div>
+                                </button>
                             </div>
+
                             <h3 class="mt-8 text-lg sm:text-xl font-semibold text-white">Sinopse</h3>
                             <p class="mt-2 text-gray-300 max-w-2xl text-sm leading-relaxed">${data.synopsis || data.overview || 'Sinopse não disponível.'}</p>
-                            <div id="tv-content-details" class="mt-10"></div> <!-- Container para temporadas/episódios -->
-                        </div>
+                            <div id="tv-content-details" class="mt-10"></div> </div>
                     </div>
                 </div>
             </div>
         `;
+
+        setTimeout(() => { // Usamos setTimeout para garantir que o botão já existe no DOM
+            const downloadBtn = document.getElementById('details-download-btn');
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', () => {
+                    let videoUrl = '';
+
+                    // Lógica para pegar o link
+                    if (data.type === 'movie') {
+                        videoUrl = data.url;
+                    } else if (data.type === 'tv' && data.seasons) {
+                        // Tenta pegar o primeiro episódio da primeira temporada
+                        const sortedSeasons = Object.keys(data.seasons).sort((a, b) => parseInt(a) - parseInt(b));
+                        if (sortedSeasons.length > 0) {
+                            const firstSeasonKey = sortedSeasons[0];
+                            const firstEpisode = data.seasons[firstSeasonKey]?.episodes?.[0];
+                            if (firstEpisode) videoUrl = firstEpisode.url;
+                        }
+                    }
+
+                    if (videoUrl) {
+                        window.open(videoUrl, '_blank');
+                        showToast("Iniciando download externo...");
+                    } else {
+                        showToast("Link indisponível para download.", true);
+                    }
+                });
+            }
+        }, 0);
 
         // Popula a seção de metadados
         const detailsMetaContainer = detailsView.querySelector('#details-meta');
