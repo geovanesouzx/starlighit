@@ -1,29 +1,25 @@
-const CACHE_NAME = 'starlight-v1';
+const CACHE_NAME = 'starlight-v2'; // Mudei para v2 para forçar atualização
 
-// Arquivos essenciais para o App funcionar (App Shell)
+// Arquivos locais essenciais (apenas o que é seu)
 const STATIC_ASSETS = [
     './',
     './index.html',
     './style.css',
-    './script.js',
-    'https://cdn.tailwindcss.com',
-    'https://unpkg.com/lucide@latest',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-    'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap'
+    './script.js'
 ];
 
-// Instalação: Baixa os arquivos essenciais
+// Instalação: Baixa apenas os arquivos locais
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            console.log('[Service Worker] Caching App Shell');
+            console.log('[Service Worker] Instalando e baixando arquivos locais...');
             return cache.addAll(STATIC_ASSETS);
         })
     );
-    self.skipWaiting(); // Ativa imediatamente
+    self.skipWaiting();
 });
 
-// Ativação: Limpa caches antigos se a versão mudar
+// Ativação: Limpa caches antigos
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((keyList) => {
@@ -39,47 +35,41 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Interceptação de Pedidos (Fetch)
+// Interceptação de Pedidos (Aqui ele salva o Tailwind e outros externos automaticamente)
 self.addEventListener('fetch', (event) => {
     const req = event.request;
     const url = new URL(req.url);
 
-    // 1. Ignora requisições de vídeo (HLS/Streams) e API do Firebase para evitar erros
+    // 1. Ignora vídeos e API do Firestore (não cachear)
     if (url.pathname.includes('firestore') || url.pathname.endsWith('.m3u8') || url.pathname.endsWith('.ts')) {
         return; 
     }
 
-    // 2. Estratégia para Imagens do TMDB (Cache First, depois Network)
-    if (url.hostname.includes('tmdb.org')) {
-        event.respondWith(
-            caches.open(CACHE_NAME).then((cache) => {
-                return cache.match(req).then((cachedResponse) => {
-                    if (cachedResponse) return cachedResponse;
-                    return fetch(req).then((networkResponse) => {
-                        cache.put(req, networkResponse.clone());
-                        return networkResponse;
-                    });
-                });
-            })
-        );
-        return;
-    }
-
-    // 3. Estratégia Padrão (Stale-While-Revalidate para arquivos estáticos)
+    // 2. Estratégia para Imagens TMDB e Scripts Externos (Tailwind, FontAwesome, etc)
+    // Tenta pegar do cache primeiro, se não tiver, baixa e salva.
     event.respondWith(
         caches.match(req).then((cachedResponse) => {
-            const fetchPromise = fetch(req).then((networkResponse) => {
-                // Atualiza o cache com a versão mais nova
+            if (cachedResponse) {
+                return cachedResponse;
+            }
+
+            // Se não está no cache, vai na rede buscar
+            return fetch(req).then((networkResponse) => {
+                // Verifica se a resposta é válida antes de salvar
+                if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic' && networkResponse.type !== 'cors' && networkResponse.type !== 'opaque') {
+                    return networkResponse;
+                }
+
+                // Clona e salva no cache para a próxima vez
+                const responseToCache = networkResponse.clone();
                 caches.open(CACHE_NAME).then((cache) => {
-                    cache.put(req, networkResponse.clone());
+                    cache.put(req, responseToCache);
                 });
+
                 return networkResponse;
             }).catch(() => {
-                // Se estiver offline e não tiver no cache, não faz nada (ou poderia retornar página de erro)
+                // Se falhar (sem net) e não estiver no cache, não faz nada
             });
-
-            // Retorna o cache se existir, senão espera a rede
-            return cachedResponse || fetchPromise;
         })
     );
 });
