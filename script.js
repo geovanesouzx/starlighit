@@ -840,14 +840,16 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <button id="details-add-to-list" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"></div></button>
                                 
                                 <button id="details-download-btn" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3">
-                                    <div class="glass-filter"></div>
-                                    <div class="glass-overlay"></div>
-                                    <div class="glass-specular"></div>
-                                    <div class="glass-content flex items-center gap-2">
-                                        <i data-lucide="download" class="w-5 h-5 sm:w-6 sm:h-6"></i>
-                                        Baixar
-                                    </div>
-                                </button>
+                                        <div class="glass-filter"></div>
+                                        <div class="glass-overlay"></div>
+                                        <div class="glass-specular"></div>
+                                        <div class="glass-content flex items-center gap-2">
+                                            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                            </svg>
+                                            <span>Baixar</span>
+                                        </div>
+                                    </button>
                             </div>
 
                             <h3 class="mt-8 text-lg sm:text-xl font-semibold text-white">Sinopse</h3>
