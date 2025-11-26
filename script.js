@@ -1,3 +1,4 @@
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import {
     getAuth,
@@ -27,9 +28,7 @@ import {
     serverTimestamp,
     arrayUnion,
     arrayRemove,
-    increment, // Para contadores de likes/replies
-    enableIndexedDbPersistence
-
+    increment // Para contadores de likes/replies
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -55,35 +54,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    // --- SISTEMA OFFLINE (PWA) ---
-
-    // 1. Ativar Banco de Dados Offline
-    enableIndexedDbPersistence(db)
-        .catch((err) => {
-            if (err.code == 'failed-precondition') {
-                console.log('Erro offline: Múltiplas abas abertas.');
-            } else if (err.code == 'unimplemented') {
-                console.log('Navegador não suporta modo offline.');
-            }
-        });
-
-    // 2. Registrar o Service Worker
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then((reg) => console.log('Service Worker registrado:', reg.scope))
-                .catch((err) => console.log('Falha no Service Worker:', err));
-        });
-    }
-
-    // 3. Avisar se cair a net
-    window.addEventListener('offline', () => {
-        showToast("Você está offline. Usando dados salvos.", true);
-    });
-
-    window.addEventListener('online', () => {
-        showToast("Conexão restaurada!");
-    });
     const googleProvider = new GoogleAuthProvider();
 
     let isFirstNavigation = true; // ADICIONADO AQUI
@@ -832,75 +802,21 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="flex-1 mt-6 md:mt-0 text-center md:text-left">
                             <h1 class="text-3xl md:text-5xl lg:text-6xl font-black text-white" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.7);">${title}</h1>
                             <div id="details-meta" class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300">
-                                </div>
+                                <!-- Metadados (ano, duração, classificação) serão inseridos aqui -->
+                            </div>
                             <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genres}</div>
-                            
                             <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
                                 <button id="details-watch-btn" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"><svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>Assistir</div></button>
                                 <button id="details-add-to-list" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"></div></button>
-                                
-                                <button id="details-download-btn" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3">
-                                        <div class="glass-filter"></div>
-                                        <div class="glass-overlay"></div>
-                                        <div class="glass-specular"></div>
-                                        <div class="glass-content flex items-center gap-2">
-                                            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                            </svg>
-                                            <span>Baixar</span>
-                                        </div>
-                                    </button>
                             </div>
-
                             <h3 class="mt-8 text-lg sm:text-xl font-semibold text-white">Sinopse</h3>
                             <p class="mt-2 text-gray-300 max-w-2xl text-sm leading-relaxed">${data.synopsis || data.overview || 'Sinopse não disponível.'}</p>
-                            <div id="tv-content-details" class="mt-10"></div> </div>
+                            <div id="tv-content-details" class="mt-10"></div> <!-- Container para temporadas/episódios -->
+                        </div>
                     </div>
                 </div>
             </div>
         `;
-
-        setTimeout(() => { // Usamos setTimeout para garantir que o botão já existe no DOM
-            const downloadBtn = document.getElementById('details-download-btn');
-            if (downloadBtn) {
-                downloadBtn.addEventListener('click', () => {
-                    let videoUrl = '';
-
-                    // Lógica para pegar o link
-                    if (data.type === 'movie') {
-                        videoUrl = data.url;
-                    } else if (data.type === 'tv' && data.seasons) {
-                        // Tenta pegar o primeiro episódio da primeira temporada
-                        const sortedSeasons = Object.keys(data.seasons).sort((a, b) => parseInt(a) - parseInt(b));
-                        if (sortedSeasons.length > 0) {
-                            const firstSeasonKey = sortedSeasons[0];
-                            const firstEpisode = data.seasons[firstSeasonKey]?.episodes?.[0];
-                            if (firstEpisode) videoUrl = firstEpisode.url;
-                        }
-                    }
-
-                    if (videoUrl) {
-                        // Tenta criar um link invisível para forçar download (funciona se for MP4 e o servidor permitir)
-                        const link = document.createElement('a');
-                        link.href = videoUrl;
-                        link.target = '_blank'; // Abre nova aba por segurança
-
-                        // Se for .mp4, tenta forçar o nome do arquivo
-                        if (videoUrl.includes('.mp4')) {
-                            link.setAttribute('download', `${title}.mp4`);
-                        }
-
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-
-                        showToast("Abrindo link de download...", false);
-                    } else {
-                        showToast("Link indisponível para download.", true);
-                    }
-                });
-            }
-        }, 0);
 
         // Popula a seção de metadados
         const detailsMetaContainer = detailsView.querySelector('#details-meta');
