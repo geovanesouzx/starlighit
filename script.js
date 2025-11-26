@@ -726,8 +726,11 @@ document.addEventListener('DOMContentLoaded', function () {
             renderPendingRequests(); // Renderiza os pedidos pendentes
         } else if (screenId === 'news-view') {
             renderNewsFeed(); // NOVO: Renderiza o feed de novidades
+        } else if (screenId === 'report-view') {
+            lucide.createIcons(); // Garante que os ícones do formulário apareçam
         }
-        lucide.createIcons(); // Recria ícones
+
+        lucide.createIcons(); // Recria ícones gerais
         attachGlassButtonListeners(); // Reatacha listeners visuais
     }
 
@@ -3514,4 +3517,73 @@ document.addEventListener('DOMContentLoaded', function () {
         tvReqModal.classList.add('hidden');
         confirmAndAddRequest(customItem, true);
     });
-}); 
+
+    // --- Lógica de Reports (Reportar Erros) ---
+    const reportForm = document.getElementById('report-form');
+
+    if (reportForm) {
+        reportForm.addEventListener('submit', async (e) => {
+            e.preventDefault(); // Impede recarregamento da página
+
+            if (!userId || !currentProfile) {
+                showToast("Você precisa estar logado para reportar.", true);
+                return;
+            }
+
+            const submitBtn = reportForm.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerText;
+
+            // Bloqueia botão e mostra loading
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Enviando...";
+            submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
+
+            // Pega os dados
+            const reportType = document.querySelector('input[name="report-type"]:checked').value;
+            const contentName = document.getElementById('report-content-name').value.trim();
+            const description = document.getElementById('report-desc').value.trim();
+
+            if (!description) {
+                showToast("Por favor, descreva o problema.", true);
+                submitBtn.disabled = false;
+                submitBtn.innerText = originalBtnText;
+                submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+                return;
+            }
+
+            const reportData = {
+                type: reportType, // playback, bug, audio, other
+                affectedContent: contentName || "Geral",
+                description: description,
+                userId: userId,
+                userName: currentProfile.name,
+                status: 'open', // Status inicial
+                createdAt: serverTimestamp(),
+                deviceInfo: navigator.userAgent // Salva se é celular ou PC
+            };
+
+            try {
+                // Salva na coleção 'reports'
+                await addDoc(collection(db, 'reports'), reportData);
+
+                showToast("Report enviado com sucesso! Obrigado.");
+                reportForm.reset(); // Limpa o formulário
+
+                // Volta para a home após 2 segundos (opcional)
+                setTimeout(() => {
+                    window.location.hash = '#home-view';
+                }, 2000);
+
+            } catch (error) {
+                console.error("Erro ao enviar report:", error);
+                showToast("Erro ao enviar report. Tente novamente.", true);
+            } finally {
+                // Restaura botão
+                submitBtn.disabled = false;
+                submitBtn.innerText = originalBtnText;
+                submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+            }
+        });
+    }
+
+});

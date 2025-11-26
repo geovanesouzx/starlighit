@@ -79,6 +79,7 @@
                         <li><a href="#" class="nav-item" data-target="mylist-view">Minha Lista</a></li>
                         <li><a href="#" class="nav-item" data-target="news-view">Novidades</a></li>
                         <li><a href="#" class="nav-item" data-target="requests-view">Pedidos</a></li>
+                        <li><a href="#" class="nav-item" data-target="report-view">Reportar</a></li>
                     </ul>
                 </div>
                 <div class="flex items-center gap-2 sm:gap-4">
@@ -278,6 +279,100 @@
                 <h2 class="text-3xl sm:text-4xl font-bold text-white mb-8">Novidades</h2>
                 <div id="news-items-container" class="space-y-8">
                     <!-- Cards de novidades serão injetados aqui pelo script.js -->
+                </div>
+            </div>
+        </section>
+
+        <section id="report-view" class="content-view hidden">
+            <div class="max-w-3xl mx-auto pb-16 w-full px-4 md:px-6">
+
+                <div class="liquid-glass-card p-6 sm:p-10">
+                    <div class="glass-filter"></div>
+                    <div class="glass-distortion-overlay"></div>
+                    <div class="glass-overlay"></div>
+                    <div class="glass-specular"></div>
+
+                    <div class="glass-content relative z-10">
+                        <div class="text-center mb-10">
+                            <div
+                                class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-500/20 text-red-400 mb-4">
+                                <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+                            </div>
+                            <h2 class="text-3xl sm:text-4xl font-bold text-white mb-2">Reportar Problema</h2>
+                            <p class="text-stone-300">Encontrou um erro? Nos ajude a melhorar o Starlight.</p>
+                        </div>
+
+                        <form id="report-form" class="space-y-6">
+                            <div>
+                                <label class="block text-sm font-medium text-stone-400 mb-2">Qual é o tipo do
+                                    problema?</label>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="report-type" value="playback" class="peer sr-only"
+                                            checked>
+                                        <div
+                                            class="p-3 rounded-lg bg-stone-800/50 border border-white/10 text-center transition-all peer-checked:bg-red-500/20 peer-checked:border-red-500 hover:bg-stone-700/50">
+                                            <i data-lucide="play-circle"
+                                                class="w-5 h-5 mx-auto mb-1 text-stone-300"></i>
+                                            <span class="text-xs font-medium text-stone-300">Vídeo</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="report-type" value="bug" class="peer sr-only">
+                                        <div
+                                            class="p-3 rounded-lg bg-stone-800/50 border border-white/10 text-center transition-all peer-checked:bg-yellow-500/20 peer-checked:border-yellow-500 hover:bg-stone-700/50">
+                                            <i data-lucide="bug" class="w-5 h-5 mx-auto mb-1 text-stone-300"></i>
+                                            <span class="text-xs font-medium text-stone-300">Bug Site</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="report-type" value="audio" class="peer sr-only">
+                                        <div
+                                            class="p-3 rounded-lg bg-stone-800/50 border border-white/10 text-center transition-all peer-checked:bg-blue-500/20 peer-checked:border-blue-500 hover:bg-stone-700/50">
+                                            <i data-lucide="volume-x" class="w-5 h-5 mx-auto mb-1 text-stone-300"></i>
+                                            <span class="text-xs font-medium text-stone-300">Áudio/Leg</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="report-type" value="other" class="peer sr-only">
+                                        <div
+                                            class="p-3 rounded-lg bg-stone-800/50 border border-white/10 text-center transition-all peer-checked:bg-purple-500/20 peer-checked:border-purple-500 hover:bg-stone-700/50">
+                                            <i data-lucide="help-circle"
+                                                class="w-5 h-5 mx-auto mb-1 text-stone-300"></i>
+                                            <span class="text-xs font-medium text-stone-300">Outro</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="report-content-name"
+                                    class="block text-sm font-medium text-stone-400 mb-2">Conteúdo Afetado (Se
+                                    houver)</label>
+                                <div class="relative">
+                                    <input type="text" id="report-content-name"
+                                        placeholder="Ex: Breaking Bad - Temporada 2 Episódio 4"
+                                        class="w-full p-4 bg-black/30 rounded-lg text-white outline-none border border-white/10 focus:border-red-500 transition-colors placeholder-stone-600">
+                                    <i data-lucide="film"
+                                        class="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-500"></i>
+                                </div>
+                                <p class="text-xs text-stone-500 mt-1">Deixe em branco se for um erro geral do site.</p>
+                            </div>
+
+                            <div>
+                                <label for="report-desc" class="block text-sm font-medium text-stone-400 mb-2">Descrição
+                                    Detalhada</label>
+                                <textarea id="report-desc" rows="4" required
+                                    placeholder="Descreva o erro. Ex: O vídeo trava nos 10 minutos; A legenda está dessincronizada..."
+                                    class="w-full p-4 bg-black/30 rounded-lg text-white outline-none border border-white/10 focus:border-red-500 transition-colors placeholder-stone-600 resize-none"></textarea>
+                            </div>
+
+                            <button type="submit"
+                                class="w-full py-4 bg-gradient-to-r from-red-600 to-pink-600 rounded-lg text-white font-bold shadow-lg shadow-red-900/30 hover:from-red-500 hover:to-pink-500 transition-all transform hover:scale-[1.01] active:scale-[0.99]">
+                                Enviar Report
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </section>
@@ -561,6 +656,8 @@
                         </li>
                         <li><a href="#" class="mobile-nav-item text-sm px-4 py-2"
                                 data-target="requests-view">Pedidos</a></li>
+                        <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="report-view">Reportar</a>
+                        </li>
                     </ul>
                 </div>
             </nav>
