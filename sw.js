@@ -1,6 +1,6 @@
-const CACHE_NAME = 'starlight-v2'; // Mudei para v2 para forçar atualização
+const CACHE_NAME = 'starlight-v3';
 
-// Arquivos locais essenciais (apenas o que é seu)
+// Arquivos essenciais que DEVEM estar no cache
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -8,18 +8,18 @@ const STATIC_ASSETS = [
     './script.js'
 ];
 
-// Instalação: Baixa apenas os arquivos locais
+// 1. Instalação: Baixa os arquivos locais
 self.addEventListener('install', (event) => {
+    self.skipWaiting(); // Força a atualização imediata
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            console.log('[Service Worker] Instalando e baixando arquivos locais...');
+            console.log('[SW] Caching App Shell');
             return cache.addAll(STATIC_ASSETS);
         })
     );
-    self.skipWaiting();
 });
 
-// Ativação: Limpa caches antigos
+// 2. Ativação: Limpa caches antigos
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((keyList) => {
@@ -35,32 +35,58 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Interceptação de Pedidos (Aqui ele salva o Tailwind e outros externos automaticamente)
+// 3. Interceptação (Fetch)
 self.addEventListener('fetch', (event) => {
     const req = event.request;
     const url = new URL(req.url);
 
-    // 1. Ignora vídeos e API do Firestore (não cachear)
-    if (url.pathname.includes('firestore') || url.pathname.endsWith('.m3u8') || url.pathname.endsWith('.ts')) {
-        return; 
+    // --- REGRA 1: Ignorar requisições que NÃO são GET (POST, PUT, etc) ---
+    if (req.method !== 'GET') return;
+
+    // --- REGRA 2: Ignorar APIs do Google/Firebase e Vídeos (Streaming) ---
+    // Isso evita que o SW quebre o login ou tente baixar filmes inteiros
+    if (url.hostname.includes('googleapis.com') || 
+        url.hostname.includes('firebase') || 
+        url.pathname.includes('firestore') ||
+        url.pathname.endsWith('.m3u8') || 
+        url.pathname.endsWith('.ts')) {
+        return;
     }
 
-    // 2. Estratégia para Imagens TMDB e Scripts Externos (Tailwind, FontAwesome, etc)
-    // Tenta pegar do cache primeiro, se não tiver, baixa e salva.
+    // --- REGRA 3: Estratégia para o HTML (Navegação) ---
+    // Se o usuário pedir a página principal (/), entrega o index.html do cache
+    if (req.mode === 'navigate') {
+        event.respondWith(
+            caches.match('./index.html').then((cached) => {
+                return cached || fetch(req).then((response) => {
+                    return caches.open(CACHE_NAME).then((cache) => {
+                        cache.put('./index.html', response.clone());
+                        return response;
+                    });
+                });
+            }).catch(() => {
+                // Se estiver offline e não tiver index.html (raro), retorna o do cache mesmo assim
+                return caches.match('./index.html');
+            })
+        );
+        return;
+    }
+
+    // --- REGRA 4: Estratégia para Imagens e Scripts (Stale-While-Revalidate) ---
+    // Tenta cache primeiro. Se não tiver, baixa, salva e devolve.
     event.respondWith(
         caches.match(req).then((cachedResponse) => {
             if (cachedResponse) {
                 return cachedResponse;
             }
 
-            // Se não está no cache, vai na rede buscar
             return fetch(req).then((networkResponse) => {
                 // Verifica se a resposta é válida antes de salvar
                 if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic' && networkResponse.type !== 'cors' && networkResponse.type !== 'opaque') {
                     return networkResponse;
                 }
 
-                // Clona e salva no cache para a próxima vez
+                // Salva no cache para a próxima vez (apenas imagens e scripts úteis)
                 const responseToCache = networkResponse.clone();
                 caches.open(CACHE_NAME).then((cache) => {
                     cache.put(req, responseToCache);
@@ -68,7 +94,7 @@ self.addEventListener('fetch', (event) => {
 
                 return networkResponse;
             }).catch(() => {
-                // Se falhar (sem net) e não estiver no cache, não faz nada
+                // Se falhar (offline), não retorna nada (imagem quebrada é melhor que app travado)
             });
         })
     );
