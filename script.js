@@ -878,8 +878,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     if (videoUrl) {
-                        window.open(videoUrl, '_blank');
-                        showToast("Iniciando download externo...");
+                        // Tenta criar um link invisível para forçar download (funciona se for MP4 e o servidor permitir)
+                        const link = document.createElement('a');
+                        link.href = videoUrl;
+                        link.target = '_blank'; // Abre nova aba por segurança
+
+                        // Se for .mp4, tenta forçar o nome do arquivo
+                        if (videoUrl.includes('.mp4')) {
+                            link.setAttribute('download', `${title}.mp4`);
+                        }
+
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+
+                        showToast("Abrindo link de download...", false);
                     } else {
                         showToast("Link indisponível para download.", true);
                     }
