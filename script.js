@@ -928,37 +928,38 @@ document.addEventListener('DOMContentLoaded', function () {
                 episodeContainer.innerHTML = '<p class="text-stone-400">Nenhum episódio encontrado para esta temporada.</p>';
                 return;
             }
-            // Cria o HTML para cada episódio (ATUALIZADO COM LÓGICA "EM BREVE")
+            // Cria o HTML para cada episódio (CORRIGIDO: Botão colorido, imagem PB)
             episodeContainer.innerHTML = episodes.map((ep, index) => {
                 const epTitle = ep.title || `Episódio ${ep.episode_number || index + 1}`;
                 const epOverview = ep.overview || 'Sem descrição.';
                 const stillPath = ep.still_path ? (ep.still_path.startsWith('/') ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : ep.still_path) : 'https://placehold.co/300x168/1c1917/FFFFFF?text=Starlight';
 
                 // --- LÓGICA EM BREVE ---
-                // Verifica se não tem URL ou se a flag isComingSoon está true
                 const isComingSoon = !ep.url || ep.url.trim() === '' || ep.isComingSoon;
 
-                // Define classes visuais: se for em breve, fica cinza e cursor bloqueado
-                const cursorClass = isComingSoon ? 'cursor-not-allowed opacity-75 grayscale' : 'cursor-pointer group';
+                // 1. REMOVIDO 'grayscale' daqui do container pai
+                const cursorClass = isComingSoon ? 'cursor-not-allowed opacity-75' : 'cursor-pointer group';
 
-                // Adiciona atributo para bloquear o clique no listener
                 const lockedAttr = isComingSoon ? 'data-locked="true"' : '';
 
-                // Define o Overlay da imagem (Botão Play OU Botão Em Breve)
+                // 2. DEFINIDO CLASSE PARA A IMAGEM (SÓ ELA FICA PRETO E BRANCO)
+                // Adicionei brightness-75 para ficar um pouco mais escura também
+                const imgClasses = isComingSoon ? 'grayscale brightness-75' : '';
+
                 let overlayHTML = '';
                 if (isComingSoon) {
-                    // Botão "Em Breve" (Sempre visível, com degradê rosa/roxo)
+                    // 3. BOTÃO ATUALIZADO: Degradê Roxo -> Rosa (igual ao logo) e uma sombra brilhante
                     overlayHTML = `
-                        <div class="absolute inset-0 flex items-center justify-center bg-black/20">
-                            <div class="px-3 py-1 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white text-[10px] font-bold shadow-lg uppercase tracking-wider">
+                        <div class="absolute inset-0 flex items-center justify-center bg-black/30 rounded-md z-10">
+                            <div class="px-4 py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 text-white text-[11px] font-bold shadow-[0_0_15px_rgba(219,39,119,0.6)] uppercase tracking-wider">
                                 Em Breve
                             </div>
                         </div>
                     `;
                 } else {
-                    // Ícone de Play (Aparece apenas ao passar o mouse - group-hover)
+                    // Ícone de Play normal
                     overlayHTML = `
-                        <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 rounded-md">
                             <i data-lucide="play-circle" class="w-8 h-8 text-white"></i>
                         </div>
                     `;
@@ -970,14 +971,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.3);"></div>
                         <div class="glass-specular"></div>
                         <div class="glass-content flex items-start p-3 gap-4">
-                            <div class="relative flex-shrink-0">
-                                <img src="${stillPath}" alt="Cena do episódio" class="w-32 sm:w-40 rounded-md aspect-video object-cover">
+                            <div class="relative flex-shrink-0 rounded-md overflow-hidden w-32 sm:w-40 aspect-video">
+                                <img src="${stillPath}" alt="Cena do episódio" class="w-full h-full object-cover transition-all duration-300 ${imgClasses}">
                                 ${overlayHTML}
                             </div>
                             <div class="flex-1">
                                 <h4 class="font-semibold text-white flex items-center gap-2">
                                     ${index + 1}. ${epTitle}
-                                    ${isComingSoon ? '<span class="text-[10px] text-stone-400 font-normal border border-stone-600 px-1 rounded">Indisponível</span>' : ''}
+                                    ${isComingSoon ? '<span class="text-[10px] text-stone-400 font-normal border border-stone-600 px-1 rounded opacity-70">Indisponível</span>' : ''}
                                 </h4>
                                 <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden">${epOverview}</p>
                             </div>
@@ -985,7 +986,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                 `;
             }).join('');
-            lucide.createIcons(); // Recria ícones // Recria ícones
+            lucide.createIcons(); // Recria ícones
         };
 
         renderEpisodes(firstSeasonKey); // Renderiza os episódios da temporada inicial
