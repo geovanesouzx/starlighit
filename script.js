@@ -1147,7 +1147,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hls = new Hls({
                 maxBufferLength: 30,    // Segundos de buffer
                 maxBufferSize: 60 * 1000 * 1000, // 60MB de buffer
-                startLevel: -1           // Começa na qualidade automática
+                startLevel: -1          // Começa na qualidade automática
             });
             hls.loadSource(urlToLoad); // Carrega a fonte
             hls.attachMedia(videoPlayer); // Anexa ao elemento <video>
@@ -1202,7 +1202,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         attachGlassButtonListeners(); // Reatacha listeners visuais
     }
-
     /**
      * Esconde o player de vídeo e limpa seu estado.
      * @param {boolean} [updateHistory=true] - Se true, salva o progresso e volta no histórico.
