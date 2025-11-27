@@ -928,34 +928,64 @@ document.addEventListener('DOMContentLoaded', function () {
                 episodeContainer.innerHTML = '<p class="text-stone-400">Nenhum episódio encontrado para esta temporada.</p>';
                 return;
             }
-            // Cria o HTML para cada episódio
+            // Cria o HTML para cada episódio (ATUALIZADO COM LÓGICA "EM BREVE")
             episodeContainer.innerHTML = episodes.map((ep, index) => {
                 const epTitle = ep.title || `Episódio ${ep.episode_number || index + 1}`;
                 const epOverview = ep.overview || 'Sem descrição.';
-                // Define a imagem do episódio com fallback
                 const stillPath = ep.still_path ? (ep.still_path.startsWith('/') ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : ep.still_path) : 'https://placehold.co/300x168/1c1917/FFFFFF?text=Starlight';
 
+                // --- LÓGICA EM BREVE ---
+                // Verifica se não tem URL ou se a flag isComingSoon está true
+                const isComingSoon = !ep.url || ep.url.trim() === '' || ep.isComingSoon;
+
+                // Define classes visuais: se for em breve, fica cinza e cursor bloqueado
+                const cursorClass = isComingSoon ? 'cursor-not-allowed opacity-75 grayscale' : 'cursor-pointer group';
+
+                // Adiciona atributo para bloquear o clique no listener
+                const lockedAttr = isComingSoon ? 'data-locked="true"' : '';
+
+                // Define o Overlay da imagem (Botão Play OU Botão Em Breve)
+                let overlayHTML = '';
+                if (isComingSoon) {
+                    // Botão "Em Breve" (Sempre visível, com degradê rosa/roxo)
+                    overlayHTML = `
+                        <div class="absolute inset-0 flex items-center justify-center bg-black/20">
+                            <div class="px-3 py-1 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white text-[10px] font-bold shadow-lg uppercase tracking-wider">
+                                Em Breve
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Ícone de Play (Aparece apenas ao passar o mouse - group-hover)
+                    overlayHTML = `
+                        <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i data-lucide="play-circle" class="w-8 h-8 text-white"></i>
+                        </div>
+                    `;
+                }
+
                 return `
-                    <div class="episode-item glass-container glass-button rounded-lg overflow-hidden cursor-pointer" data-index="${index}" data-season="${seasonKey}">
+                    <div class="episode-item glass-container glass-button rounded-lg overflow-hidden ${cursorClass}" data-index="${index}" data-season="${seasonKey}" ${lockedAttr}>
                         <div class="glass-filter"></div>
                         <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.3);"></div>
                         <div class="glass-specular"></div>
                         <div class="glass-content flex items-start p-3 gap-4">
                             <div class="relative flex-shrink-0">
                                 <img src="${stillPath}" alt="Cena do episódio" class="w-32 sm:w-40 rounded-md aspect-video object-cover">
-                                <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <i data-lucide="play-circle" class="w-8 h-8 text-white"></i> <!-- Ícone de play ao passar o mouse -->
-                                </div>
+                                ${overlayHTML}
                             </div>
                             <div class="flex-1">
-                                <h4 class="font-semibold text-white">${index + 1}. ${epTitle}</h4>
-                                <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden">${epOverview}</p> <!-- Limita altura da sinopse -->
+                                <h4 class="font-semibold text-white flex items-center gap-2">
+                                    ${index + 1}. ${epTitle}
+                                    ${isComingSoon ? '<span class="text-[10px] text-stone-400 font-normal border border-stone-600 px-1 rounded">Indisponível</span>' : ''}
+                                </h4>
+                                <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden">${epOverview}</p>
                             </div>
                         </div>
                     </div>
                 `;
             }).join('');
-            lucide.createIcons(); // Recria ícones
+            lucide.createIcons(); // Recria ícones // Recria ícones
         };
 
         renderEpisodes(firstSeasonKey); // Renderiza os episódios da temporada inicial
@@ -984,6 +1014,10 @@ document.addEventListener('DOMContentLoaded', function () {
         // Listener para cliques nos itens de episódio
         document.getElementById('episode-list-container').addEventListener('click', (e) => {
             const episodeItem = e.target.closest('.episode-item');
+            if (episodeItem && episodeItem.dataset.locked === "true") {
+                showToast("Este episódio estará disponível em breve!", true); // Opcional: Feedback
+                return; // Para tudo e não toca o vídeo
+            }
             if (episodeItem) { // Se clicou em um episódio
                 const seasonKey = episodeItem.dataset.season; // Pega a temporada
                 const episodeIndex = parseInt(episodeItem.dataset.index, 10); // Pega o índice do episódio
