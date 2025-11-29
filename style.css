@@ -1325,3 +1325,19 @@ header.header-hidden {
     padding-left: 20px;
     /* Efeito de movimentozinho ao passar o mouse */
 }
+
+/* Estilo para itens bloqueados/Em breve */
+.episode-item[data-locked="true"] {
+    position: relative;
+}
+
+.episode-item[data-locked="true"]:hover {
+    transform: none;
+    /* Remove o efeito de "pulo" ao passar o mouse */
+    box-shadow: none;
+}
+
+/* Garante que a imagem fique preto e branco */
+.episode-item[data-locked="true"] img {
+    filter: grayscale(100%) brightness(0.7);
+}
