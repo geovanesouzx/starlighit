@@ -928,59 +928,28 @@ document.addEventListener('DOMContentLoaded', function () {
                 episodeContainer.innerHTML = '<p class="text-stone-400">Nenhum episódio encontrado para esta temporada.</p>';
                 return;
             }
-            // Cria o HTML para cada episódio (CORRIGIDO: Botão colorido, imagem PB)
+            // Cria o HTML para cada episódio
             episodeContainer.innerHTML = episodes.map((ep, index) => {
                 const epTitle = ep.title || `Episódio ${ep.episode_number || index + 1}`;
                 const epOverview = ep.overview || 'Sem descrição.';
+                // Define a imagem do episódio com fallback
                 const stillPath = ep.still_path ? (ep.still_path.startsWith('/') ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : ep.still_path) : 'https://placehold.co/300x168/1c1917/FFFFFF?text=Starlight';
 
-                // --- LÓGICA EM BREVE ---
-                const isComingSoon = !ep.url || ep.url.trim() === '' || ep.isComingSoon;
-
-                // 1. REMOVIDO 'grayscale' daqui do container pai
-                const cursorClass = isComingSoon ? 'cursor-not-allowed opacity-75' : 'cursor-pointer group';
-
-                const lockedAttr = isComingSoon ? 'data-locked="true"' : '';
-
-                // 2. DEFINIDO CLASSE PARA A IMAGEM (SÓ ELA FICA PRETO E BRANCO)
-                // Adicionei brightness-75 para ficar um pouco mais escura também
-                const imgClasses = isComingSoon ? 'grayscale brightness-75' : '';
-
-                let overlayHTML = '';
-                if (isComingSoon) {
-                    // 3. BOTÃO ATUALIZADO: Degradê Roxo -> Rosa (igual ao logo) e uma sombra brilhante
-                    overlayHTML = `
-                        <div class="absolute inset-0 flex items-center justify-center bg-black/30 rounded-md z-10">
-                            <div class="px-4 py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 text-white text-[11px] font-bold shadow-[0_0_15px_rgba(219,39,119,0.6)] uppercase tracking-wider">
-                                Em Breve
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    // Ícone de Play normal
-                    overlayHTML = `
-                        <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 rounded-md">
-                            <i data-lucide="play-circle" class="w-8 h-8 text-white"></i>
-                        </div>
-                    `;
-                }
-
                 return `
-                    <div class="episode-item glass-container glass-button rounded-lg overflow-hidden ${cursorClass}" data-index="${index}" data-season="${seasonKey}" ${lockedAttr}>
+                    <div class="episode-item glass-container glass-button rounded-lg overflow-hidden cursor-pointer" data-index="${index}" data-season="${seasonKey}">
                         <div class="glass-filter"></div>
                         <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.3);"></div>
                         <div class="glass-specular"></div>
                         <div class="glass-content flex items-start p-3 gap-4">
-                            <div class="relative flex-shrink-0 rounded-md overflow-hidden w-32 sm:w-40 aspect-video">
-                                <img src="${stillPath}" alt="Cena do episódio" class="w-full h-full object-cover transition-all duration-300 ${imgClasses}">
-                                ${overlayHTML}
+                            <div class="relative flex-shrink-0">
+                                <img src="${stillPath}" alt="Cena do episódio" class="w-32 sm:w-40 rounded-md aspect-video object-cover">
+                                <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <i data-lucide="play-circle" class="w-8 h-8 text-white"></i> <!-- Ícone de play ao passar o mouse -->
+                                </div>
                             </div>
                             <div class="flex-1">
-                                <h4 class="font-semibold text-white flex items-center gap-2">
-                                    ${index + 1}. ${epTitle}
-                                    ${isComingSoon ? '<span class="text-[10px] text-stone-400 font-normal border border-stone-600 px-1 rounded opacity-70">Indisponível</span>' : ''}
-                                </h4>
-                                <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden">${epOverview}</p>
+                                <h4 class="font-semibold text-white">${index + 1}. ${epTitle}</h4>
+                                <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden">${epOverview}</p> <!-- Limita altura da sinopse -->
                             </div>
                         </div>
                     </div>
@@ -1015,10 +984,6 @@ document.addEventListener('DOMContentLoaded', function () {
         // Listener para cliques nos itens de episódio
         document.getElementById('episode-list-container').addEventListener('click', (e) => {
             const episodeItem = e.target.closest('.episode-item');
-            if (episodeItem && episodeItem.dataset.locked === "true") {
-                showToast("Este episódio estará disponível em breve!", true); // Opcional: Feedback
-                return; // Para tudo e não toca o vídeo
-            }
             if (episodeItem) { // Se clicou em um episódio
                 const seasonKey = episodeItem.dataset.season; // Pega a temporada
                 const episodeIndex = parseInt(episodeItem.dataset.index, 10); // Pega o índice do episódio
@@ -1147,7 +1112,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hls = new Hls({
                 maxBufferLength: 30,    // Segundos de buffer
                 maxBufferSize: 60 * 1000 * 1000, // 60MB de buffer
-                startLevel: -1          // Começa na qualidade automática
+                startLevel: -1           // Começa na qualidade automática
             });
             hls.loadSource(urlToLoad); // Carrega a fonte
             hls.attachMedia(videoPlayer); // Anexa ao elemento <video>
@@ -1158,47 +1123,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo HLS:", e)); // Tenta iniciar a reprodução
             });
-        } else { // MODO MP4 (Nativo) - Lógica de Reset Total
-
-            // 1. GARANTIA: Se sobrou algum HLS, mata ele agora
-            if (hls) {
-                hls.destroy();
-                hls = null;
-            }
-
-            // 2. Define a fonte
-            videoPlayer.src = urlToLoad;
-
-            // 3. O SEGREDO: Força o navegador a carregar a nova fonte imediatamente
-            // Isso limpa o buffer do vídeo anterior que estava travando o player
-            videoPlayer.load();
-
-            // 4. Define o tempo (continuar assistindo)
-            if (context.startTime && context.startTime > 5) {
-                videoPlayer.currentTime = context.startTime;
-            }
-
-            // 5. Tenta dar play e força o sumiço do Loading
-            const playPromise = videoPlayer.play();
-
-            if (playPromise !== undefined) {
-                playPromise.then(() => {
-                    // SUCESSO: O vídeo começou, esconde a rodinha de carregar na marra
-                    if (playerLoadingOverlay) {
-                        playerLoadingOverlay.classList.add('hidden');
-                    }
-                }).catch(error => {
-                    console.warn("Play imediato falhou (normal em alguns browsers), aguardando dados...", error);
-                    // Se falhar, espera o evento 'canplay' (pode tocar)
-                    videoPlayer.addEventListener('canplay', () => {
-                        videoPlayer.play();
-                        if (playerLoadingOverlay) {
-                            playerLoadingOverlay.classList.add('hidden');
-                        }
-                    }, { once: true });
-                });
-            }
+        } else { // Se não for HLS ou não for suportado, usa a tag <video> nativa
+            videoPlayer.src = urlToLoad; // Define a fonte do vídeo
+            videoPlayer.addEventListener('loadedmetadata', () => { // Quando os metadados do vídeo carregarem
+                if (context.startTime && context.startTime > 5) {
+                    videoPlayer.currentTime = context.startTime; // Pula se necessário
+                }
+                videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo:", e)); // Tenta iniciar
+            }, { once: true }); // Executa este listener apenas uma vez
         }
+
         // 2. Lógica de orientação e tela cheia para mobile
         if (window.innerWidth < 768) { // Se for tela pequena (considerado mobile)
             // MUDANÇA: Lógica ajustada para (re)tentar bloquear a orientação
@@ -1233,6 +1167,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         attachGlassButtonListeners(); // Reatacha listeners visuais
     }
+
     /**
      * Esconde o player de vídeo e limpa seu estado.
      * @param {boolean} [updateHistory=true] - Se true, salva o progresso e volta no histórico.
@@ -1251,22 +1186,14 @@ document.addEventListener('DOMContentLoaded', function () {
             hls.destroy();
             hls = null;
         }
-
         // Remove o atributo 'src' e chama 'load()' para parar completamente o download do vídeo
-        // ISSO É CRUCIAL para o "Reset Total" funcionar no próximo vídeo
         videoPlayer.removeAttribute('src');
         videoPlayer.load();
 
         playerView.classList.add('hidden'); // Esconde a view do player
-
-        // --- FIX: Garante que o loading suma ao fechar o player ---
-        if (playerLoadingOverlay) {
-            playerLoadingOverlay.classList.add('hidden');
-        }
-
+        playerLoadingOverlay.classList.add('hidden'); // <--- ADICIONE A LINHA AQUI
         document.body.style.overflow = 'auto'; // Restaura a rolagem do body
         currentPlayerContext = {}; // Limpa o contexto do player
-
         // 3. Sai da tela cheia e desbloqueia a orientação
         // MUDANÇA: Só executa se NÃO estiver trocando de episódio
         if (!isChangingEpisode) {
