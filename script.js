@@ -1158,16 +1158,31 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo HLS:", e)); // Tenta iniciar a reprodução
             });
-        } else { // Se não for HLS ou não for suportado, usa a tag <video> nativa
-            videoPlayer.src = urlToLoad; // Define a fonte do vídeo
-            videoPlayer.addEventListener('loadedmetadata', () => { // Quando os metadados do vídeo carregarem
-                if (context.startTime && context.startTime > 5) {
-                    videoPlayer.currentTime = context.startTime; // Pula se necessário
-                }
-                videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo:", e)); // Tenta iniciar
-            }, { once: true }); // Executa este listener apenas uma vez
-        }
+        } else { // MODO MP4 (Nativo) - Lógica Simplificada e Robusta
+            // 1. Define a fonte
+            videoPlayer.src = urlToLoad;
 
+            // 2. Tenta definir o tempo de continuação imediatamente (se houver)
+            if (context.startTime && context.startTime > 5) {
+                videoPlayer.currentTime = context.startTime;
+            }
+
+            // 3. Dá o play direto (igual ao StrangerFlix), sem esperar metadados
+            const playPromise = videoPlayer.play();
+
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.warn("Autoplay imediato falhou, tentando novamente ao carregar metadados...", error);
+                    // Fallback: Se falhar de primeira, tenta de novo quando carregar
+                    videoPlayer.addEventListener('loadeddata', () => {
+                        if (context.startTime && context.startTime > 5) {
+                            videoPlayer.currentTime = context.startTime;
+                        }
+                        videoPlayer.play();
+                    }, { once: true });
+                });
+            }
+        }
         // 2. Lógica de orientação e tela cheia para mobile
         if (window.innerWidth < 768) { // Se for tela pequena (considerado mobile)
             // MUDANÇA: Lógica ajustada para (re)tentar bloquear a orientação
