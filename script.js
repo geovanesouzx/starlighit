@@ -1158,27 +1158,43 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo HLS:", e)); // Tenta iniciar a reprodução
             });
-        } else { // MODO MP4 (Nativo) - Lógica Simplificada e Robusta
-            // 1. Define a fonte
+        } else { // MODO MP4 (Nativo) - Lógica de Reset Total
+
+            // 1. GARANTIA: Se sobrou algum HLS, mata ele agora
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+
+            // 2. Define a fonte
             videoPlayer.src = urlToLoad;
 
-            // 2. Tenta definir o tempo de continuação imediatamente (se houver)
+            // 3. O SEGREDO: Força o navegador a carregar a nova fonte imediatamente
+            // Isso limpa o buffer do vídeo anterior que estava travando o player
+            videoPlayer.load();
+
+            // 4. Define o tempo (continuar assistindo)
             if (context.startTime && context.startTime > 5) {
                 videoPlayer.currentTime = context.startTime;
             }
 
-            // 3. Dá o play direto (igual ao StrangerFlix), sem esperar metadados
+            // 5. Tenta dar play e força o sumiço do Loading
             const playPromise = videoPlayer.play();
 
             if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                    console.warn("Autoplay imediato falhou, tentando novamente ao carregar metadados...", error);
-                    // Fallback: Se falhar de primeira, tenta de novo quando carregar
-                    videoPlayer.addEventListener('loadeddata', () => {
-                        if (context.startTime && context.startTime > 5) {
-                            videoPlayer.currentTime = context.startTime;
-                        }
+                playPromise.then(() => {
+                    // SUCESSO: O vídeo começou, esconde a rodinha de carregar na marra
+                    if (playerLoadingOverlay) {
+                        playerLoadingOverlay.classList.add('hidden');
+                    }
+                }).catch(error => {
+                    console.warn("Play imediato falhou (normal em alguns browsers), aguardando dados...", error);
+                    // Se falhar, espera o evento 'canplay' (pode tocar)
+                    videoPlayer.addEventListener('canplay', () => {
                         videoPlayer.play();
+                        if (playerLoadingOverlay) {
+                            playerLoadingOverlay.classList.add('hidden');
+                        }
                     }, { once: true });
                 });
             }
