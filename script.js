@@ -752,24 +752,30 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 100);
     }
     /**
-       * Popula a tela inicial com carrosséis (Aviso de Pedidos + Continuar Assistindo + Outros).
-       */
+         * Popula a tela inicial com carrosséis.
+         * - Notificações de Pedidos
+         * - Continuar Assistindo (Cards Horizontais com Cenas)
+         * - Adicionados Recentemente
+         * - Gêneros
+         */
     async function populateAllViews() {
         const carouselsContainer = document.getElementById('home-carousels-container');
         if (!carouselsContainer) return;
-        carouselsContainer.innerHTML = ''; // Limpa
+        carouselsContainer.innerHTML = '';
 
-        // --- 0. VERIFICA SE TEM PEDIDOS ATENDIDOS (NOVO) ---
+        // --- 0. VERIFICA PEDIDOS ATENDIDOS ---
         if (userId && currentProfile) {
-            checkFulfilledRequests(); // Chama a função que criamos acima
+            if (typeof checkFulfilledRequests === 'function') {
+                checkFulfilledRequests();
+            }
         }
-        // ---------------------------------------------------
 
-        // --- 1. CONTINUAR ASSISTINDO ---
+        // --- 1. CONTINUAR ASSISTINDO (VISUAL DE CENA) ---
         if (userId && currentProfile) {
             try {
                 const progressRef = collection(db, 'users', userId, 'profiles', currentProfile.id, 'watch-progress');
                 const snapshot = await getDocs(progressRef);
+
                 const moviesList = [];
                 const seriesMap = {};
 
@@ -803,52 +809,103 @@ document.addEventListener('DOMContentLoaded', function () {
                              </h2>
                         </div>
                         <div class="carousel-container relative">
-                            <div class="carousel space-x-4 px-4 sm:px-6 lg:px-8 py-4 overflow-x-auto hide-scrollbar scroll-smooth" id="cw-carousel-track"></div>
+                            <div class="carousel space-x-4 px-4 sm:px-6 lg:px-8 py-4 overflow-x-auto hide-scrollbar scroll-smooth" id="cw-carousel-track">
+                                </div>
                         </div>`;
 
                     const track = section.querySelector('#cw-carousel-track');
 
                     continueWatchingItems.forEach(data => {
                         const item = data.item;
-                        const posterPath = item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
-                        const epInfo = data.episode ? `<div class="absolute top-2 right-2 text-[10px] font-bold text-white bg-indigo-600/90 px-2 py-1 rounded backdrop-blur-md shadow-lg z-20">T${data.episode.season_number} E${data.episode.episode_number}</div>` : '';
+
+                        // --- LÓGICA DA IMAGEM DE CENA ---
+                        let displayImage = item.poster; // Fallback padrão (Poster)
+
+                        // Se for SÉRIE e tiver dados do episódio com imagem
+                        if (item.type === 'tv' && data.episode && data.episode.still_path) {
+                            // Verifica se é URL completa ou parcial do TMDB
+                            if (data.episode.still_path.startsWith('http')) {
+                                displayImage = data.episode.still_path;
+                            } else {
+                                displayImage = `https://image.tmdb.org/t/p/w500${data.episode.still_path}`;
+                            }
+                        }
+                        // Se for FILME e tiver Backdrop (Fundo horizontal)
+                        else if (item.type === 'movie' && item.backdrop) {
+                            displayImage = item.backdrop;
+                        }
+
+                        // Garante que a URL é válida
+                        if (!displayImage || displayImage.includes('null')) {
+                            displayImage = `https://placehold.co/400x225/1c1917/FFFFFF?text=${item.title || 'Sem Imagem'}`;
+                        }
+                        // --------------------------------
+
+                        // Badge T1 E2
+                        const epInfo = data.episode
+                            ? `<div class="absolute top-2 right-2 text-[10px] font-bold text-white bg-black/70 px-2 py-1 rounded backdrop-blur-md shadow-lg z-20 border border-white/10">T${data.episode.season_number} E${data.episode.episode_number}</div>`
+                            : '';
 
                         const card = document.createElement('div');
-                        card.className = 'carousel-item w-36 sm:w-48 cursor-pointer group block flex-shrink-0 relative cw-card-trigger';
+                        // MUDANÇA DE FORMATO: w-60 (mais largo) e aspect-video (16:9 horizontal)
+                        card.className = 'carousel-item w-60 sm:w-72 cursor-pointer group block flex-shrink-0 relative cw-card-trigger';
+
                         card.playerData = data;
 
                         card.innerHTML = `
-                            <div class="liquid-glass-card aspect-[2/3] bg-stone-800 overflow-hidden relative transition-transform duration-300 group-hover:scale-105">
-                                 <div class="glass-filter"></div><div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.1);"></div><div class="glass-specular"></div>
+                            <div class="liquid-glass-card aspect-video bg-stone-800 overflow-hidden relative transition-transform duration-300 group-hover:scale-105 border border-white/5">
+                                 <div class="glass-filter"></div>
+                                 <div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.2);"></div>
+                                 <div class="glass-specular"></div>
+                                 
                                  <div class="glass-content p-0 h-full relative">
-                                     <img src="${posterPath}" alt="${item.title}" loading="lazy" class="w-full h-full object-cover rounded-[inherit]">
-                                     <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
-                                         <div class="bg-white/20 backdrop-blur-md p-3 rounded-full border border-white/30"><i data-lucide="play" class="w-8 h-8 text-white fill-white"></i></div>
+                                     <img src="${displayImage}" alt="${item.title}" loading="lazy" class="w-full h-full object-cover rounded-[inherit]">
+                                     
+                                     <div class="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+                                         <div class="bg-white/20 backdrop-blur-md p-3 rounded-full border border-white/30 shadow-xl transform scale-0 group-hover:scale-100 transition-transform duration-300">
+                                             <i data-lucide="play" class="w-8 h-8 text-white fill-white ml-1"></i>
+                                         </div>
                                      </div>
                                      ${epInfo}
                                  </div>
-                                 <div class="cw-progress-container"><div class="cw-progress-fill" style="width: ${data.progressPercent}%"></div></div>
+                                 
+                                 <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: rgba(0,0,0,0.8); z-index: 20;">
+                                    <div style="height: 100%; width: ${data.progressPercent}%; background: linear-gradient(90deg, #e50914, #ff4757); box-shadow: 0 0 10px rgba(229, 9, 20, 0.8);"></div>
+                                 </div>
                             </div>
-                            <h4 class="mt-2 text-sm font-medium text-gray-300 truncate pl-1 group-hover:text-white transition-colors">${item.title || item.name}</h4>
+                            <div class="mt-2 px-1">
+                                <h4 class="text-sm font-bold text-white truncate">${item.title || item.name}</h4>
+                                ${data.episode ? `<p class="text-xs text-stone-400 truncate">${data.episode.title || 'Episódio ' + data.episode.episode_number}</p>` : ''}
+                            </div>
                         `;
                         track.appendChild(card);
                     });
 
+                    // Evento de Clique para PLAY DIRETO
                     track.addEventListener('click', (e) => {
                         const card = e.target.closest('.cw-card-trigger');
                         if (card && card.playerData) {
-                            e.preventDefault(); e.stopPropagation();
+                            e.preventDefault();
+                            e.stopPropagation();
+
                             const data = card.playerData;
                             const item = data.item;
                             let context = {};
 
                             if (item.type === 'movie') {
-                                context = { videoUrl: item.url, title: item.title || item.name, itemData: item, startTime: data.currentTime };
+                                context = {
+                                    videoUrl: item.url,
+                                    title: item.title || item.name,
+                                    itemData: item,
+                                    startTime: data.currentTime // Pula para o tempo salvo
+                                };
                             } else if (item.type === 'tv' && data.episode) {
                                 let allEpisodes = [];
                                 if (item.seasons && item.seasons[data.episode.season_number]) {
                                     allEpisodes = item.seasons[data.episode.season_number].episodes;
-                                } else { allEpisodes = [data.episode]; }
+                                } else {
+                                    allEpisodes = [data.episode];
+                                }
 
                                 const epIndex = allEpisodes.findIndex(ep => ep.episode_number === data.episode.episode_number);
                                 const safeIndex = epIndex >= 0 ? epIndex : 0;
@@ -857,30 +914,42 @@ document.addEventListener('DOMContentLoaded', function () {
                                 context = {
                                     videoUrl: data.episode.url,
                                     title: `${item.title || item.name} - T${data.episode.season_number} E${data.episode.episode_number}${epTitle}`,
-                                    itemData: item, episodes: allEpisodes, currentIndex: safeIndex, startTime: data.currentTime
+                                    itemData: item,
+                                    episodes: allEpisodes,
+                                    currentIndex: safeIndex,
+                                    startTime: data.currentTime // Pula para o tempo salvo
                                 };
                             }
                             showPlayer(context);
                         }
                     });
+
                     carouselsContainer.appendChild(section);
                 }
-            } catch (error) { console.error("Erro ao carregar Continuar Assistindo:", error); }
+            } catch (error) {
+                console.error("Erro ao carregar Continuar Assistindo:", error);
+            }
         }
+        // ---------------------------------------
 
-        // --- 2. Adicionados Recentemente ---
-        const recentlyAdded = [...firestoreContent].sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0)).slice(0, 20);
+        // --- 2. Conteúdo Padrão (Adicionado Recentemente) ---
+        const recentlyAdded = [...firestoreContent]
+            .sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0))
+            .slice(0, 20);
         createCarousel(carouselsContainer, "Adicionado Recentemente", recentlyAdded);
 
-        // --- 3. Gêneros ---
+        // --- 3. Carrosséis por Gênero (Embaralhado) ---
         const allGenres = [...new Set(firestoreContent.flatMap(item => item.genres || []))];
+
         for (const genre of allGenres) {
             const originalGenreList = firestoreContent.filter(item => item.genres && item.genres.includes(genre));
             const shuffledGenreList = getDailyShuffledList(originalGenreList, genre);
+
             if (shuffledGenreList.length > 0) {
                 createCarousel(carouselsContainer, genre, shuffledGenreList);
             }
         }
+
         attachGlassButtonListeners();
         lucide.createIcons();
     }
