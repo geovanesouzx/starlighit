@@ -870,9 +870,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
-     * Renderiza a seção de temporadas e episódios para uma série na tela de detalhes.
-     * @param {object} data - Os dados da série.
-     */
+      * Renderiza a seção de temporadas e episódios para uma série na tela de detalhes.
+      * @param {object} data - Os dados da série.
+      */
     function renderTvDetails(data) {
         const container = document.getElementById('tv-content-details');
         if (!container) return; // Sai se o container não existir
@@ -892,7 +892,6 @@ document.addEventListener('DOMContentLoaded', function () {
         container.innerHTML = `
             <div class="custom-select-container relative w-full md:w-64 mb-6">
                 <button id="season-selector-button" class="glass-container glass-button rounded-lg w-full text-left">
-                    <!-- Botão para abrir o seletor -->
                     <div class="glass-filter"></div>
                     <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.5);"></div>
                     <div class="glass-specular"></div>
@@ -902,18 +901,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                 </button>
                 <div id="season-options" class="hidden custom-select-options glass-container rounded-lg animate-fade-in-down">
-                     <!-- Opções do seletor (inicialmente escondido) -->
-                     <div class="glass-filter"></div>
-                     <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.7);"></div>
-                     <div class="glass-specular"></div>
-                     <div id="season-options-content" class="glass-content p-2">
-                         <!-- Mapeia as chaves das temporadas para criar as opções -->
-                         ${seasonKeys.map(key => `<div class="custom-select-option p-3 rounded-md cursor-pointer" data-season="${key}">${data.seasons[key]?.title || `Temporada ${key}`}</div>`).join('')}
-                     </div>
+                      <div class="glass-filter"></div>
+                      <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.7);"></div>
+                      <div class="glass-specular"></div>
+                      <div id="season-options-content" class="glass-content p-2">
+                          ${seasonKeys.map(key => `<div class="custom-select-option p-3 rounded-md cursor-pointer" data-season="${key}">${data.seasons[key]?.title || `Temporada ${key}`}</div>`).join('')}
+                      </div>
                 </div>
             </div>
-            <div id="episode-list-container" class="space-y-3"></div> <!-- Container para a lista de episódios -->
-        `;
+            <div id="episode-list-container" class="space-y-3"></div> `;
         lucide.createIcons(); // Recria ícones
 
         /**
@@ -935,21 +931,37 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Define a imagem do episódio com fallback
                 const stillPath = ep.still_path ? (ep.still_path.startsWith('/') ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : ep.still_path) : 'https://placehold.co/300x168/1c1917/FFFFFF?text=Starlight';
 
+                // --- LÓGICA DE EM BREVE ---
+                // Verifica se está marcado como ComingSoon OU se a URL está vazia
+                const isComingSoon = ep.isComingSoon || !ep.url;
+
+                // Define estilos baseados na disponibilidade
+                const cursorStyle = isComingSoon ? 'cursor-default opacity-70' : 'cursor-pointer group';
+
+                // Define o overlay da imagem (Play ou Badge de Em Breve)
+                const imageOverlay = isComingSoon
+                    ? `<div class="absolute inset-0 bg-black/60 flex items-center justify-center border border-white/10 rounded-md">
+                         <span class="text-[10px] font-bold text-white bg-stone-800/80 px-2 py-1 rounded border border-white/20 tracking-wider">EM BREVE</span>
+                       </div>`
+                    : `<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                         <i data-lucide="play-circle" class="w-8 h-8 text-white"></i>
+                       </div>`;
+
                 return `
-                    <div class="episode-item glass-container glass-button rounded-lg overflow-hidden cursor-pointer" data-index="${index}" data-season="${seasonKey}">
+                    <div class="episode-item glass-container glass-button rounded-lg overflow-hidden ${cursorStyle}" data-index="${index}" data-season="${seasonKey}" data-coming-soon="${isComingSoon}">
                         <div class="glass-filter"></div>
                         <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.3);"></div>
                         <div class="glass-specular"></div>
                         <div class="glass-content flex items-start p-3 gap-4">
-                            <div class="relative flex-shrink-0">
-                                <img src="${stillPath}" alt="Cena do episódio" class="w-32 sm:w-40 rounded-md aspect-video object-cover">
-                                <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <i data-lucide="play-circle" class="w-8 h-8 text-white"></i> <!-- Ícone de play ao passar o mouse -->
-                                </div>
+                            <div class="relative flex-shrink-0 w-32 sm:w-40 aspect-video">
+                                <img src="${stillPath}" alt="Cena do episódio" class="w-full h-full rounded-md object-cover">
+                                ${imageOverlay}
                             </div>
-                            <div class="flex-1">
-                                <h4 class="font-semibold text-white">${index + 1}. ${epTitle}</h4>
-                                <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden">${epOverview}</p> <!-- Limita altura da sinopse -->
+                            <div class="flex-1 min-w-0"> <h4 class="font-semibold text-white truncate flex items-center gap-2">
+                                    ${index + 1}. ${epTitle}
+                                    ${isComingSoon ? '<span class="md:hidden text-[10px] text-stone-400 border border-stone-600 px-1 rounded">Em Breve</span>' : ''}
+                                </h4>
+                                <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden line-clamp-3">${epOverview}</p> 
                             </div>
                         </div>
                     </div>
@@ -985,6 +997,14 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('episode-list-container').addEventListener('click', (e) => {
             const episodeItem = e.target.closest('.episode-item');
             if (episodeItem) { // Se clicou em um episódio
+
+                // --- LÓGICA DE BLOQUEIO PARA "EM BREVE" ---
+                if (episodeItem.dataset.comingSoon === "true") {
+                    showToast("Este episódio ainda não está disponível.", true); // Aviso visual
+                    return; // Interrompe e não abre o player
+                }
+                // ------------------------------------------
+
                 const seasonKey = episodeItem.dataset.season; // Pega a temporada
                 const episodeIndex = parseInt(episodeItem.dataset.index, 10); // Pega o índice do episódio
                 const allEpisodesOfSeason = data.seasons[seasonKey].episodes;
@@ -996,7 +1016,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Prepara o contexto para o player
                 const context = {
                     videoUrl: episode.url, // URL do vídeo do episódio
-                    // CORREÇÃO: Usa (data.title || data.name) e adiciona o epTitle
+                    // Usa (data.title || data.name) e adiciona o epTitle
                     title: `${data.title || data.name} - T${seasonKey} E${episode.episode_number || episodeIndex + 1}${epTitle}`,
                     itemData: data, // Dados gerais da série
                     episodes: allEpisodesOfSeason, // Lista de todos os episódios da temporada
