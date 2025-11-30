@@ -652,9 +652,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     /**
-         * Verifica se há pedidos atendidos e exibe um MODAL "CRISTAL LIQUID GLASS".
-         * Visual premium, centralizado, com múltiplas camadas de vidro e luz.
-         */
+        * Verifica se há pedidos atendidos e exibe um MODAL "MATTE DARK" (Limpo e sem brilho).
+        */
     async function checkFulfilledRequests() {
         if (!userId) return;
 
@@ -663,58 +662,50 @@ document.addEventListener('DOMContentLoaded', function () {
 
         snapshot.forEach(docSnap => {
             const req = docSnap.data();
-            // Verifica se o usuário está na lista
             const userRequestObj = req.requesters ? req.requesters.find(r => r.userId === userId) : null;
 
             if (userRequestObj) {
-                // --- Criação do Modal ---
                 const modal = document.createElement('div');
-                // Base do modal com transição rápida para fechar (200ms)
-                modal.className = 'fixed inset-0 z-[300] flex items-center justify-center p-6 bg-[#050505]/80 backdrop-blur-xl animate-fade-in transition-all duration-200';
+                // Fundo do overlay mais escuro e sólido para focar no modal
+                modal.className = 'fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/95 animate-fade-in transition-all duration-200';
 
                 const poster = req.posterUrl || 'https://placehold.co/300x450?text=IMG';
 
-                // --- HTML ESTRUTURAL DO "CRISTAL" ---
+                // --- HTML LIMPO (MATTE DARK) ---
                 modal.innerHTML = `
-                    <div class="relative w-full max-w-md transform transition-all scale-100 group perspective-1000">
+                    <div class="relative w-full max-w-xl bg-[#0f0f0f] border border-white/10 rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100">
                         
-                        <div class="absolute -inset-4 bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 rounded-[3rem] blur-2xl opacity-40 animate-pulse-slow pointer-events-none"></div>
-                        
-                        <div class="relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-[50px] border-[1.5px] border-white/20 rounded-[2.5rem] shadow-2xl overflow-hidden">
+                        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 to-pink-600"></div>
+
+                        <div class="p-6 md:p-8 flex flex-col md:flex-row gap-6 items-start">
                             
-                            <div class="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/20 to-transparent pointer-events-none"></div>
-                            
-                            <div class="relative z-10 p-8 flex flex-col items-center text-center">
-                                
-                                <div class="mb-6 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-black/30 border border-white/10 shadow-inner-glass">
-                                    <span class="relative flex h-2.5 w-2.5">
-                                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
-                                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-gradient-to-r from-purple-400 to-pink-400"></span>
-                                    </span>
-                                    <span class="text-xs font-bold text-white/90 uppercase tracking-widest drop-shadow">Pedido Atendido</span>
+                            <div class="w-full md:w-32 flex-shrink-0">
+                                <img src="${poster}" class="w-full rounded-lg shadow-lg border border-white/5 aspect-[2/3] object-cover bg-stone-800">
+                            </div>
+
+                            <div class="flex-1 w-full">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="bg-purple-500/10 text-purple-400 p-1.5 rounded-md">
+                                        <i data-lucide="bell" class="w-4 h-4"></i>
+                                    </div>
+                                    <span class="text-xs font-bold text-stone-400 uppercase tracking-wider">Pedido Atendido</span>
                                 </div>
 
-                                <div class="relative w-44 mb-6 group-hover:scale-[1.02] transition-transform duration-500 ease-out">
-                                    <div class="absolute inset-0 rounded-2xl shadow-[inset_0_0_40px_rgba(0,0,0,0.8)] z-20 pointer-events-none"></div>
-                                    <div class="absolute -inset-2 bg-gradient-to-b from-purple-500/50 to-pink-500/50 rounded-3xl blur-xl z-0"></div>
-                                    <img src="${poster}" class="relative z-10 w-full rounded-2xl border-[1.5px] border-white/30 shadow-2xl aspect-[2/3] object-cover">
-                                </div>
-
-                                <h2 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-100 to-white mb-3 drop-shadow-lg">
+                                <h2 class="text-2xl font-bold text-white leading-tight mb-2">
                                     ${req.title}
                                 </h2>
-                                <p class="text-purple-200/80 text-sm mb-8 leading-relaxed max-w-xs font-medium drop-shadow">
-                                    O conteúdo que você aguardava acabou de chegar ao catálogo Starlight.
+                                
+                                <p class="text-stone-400 text-sm mb-6 leading-relaxed">
+                                    Este conteúdo já foi adicionado ao catálogo e está pronto para assistir.
                                 </p>
 
-                                <div class="w-full space-y-3 font-bold">
-                                    <a href="#details/${req.contentId}" class="action-watch-btn relative w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-purple-700 text-white shadow-[0_10px_30px_rgba(168,85,247,0.4)] overflow-hidden group/btn transition-all hover:shadow-[0_15px_40px_rgba(236,72,153,0.5)] hover:-translate-y-1 flex items-center justify-center gap-3">
-                                        <div class="absolute inset-0 bg-white/20 skew-x-12 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700"></div>
-                                        <i data-lucide="play" class="w-6 h-6 fill-current"></i>
+                                <div class="flex flex-col gap-3">
+                                    <a href="#details/${req.contentId}" class="action-watch-btn w-full py-3 px-4 rounded-lg bg-stone-100 hover:bg-white text-black font-bold text-sm flex items-center justify-center gap-2 transition-colors">
+                                        <i data-lucide="play" class="w-4 h-4 fill-current"></i>
                                         Assistir Agora
                                     </a>
                                     
-                                    <button class="dismiss-req-btn w-full py-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white transition-colors text-sm font-semibold">
+                                    <button class="dismiss-req-btn w-full py-3 px-4 rounded-lg bg-transparent border border-white/10 hover:bg-white/5 text-stone-400 hover:text-white font-medium text-sm transition-colors">
                                         Fechar
                                     </button>
                                 </div>
@@ -723,36 +714,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                 `;
 
-                // CSS Inline para animações específicas deste modal
-                const style = document.createElement('style');
-                style.innerHTML = `
-                    .perspective-1000 { perspective: 1000px; }
-                    .shadow-inner-glass { box-shadow: inset 0 2px 10px rgba(255,255,255,0.1); }
-                    .animate-pulse-slow { animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-                `;
-                modal.appendChild(style);
-
-                // --- Lógica de Dispensar Rápida (Snappy) ---
+                // --- Lógica de Dispensar Rápida ---
                 const dismiss = async () => {
                     modal.classList.remove('animate-fade-in');
-                    // Adiciona escala e opacidade para sair rápido
-                    modal.classList.add('opacity-0', 'scale-90', 'pointer-events-none');
-
-                    // Remove do DOM em 200ms
+                    modal.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
                     setTimeout(() => modal.remove(), 200);
 
                     try {
                         const currentRequesters = req.requesters || [];
-                        // Remove APENAS o usuário atual da lista
                         const updatedRequesters = currentRequesters.filter(r => r.userId !== userId);
-
                         await updateDoc(doc(db, 'pedidos', docSnap.id), {
                             requesters: updatedRequesters
                         });
                     } catch (e) { console.error("Erro ao dispensar:", e); }
                 };
 
-                // Listeners
                 modal.querySelector('.dismiss-req-btn').addEventListener('click', dismiss);
                 modal.querySelector('.action-watch-btn').addEventListener('click', () => {
                     dismiss();
@@ -764,8 +740,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         setTimeout(() => {
             lucide.createIcons();
-            // Se tiver sua função global de glass, pode chamar aqui por garantia, 
-            // mas este modal já é auto-contido.
         }, 100);
     }
 
