@@ -652,8 +652,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     /**
-        * Verifica se há pedidos atendidos (para quem pediu OU votou) e mostra um POP-UP.
-        */
+         * Verifica se há pedidos atendidos e exibe um MODAL "HERO REVEAL" (Roxo/Rosa).
+         */
     async function checkFulfilledRequests() {
         if (!userId) return;
 
@@ -664,85 +664,93 @@ document.addEventListener('DOMContentLoaded', function () {
         snapshot.forEach(docSnap => {
             const req = docSnap.data();
 
-            // Verifica se o usuário atual está na lista de interessados (quem pediu + quem votou)
+            // Verifica se o usuário está na lista
             const userRequestObj = req.requesters ? req.requesters.find(r => r.userId === userId) : null;
 
             if (userRequestObj) {
-                // Cria o elemento do MODAL (Pop-up)
+                // Cria o modal
                 const modal = document.createElement('div');
-                modal.className = 'fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in';
+                modal.className = 'fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in';
 
-                const poster = req.posterUrl || 'https://placehold.co/100x150?text=IMG';
+                const poster = req.posterUrl || 'https://placehold.co/300x450?text=IMG';
 
+                // HTML REFEITO - ZERO VERDE, TEMA STARLIGHT PURO
                 modal.innerHTML = `
-                    <div class="liquid-glass-card w-full max-w-lg overflow-hidden relative transform transition-all scale-100">
-                        <div class="glass-filter"></div>
-                        <div class="glass-specular"></div>
-                        <div class="glass-overlay" style="--bg-color: rgba(20, 20, 20, 0.6);"></div>
+                    <div class="relative w-full max-w-2xl transform transition-all scale-100">
                         
-                        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500 via-emerald-400 to-green-500 z-20"></div>
+                        <div class="absolute -inset-1 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 rounded-2xl blur opacity-30 animate-pulse"></div>
 
-                        <div class="glass-content p-6 sm:p-8 relative z-10">
+                        <div class="liquid-glass-card relative overflow-hidden bg-[#0a0a0a] border border-white/10 shadow-2xl rounded-2xl">
+                            <div class="glass-filter"></div>
+                            <div class="glass-specular"></div>
                             
-                            <div class="text-center mb-6">
-                                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20 mb-4 shadow-[0_0_20px_rgba(34,197,94,0.3)]">
-                                    <i data-lucide="check" class="w-8 h-8 text-green-400"></i>
-                                </div>
-                                <h2 class="text-2xl font-black text-white mb-1">Pedido Atendido!</h2>
-                                <p class="text-stone-300">Um conteúdo que você estava aguardando chegou.</p>
+                            <div class="absolute inset-0 z-0 opacity-40">
+                                <img src="${req.backdropUrl || poster}" class="w-full h-full object-cover grayscale brightness-50 contrast-125 mask-image-gradient">
+                                <div class="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent"></div>
                             </div>
 
-                            <div class="flex items-start gap-4 bg-white/5 p-4 rounded-xl border border-white/10 mb-6">
-                                <img src="${poster}" class="w-20 h-28 object-cover rounded-md shadow-lg">
-                                <div class="flex-1 text-left self-center">
-                                    <h3 class="font-bold text-white text-lg leading-tight mb-1">${req.title}</h3>
-                                    <p class="text-xs text-stone-400 mb-2">Você pediu ou votou neste item.</p>
-                                    <span class="inline-block px-2 py-1 bg-green-500/20 text-green-400 text-[10px] font-bold rounded uppercase tracking-wider border border-green-500/20">Disponível</span>
+                            <div class="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row gap-6 items-center sm:items-start">
+                                
+                                <div class="relative flex-shrink-0 group">
+                                    <div class="absolute -inset-2 bg-gradient-to-b from-purple-500 to-pink-500 rounded-lg blur-md opacity-40 group-hover:opacity-60 transition duration-500"></div>
+                                    <img src="${poster}" class="relative w-32 sm:w-40 rounded-lg shadow-[0_0_20px_rgba(0,0,0,0.5)] border border-white/20 aspect-[2/3] object-cover transform group-hover:scale-105 transition duration-500">
                                 </div>
-                            </div>
 
-                            <div class="flex flex-col gap-3">
-                                <a href="#details/${req.contentId}" class="action-watch-btn w-full glass-button rounded-xl py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-900/40 group">
-                                    <i data-lucide="play" class="w-5 h-5 fill-current group-hover:scale-110 transition-transform"></i>
-                                    Assistir Agora
-                                </a>
-                                <button class="dismiss-req-btn w-full py-3 text-stone-400 hover:text-white text-sm font-medium transition-colors">
-                                    Fechar e não mostrar mais
-                                </button>
+                                <div class="flex-1 text-center sm:text-left flex flex-col h-full justify-center">
+                                    
+                                    <div class="mb-3">
+                                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 text-purple-300 text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(168,85,247,0.2)]">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse"></span>
+                                            Chegou no Starlight
+                                        </span>
+                                    </div>
+
+                                    <h2 class="text-2xl sm:text-4xl font-black text-white leading-tight mb-2 drop-shadow-lg tracking-tight">
+                                        ${req.title}
+                                    </h2>
+                                    
+                                    <p class="text-stone-300 text-sm mb-6 leading-relaxed">
+                                        O conteúdo que você solicitou foi processado e adicionado à nossa biblioteca. Aproveite!
+                                    </p>
+
+                                    <div class="flex flex-col sm:flex-row gap-3 mt-auto">
+                                        <a href="#details/${req.contentId}" class="action-watch-btn flex-1 glass-button py-3.5 px-6 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold shadow-[0_4px_20px_rgba(236,72,153,0.3)] transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2 group">
+                                            <i data-lucide="play" class="w-5 h-5 fill-current"></i>
+                                            Assistir Agora
+                                        </a>
+                                        <button class="dismiss-req-btn py-3.5 px-6 rounded-xl border border-white/10 hover:bg-white/5 text-stone-400 hover:text-white font-medium transition-colors text-sm">
+                                            Fechar
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        
-                        <div class="absolute -top-10 -right-10 w-40 h-40 bg-green-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                        <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
                     </div>
                 `;
 
-                // Função para fechar o modal e remover SOMENTE O USUÁRIO ATUAL da lista
+                // CSS Inline para a máscara de gradiente da imagem de fundo
+                const style = document.createElement('style');
+                style.innerHTML = `.mask-image-gradient { -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%); mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%); }`;
+                modal.appendChild(style);
+
+                // --- Lógica de Dispensar (Mesma lógica segura) ---
                 const dismiss = async () => {
-                    modal.classList.add('opacity-0'); // Fade out visual
-                    setTimeout(() => modal.remove(), 300); // Remove do DOM
+                    modal.classList.add('opacity-0', 'scale-95'); // Animação de saída
+                    setTimeout(() => modal.remove(), 300);
 
                     try {
-                        // Pega a lista atual de requesters
                         const currentRequesters = req.requesters || [];
-
-                        // Filtra a lista: Mantém todo mundo cujo ID NÃO SEJA o do usuário atual
-                        // Isso garante que se o João e a Maria pediram, e o João clicar em fechar,
-                        // o nome do João sai da lista, mas o da Maria continua lá para ela ver o aviso.
+                        // Remove APENAS o usuário atual da lista
                         const updatedRequesters = currentRequesters.filter(r => r.userId !== userId);
 
-                        // Atualiza o documento no banco com a nova lista limpa
                         await updateDoc(doc(db, 'pedidos', docSnap.id), {
                             requesters: updatedRequesters
                         });
-
-                    } catch (e) { console.error("Erro ao dispensar notificação:", e); }
+                    } catch (e) { console.error("Erro ao dispensar:", e); }
                 };
 
                 // Listeners
                 modal.querySelector('.dismiss-req-btn').addEventListener('click', dismiss);
-
-                // Se clicar em assistir, também remove o aviso (pois ele já viu)
                 modal.querySelector('.action-watch-btn').addEventListener('click', () => {
                     dismiss();
                 });
@@ -753,7 +761,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         setTimeout(() => {
             lucide.createIcons();
-            attachGlassButtonListeners();
+            // Re-anexa o efeito 'glass' caso você use a função global para isso
+            if (typeof attachGlassButtonListeners === 'function') attachGlassButtonListeners();
         }, 100);
     }
     /**
