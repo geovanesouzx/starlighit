@@ -985,6 +985,123 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     /**
+     * Gerencia o sistema de avaliação (Estrelas) na tela de detalhes.
+     * @param {string} docId - ID do filme/série.
+     * @param {HTMLElement} container - Onde as estrelas serão desenhadas.
+     */
+    function setupRatingSystem(docId, container) {
+        // 1. Cria a estrutura HTML
+        container.innerHTML = `
+            <div class="flex flex-col gap-1">
+                <div class="flex items-center gap-1" id="stars-wrapper">
+                    ${[1, 2, 3, 4, 5].map(i => `
+                        <button class="star-btn text-stone-600 focus:outline-none" data-value="${i}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none" class="w-6 h-6 sm:w-7 sm:h-7 transition-colors">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                        </button>
+                    `).join('')}
+                </div>
+                <p id="rating-text" class="text-xs text-stone-400 font-medium">Seja o primeiro a avaliar</p>
+            </div>
+        `;
+
+        const stars = container.querySelectorAll('.star-btn');
+        const textEl = container.getElementById('rating-text');
+        const ratingsRef = collection(db, 'content', docId, 'ratings');
+
+        // 2. Escuta as avaliações em tempo real para calcular média
+        onSnapshot(ratingsRef, (snapshot) => {
+            let total = 0;
+            let count = 0;
+            let myRating = 0;
+
+            snapshot.forEach(doc => {
+                const val = doc.data().value;
+                total += val;
+                count++;
+                if (doc.id === userId) myRating = val; // Identifica o voto do usuário atual
+            });
+
+            // Atualiza visual das estrelas (Preenche até a nota do usuário ou fica vazio)
+            // Se o usuário não votou, as estrelas ficam vazias (cinza). Se votou, ficam amarelas.
+            updateStarsVisual(stars, myRating);
+
+            // Atualiza o texto da média
+            if (count > 0) {
+                const average = (total / count).toFixed(1);
+                textEl.textContent = `Nota: ${average} (${count} ${count === 1 ? 'voto' : 'votos'})`;
+                // Se o usuário votou, adiciona um texto extra
+                if (myRating > 0) textEl.innerHTML += ` <span class="text-purple-400 ml-1">• Sua nota: ${myRating}</span>`;
+            } else {
+                textEl.textContent = "Seja o primeiro a avaliar";
+            }
+        });
+
+        // 3. Lógica de Clique (Votar)
+        stars.forEach(btn => {
+            // Hover (Visual apenas)
+            btn.addEventListener('mouseenter', () => {
+                const val = parseInt(btn.dataset.value);
+                updateStarsVisual(stars, val, true); // true = modo preview
+            });
+
+            // Clique (Salvar no Firebase)
+            btn.addEventListener('click', async () => {
+                if (!userId || !currentProfile) {
+                    showToast("Faça login para avaliar.", true);
+                    return;
+                }
+                const val = parseInt(btn.dataset.value);
+
+                // Efeito visual de "Pop"
+                btn.classList.add('pop');
+                setTimeout(() => btn.classList.remove('pop'), 300);
+
+                try {
+                    // Salva o voto na subcoleção: content/ID/ratings/USER_ID
+                    await setDoc(doc(db, 'content', docId, 'ratings', userId), {
+                        value: val,
+                        userName: currentProfile.name,
+                        updatedAt: serverTimestamp()
+                    });
+                    showToast(`Você avaliou com ${val} estrelas!`);
+                } catch (e) {
+                    console.error(e);
+                    showToast("Erro ao salvar avaliação.", true);
+                }
+            });
+        });
+
+        // Quando o mouse sai do container, volta para a nota real do usuário
+        container.querySelector('#stars-wrapper').addEventListener('mouseleave', async () => {
+            // Precisamos ler o estado atual (cacheado ou listener cuidará disso, 
+            // mas para feedback visual imediato, podemos deixar o listener do onSnapshot resetar)
+            // O onSnapshot vai disparar se houver mudança, mas se for só hover, precisamos resetar manualmente:
+            const snapshot = await getDocs(ratingsRef);
+            let myRating = 0;
+            snapshot.forEach(doc => { if (doc.id === userId) myRating = doc.data().value; });
+            updateStarsVisual(stars, myRating);
+        });
+    }
+
+    // Função auxiliar para pintar as estrelas
+    function updateStarsVisual(stars, value, isPreview = false) {
+        stars.forEach(s => {
+            const starVal = parseInt(s.dataset.value);
+            const svg = s.querySelector('svg');
+            if (starVal <= value) {
+                // Estrela cheia (Amarelo se salvo, Roxo claro se preview)
+                svg.style.color = isPreview ? '#d8b4fe' : '#fbbf24'; // yellow-400 ou purple-300
+                svg.style.fill = 'currentColor';
+            } else {
+                // Estrela vazia
+                svg.style.color = '#57534e'; // stone-600
+            }
+        });
+    }
+
+    /**
      * Renderiza a tela de detalhes para um item específico.
      * @param {object} item - Objeto contendo o docId do item.
      */
@@ -1041,17 +1158,18 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="flex-1 mt-6 md:mt-0 text-center md:text-left">
                             <h1 class="text-3xl md:text-5xl lg:text-6xl font-black text-white" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.7);">${title}</h1>
                             <div id="details-meta" class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300">
-                                <!-- Metadados (ano, duração, classificação) serão inseridos aqui -->
-                            </div>
+                                </div>
                             <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genres}</div>
+                            
                             <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
                                 <button id="details-watch-btn" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"><svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>Assistir</div></button>
                                 <button id="details-add-to-list" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"></div></button>
                             </div>
+
+                            <div id="rating-container" class="mt-6 flex justify-center md:justify-start"></div>
                             <h3 class="mt-8 text-lg sm:text-xl font-semibold text-white">Sinopse</h3>
                             <p class="mt-2 text-gray-300 max-w-2xl text-sm leading-relaxed">${data.synopsis || data.overview || 'Sinopse não disponível.'}</p>
-                            <div id="tv-content-details" class="mt-10"></div> <!-- Container para temporadas/episódios -->
-                        </div>
+                            <div id="tv-content-details" class="mt-10"></div> </div>
                     </div>
                 </div>
             </div>
@@ -1070,6 +1188,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Adiciona listeners aos botões da tela de detalhes
         document.getElementById('back-from-details').addEventListener('click', () => history.back()); // Botão voltar
+
         document.getElementById('details-watch-btn').addEventListener('click', () => { // Botão assistir
             if (data.type === 'movie') {
                 // Se for filme, inicia o player com a URL do filme
@@ -1100,7 +1219,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         });
+
         await updateListButton(document.getElementById('details-add-to-list'), data); // Atualiza botão "Minha Lista"
+
+        // --- [CÓDIGO ADICIONADO AQUI] ---
+        // Inicializa o sistema de avaliação no container criado no HTML
+        const ratingContainer = document.getElementById('rating-container');
+        if (ratingContainer) {
+            setupRatingSystem(data.docId, ratingContainer);
+        }
+        // --------------------------------
 
         // Se for uma série, renderiza a seção de temporadas/episódios
         if (data.type === 'tv' && data.seasons) {

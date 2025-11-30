@@ -1392,3 +1392,32 @@ input[type="range"].player-seek-bar::-webkit-slider-thumb {
     /* Rosa */
     box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
 }
+
+/* --- Sistema de Avaliação (Estrelas) --- */
+.star-btn {
+    transition: transform 0.2s, color 0.2s;
+    cursor: pointer;
+}
+
+.star-btn:hover {
+    transform: scale(1.2);
+}
+
+/* Animaçãozinha quando clica */
+.star-btn.pop {
+    animation: starPop 0.3s ease-out;
+}
+
+@keyframes starPop {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.4);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
