@@ -146,16 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let profiles = []; // Lista de perfis do usuário
     let currentProfile = null; // Perfil atualmente selecionado
     let isEditMode = false; // Modo de edição de perfis ativo?
-    const AVATARS = [ // URLs dos avatares disponíveis
-        'https://pbs.twimg.com/media/EcGdw6xXsAMkqGF?format=jpg&name=large',
-        'https://pbs.twimg.com/media/FMs8_KeWYAAtoS3.jpg',
-        'https://pbs.twimg.com/media/EcGdw6xXsAANIu1?format=jpg&name=large',
-        'https://pbs.twimg.com/media/EcGdw6wXYAUrPu4.jpg',
-        'https://pbs.twimg.com/media/EcGdw6uXgAEpGA-.jpg',
-        'https://acteia.ca/avatars/avatar_174.png',
-        'https://acteia.ca/avatars/avatar_322.png',
-
-    ];
+    let avatarsCache = null; // Cache para guardar os avatares do banco
 
     // Ícones SVG para os controles do player
     const ICONS = {
@@ -2361,40 +2352,65 @@ document.addEventListener('DOMContentLoaded', function () {
         // O handleNavigation() que é chamado no onAuthStateChanged vai cuidar de carregar a página certa.
     }
     /**
-     * Mostra o modal para adicionar ou editar um perfil.
-     * @param {string|null} [profileId=null] - O ID do perfil a ser editado, ou null para adicionar.
-     */
-    function showProfileModal(profileId = null) {
+         * Mostra o modal para adicionar ou editar um perfil (Versão Categorizada)
+         */
+    async function showProfileModal(profileId = null) {
         // Elementos do modal
         const modalTitle = document.getElementById('modal-title');
         const nameInput = document.getElementById('profile-name-input');
-        const idInput = document.getElementById('profile-id-input'); // Campo oculto para ID
+        const idInput = document.getElementById('profile-id-input');
         const deleteBtn = document.getElementById('delete-profile-btn');
+        const avatarContainer = document.getElementById('avatar-options');
 
-        // Popula as opções de avatar
-        avatarOptionsContainer.innerHTML = AVATARS.map(avatar => `
-            <img src="${avatar}" class="w-16 h-16 rounded-full cursor-pointer border-2 border-transparent hover:border-white transition-all" data-avatar="${avatar}">
-        `).join('');
+        profileModal.classList.remove('hidden'); // Mostra o modal imediatamente
 
-        if (profileId) { // Editando perfil existente
-            modalTitle.textContent = 'Editar Perfil';
-            const profile = profiles.find(p => p.id === profileId); // Encontra o perfil
-            nameInput.value = profile.name; // Preenche o nome
-            idInput.value = profile.id; // Preenche o ID (oculto)
-            deleteBtn.classList.remove('hidden'); // Mostra botão de excluir
-            // Marca o avatar atual como selecionado
-            const currentAvatar = avatarOptionsContainer.querySelector(`img[data-avatar="${profile.avatar}"]`);
-            if (currentAvatar) currentAvatar.classList.add('!border-purple-500', 'scale-110');
-        } else { // Adicionando novo perfil
-            modalTitle.textContent = 'Adicionar Perfil';
-            nameInput.value = ''; // Limpa nome
-            idInput.value = ''; // Limpa ID
-            deleteBtn.classList.add('hidden'); // Esconde botão de excluir
+        // Mostra loading enquanto carrega as imagens
+        avatarContainer.innerHTML = '<div class="spinner mx-auto my-8"></div>';
+
+        // Carrega os avatares (do cache ou do banco)
+        const groupedAvatars = await loadAvatarsFromFirestore();
+
+        avatarContainer.innerHTML = ''; // Limpa o spinner
+
+        // Renderiza cada categoria
+        for (const [category, urls] of Object.entries(groupedAvatars)) {
+            // 1. Título da Categoria
+            const catTitle = document.createElement('h4');
+            catTitle.className = 'w-full text-stone-400 text-xs font-bold uppercase tracking-wider mb-3 mt-6 border-b border-white/10 pb-1 first:mt-0';
+            catTitle.textContent = category;
+            avatarContainer.appendChild(catTitle);
+
+            // 2. Grid de Imagens desta categoria
+            const grid = document.createElement('div');
+            grid.className = 'flex flex-wrap justify-center sm:justify-start gap-4 mb-2';
+
+            grid.innerHTML = urls.map(url => `
+                <img src="${url}" class="w-16 h-16 rounded-full cursor-pointer border-2 border-transparent hover:border-white transition-all object-cover hover:scale-110" data-avatar="${url}">
+            `).join('');
+
+            avatarContainer.appendChild(grid);
         }
 
-        profileModal.classList.remove('hidden'); // Mostra o modal
-    }
+        // Lógica de Edição vs Novo
+        if (profileId) {
+            modalTitle.textContent = 'Editar Perfil';
+            const profile = profiles.find(p => p.id === profileId);
+            if (profile) {
+                nameInput.value = profile.name;
+                idInput.value = profile.id;
+                deleteBtn.classList.remove('hidden');
 
+                // Marca o avatar atual (procura em todas as categorias geradas)
+                const currentAvatarImg = avatarContainer.querySelector(`img[data-avatar="${profile.avatar}"]`);
+                if (currentAvatarImg) currentAvatarImg.classList.add('!border-purple-500', 'scale-110');
+            }
+        } else {
+            modalTitle.textContent = 'Adicionar Perfil';
+            nameInput.value = '';
+            idInput.value = '';
+            deleteBtn.classList.add('hidden');
+        }
+    }
     // Listener para seleção de avatar no modal
     avatarOptionsContainer.addEventListener('click', e => {
         if (e.target.tagName === 'IMG') { // Se clicou em uma imagem de avatar
