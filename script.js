@@ -745,9 +745,9 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     /**
-       * Renderiza a tela de detalhes para um item específico.
-       * @param {object} item - Objeto contendo o docId do item.
-       */
+     * Renderiza a tela de detalhes para um item específico.
+     * @param {object} item - Objeto contendo o docId do item.
+     */
     async function showDetailsView(item) {
         // Esconde header/footer
         document.querySelector('header').classList.add('hidden');
@@ -781,15 +781,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const finalImageUrl = backgroundUrl.startsWith('http') ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
         const posterUrl = data.poster.startsWith('http') ? data.poster : 'https://placehold.co/500x750/1a1a1a/ffffff?text=Capa';
 
-        // LÓGICA DO BOTÃO ASSISTIR (Visual)
-        // Se for filme e não tiver URL, ou série sem episódios, muda o texto
-        let watchButtonText = "Assistir";
-        let isButtonDisabled = false;
-        if (data.type === 'movie' && !data.url) {
-            watchButtonText = "Em Breve";
-            isButtonDisabled = true;
-        }
-
         // Define o HTML da tela de detalhes
         detailsView.innerHTML = `
             <div class="fixed inset-0 z-[-1] bg-cover bg-center bg-no-repeat" style="background-image: url('${finalImageUrl}');">
@@ -810,21 +801,17 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="flex-1 mt-6 md:mt-0 text-center md:text-left">
                             <h1 class="text-3xl md:text-5xl lg:text-6xl font-black text-white" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.7);">${title}</h1>
                             <div id="details-meta" class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300">
-                                </div>
+                                <!-- Metadados (ano, duração, classificação) serão inseridos aqui -->
+                            </div>
                             <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genres}</div>
                             <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
-                                <button id="details-watch-btn" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3 ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}">
-                                    <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                                    <div class="glass-content flex items-center gap-2">
-                                        ${isButtonDisabled ? '<i data-lucide="clock" class="w-5 h-5"></i>' : '<svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>'}
-                                        ${watchButtonText}
-                                    </div>
-                                </button>
+                                <button id="details-watch-btn" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"><svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>Assistir</div></button>
                                 <button id="details-add-to-list" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"></div></button>
                             </div>
                             <h3 class="mt-8 text-lg sm:text-xl font-semibold text-white">Sinopse</h3>
                             <p class="mt-2 text-gray-300 max-w-2xl text-sm leading-relaxed">${data.synopsis || data.overview || 'Sinopse não disponível.'}</p>
-                            <div id="tv-content-details" class="mt-10"></div> </div>
+                            <div id="tv-content-details" class="mt-10"></div> <!-- Container para temporadas/episódios -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -843,14 +830,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Adiciona listeners aos botões da tela de detalhes
         document.getElementById('back-from-details').addEventListener('click', () => history.back()); // Botão voltar
-
         document.getElementById('details-watch-btn').addEventListener('click', () => { // Botão assistir
             if (data.type === 'movie') {
-                // CORREÇÃO: Verifica se tem URL antes de tentar dar play
-                if (!data.url) {
-                    showToast("Este filme estará disponível em breve!", true);
-                    return;
-                }
+                // Se for filme, inicia o player com a URL do filme
                 showPlayer({ videoUrl: data.url, title: title, itemData: data });
             } else if (data.type === 'tv' && data.seasons) {
                 // Se for série, encontra o primeiro episódio da primeira temporada
@@ -858,25 +840,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 const firstEpisode = data.seasons[firstSeasonKey]?.episodes?.[0];
 
                 if (firstEpisode) {
-                    // CORREÇÃO: Verifica se o primeiro episódio tem URL
-                    if (!firstEpisode.url) {
-                        showToast("O primeiro episódio estará disponível em breve!", true);
-                        return;
-                    }
-
+                    // Prepara o contexto do player com informações da série e episódio
                     const allEpisodesOfSeason = data.seasons[firstSeasonKey].episodes;
+
+                    // Pega o título do episódio, com fallback
                     const epTitle = firstEpisode.title ? ` - ${firstEpisode.title}` : '';
 
                     const context = {
                         videoUrl: firstEpisode.url,
+                        // CORRIGIDO: Adiciona o epTitle
                         title: `${title} - T${firstSeasonKey} E${firstEpisode.episode_number || 1}${epTitle}`,
                         itemData: data,
                         episodes: allEpisodesOfSeason,
-                        currentIndex: 0
+                        currentIndex: 0 // Começa no primeiro episódio
                     };
-                    showPlayer(context);
+                    showPlayer(context); // Inicia o player
                 } else {
-                    showToast("Nenhum episódio encontrado.", true);
+                    showToast("Nenhum episódio encontrado.", true); // Mensagem de erro
                 }
             }
         });
@@ -887,20 +867,19 @@ document.addEventListener('DOMContentLoaded', function () {
             renderTvDetails(data);
         }
         attachGlassButtonListeners(); // Reatacha listeners visuais
-        lucide.createIcons(); // Garante ícones no botão
     }
 
     /**
-         * Renderiza a seção de temporadas e episódios para uma série na tela de detalhes.
-         * @param {object} data - Os dados da série.
-         */
+      * Renderiza a seção de temporadas e episódios para uma série na tela de detalhes.
+      * @param {object} data - Os dados da série.
+      */
     function renderTvDetails(data) {
         const container = document.getElementById('tv-content-details');
-        if (!container) return; // Sai se o container não existir
+        if (!container) return;
 
         // Pega as chaves das temporadas (números) e ordena
         const seasonKeys = Object.keys(data.seasons).sort((a, b) => parseInt(a) - parseInt(b));
-        if (seasonKeys.length === 0) { // Se não houver temporadas
+        if (seasonKeys.length === 0) {
             container.innerHTML = '<p class="text-stone-400">Nenhuma temporada encontrada.</p>';
             return;
         }
@@ -909,7 +888,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const savedSeason = localStorage.getItem(`starlight-selected-season-${data.docId}`);
         const firstSeasonKey = (savedSeason && data.seasons[savedSeason]) ? savedSeason : seasonKeys[0];
 
-        // Cria o HTML do seletor de temporada e do container de episódios
+        // Cria o HTML do seletor
         container.innerHTML = `
             <div class="custom-select-container relative w-full md:w-64 mb-6">
                 <button id="season-selector-button" class="glass-container glass-button rounded-lg w-full text-left">
@@ -934,10 +913,12 @@ document.addEventListener('DOMContentLoaded', function () {
         `;
         lucide.createIcons();
 
+        // Renderiza a lista de episódios
         const renderEpisodes = (seasonKey) => {
             const season = data.seasons[seasonKey];
             const episodes = season?.episodes;
             const episodeContainer = document.getElementById('episode-list-container');
+
             if (!episodes || episodes.length === 0) {
                 episodeContainer.innerHTML = '<p class="text-stone-400">Nenhum episódio encontrado para esta temporada.</p>';
                 return;
@@ -948,35 +929,42 @@ document.addEventListener('DOMContentLoaded', function () {
                 const epOverview = ep.overview || 'Sem descrição.';
                 const stillPath = ep.still_path ? (ep.still_path.startsWith('/') ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : ep.still_path) : 'https://placehold.co/300x168/1c1917/FFFFFF?text=Starlight';
 
-                // CORREÇÃO: Lógica de Em Breve
-                // Se o campo isComingSoon for true OU se a URL estiver vazia
-                const isComingSoon = ep.isComingSoon || !ep.url;
+                // --- LÓGICA DE EM BREVE ---
+                // Se a URL estiver vazia OU se a propriedade isComingSoon for verdadeira
+                const isComingSoon = !ep.url || ep.isComingSoon === true;
 
-                // CSS condicional
-                const cursorStyle = isComingSoon ? 'cursor-default opacity-75' : 'cursor-pointer group';
+                // Estilos condicionais
+                const opacityClass = isComingSoon ? 'opacity-60' : '';
+                const cursorClass = isComingSoon ? 'cursor-not-allowed' : 'cursor-pointer group';
 
-                // Overlay da imagem (Play ou Badge)
-                const imageOverlay = isComingSoon
-                    ? `<div class="absolute inset-0 bg-black/60 flex items-center justify-center border border-white/10 rounded-md">
-                         <span class="text-[10px] font-bold text-white bg-stone-800/80 px-2 py-1 rounded border border-white/20 tracking-wider">EM BREVE</span>
+                // Overlay da imagem (Play ou Badge EM BREVE)
+                const overlayHTML = isComingSoon
+                    ? `<div class="absolute inset-0 bg-black/50 flex items-center justify-center rounded-md border border-white/10">
+                         <span class="text-[10px] font-bold text-white bg-stone-800 px-2 py-1 rounded tracking-wider">EM BREVE</span>
                        </div>`
                     : `<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                          <i data-lucide="play-circle" class="w-8 h-8 text-white"></i>
                        </div>`;
 
+                // Badge de texto para mobile/lista
+                const textBadge = isComingSoon
+                    ? `<span class="ml-2 text-[10px] text-stone-400 border border-stone-600 px-1.5 py-0.5 rounded">Em Breve</span>`
+                    : '';
+
                 return `
-                    <div class="episode-item glass-container glass-button rounded-lg overflow-hidden ${cursorStyle}" data-index="${index}" data-season="${seasonKey}" data-coming-soon="${isComingSoon}">
+                    <div class="episode-item glass-container glass-button rounded-lg overflow-hidden ${cursorClass} ${opacityClass}" data-index="${index}" data-season="${seasonKey}" data-coming-soon="${isComingSoon}">
                         <div class="glass-filter"></div>
                         <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.3);"></div>
                         <div class="glass-specular"></div>
                         <div class="glass-content flex items-start p-3 gap-4">
                             <div class="relative flex-shrink-0 w-32 sm:w-40 aspect-video">
                                 <img src="${stillPath}" alt="Cena do episódio" class="w-full h-full rounded-md object-cover">
-                                ${imageOverlay}
+                                ${overlayHTML}
                             </div>
                             <div class="flex-1 min-w-0">
-                                <h4 class="font-semibold text-white truncate flex items-center gap-2">
+                                <h4 class="font-semibold text-white truncate flex items-center flex-wrap">
                                     ${index + 1}. ${epTitle}
+                                    ${textBadge}
                                 </h4>
                                 <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden line-clamp-3">${epOverview}</p> 
                             </div>
@@ -989,6 +977,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         renderEpisodes(firstSeasonKey);
 
+        // Listeners do seletor
         const seasonSelectorBtn = document.getElementById('season-selector-button');
         const seasonOptions = document.getElementById('season-options');
 
@@ -1009,20 +998,26 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        // CORREÇÃO: Bloqueio do clique no episódio
+        // Listener de clique no episódio (COM PROTEÇÃO)
         document.getElementById('episode-list-container').addEventListener('click', (e) => {
             const episodeItem = e.target.closest('.episode-item');
+
             if (episodeItem) {
-                // Se for "Em Breve", mostra aviso e PARA AQUI (return)
-                if (episodeItem.dataset.comingSoon === "true") {
-                    showToast("Este episódio ainda não está disponível.", true);
-                    return;
+                // --- PROTEÇÃO ---
+                // Verifica se é "Em Breve" lendo o atributo que definimos acima
+                const isComingSoon = episodeItem.getAttribute('data-coming-soon') === 'true';
+
+                if (isComingSoon) {
+                    showToast("Este episódio estará disponível em breve!", true);
+                    return; // PARA TUDO AQUI. Não tenta tocar.
                 }
+                // ----------------
 
                 const seasonKey = episodeItem.dataset.season;
                 const episodeIndex = parseInt(episodeItem.dataset.index, 10);
                 const allEpisodesOfSeason = data.seasons[seasonKey].episodes;
                 const episode = allEpisodesOfSeason[episodeIndex];
+
                 const epTitle = episode.title ? ` - ${episode.title}` : '';
 
                 const context = {
