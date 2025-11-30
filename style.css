@@ -1326,7 +1326,7 @@ header.header-hidden {
     /* Efeito de movimentozinho ao passar o mouse */
 }
 
-/* --- Barra de Progresso (Continuar Assistindo) - Melhorada --- */
+/* --- Barra de Progresso (Continuar Assistindo) - Atualizada para Starlight --- */
 .cw-progress-container {
     position: absolute;
     bottom: 0;
@@ -1340,15 +1340,72 @@ header.header-hidden {
 
 .cw-progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #e50914, #ff4757);
-    /* Gradiente Netflix */
+    /* ATUALIZADO: Gradiente Roxo -> Rosa */
+    background: linear-gradient(90deg, #a855f7, #ec4899) !important;
     width: 0%;
     border-top-right-radius: 4px;
     border-bottom-right-radius: 4px;
-    box-shadow: 0 0 10px rgba(229, 9, 20, 0.5);
+    /* Sombra Rosa */
+    box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
 }
 
 /* Ajuste para o card não cortar a sombra */
 .carousel-item .liquid-glass-card {
     overflow: hidden;
+}
+
+/* --- STARLIGHT THEME OVERRIDES (Design System Global) --- */
+
+/* 1. Barra de Rolagem (Scrollbar) */
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, #a855f7, #ec4899);
+    /* Roxo para Rosa */
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(to bottom, #9333ea, #db2777);
+    /* Tons mais escuros no hover */
+}
+
+/* 2. Seleção de Texto */
+::selection {
+    background: rgba(168, 85, 247, 0.3);
+    /* Roxo translúcido */
+    color: white;
+}
+
+/* 3. Inputs e Formulários */
+.glass-input:focus {
+    border-color: #d946ef;
+    /* Fuchsia/Rosa */
+    box-shadow: 0 0 0 2px rgba(217, 70, 239, 0.2);
+}
+
+/* 4. Barra de Progresso do Player de Vídeo */
+.seek-progress {
+    background: linear-gradient(90deg, #a855f7, #ec4899) !important;
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+}
+
+input[type="range"].player-seek-bar::-webkit-slider-thumb {
+    background-color: #ec4899 !important;
+    /* Rosa */
+    box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
+}
+
+/* 5. Botões de Ação Principal (Assistir) */
+#details-watch-btn,
+.action-watch-btn {
+    background: linear-gradient(135deg, #9333ea 0%, #db2777 100%) !important;
+    /* Roxo -> Rosa Escuro */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#details-watch-btn:hover,
+.action-watch-btn:hover {
+    background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%) !important;
+    /* Roxo -> Rosa Claro */
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+    transform: scale(1.02);
 }
