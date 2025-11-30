@@ -652,50 +652,158 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     /**
-       * Popula a tela inicial com carrosséis (Continuar Assistindo + Outros).
-       */
+         * Popula a tela inicial com carrosséis.
+         * - Continuar Assistindo (Com lógica de Play Direto e Agrupamento)
+         * - Adicionados Recentemente
+         * - Gêneros
+         */
     async function populateAllViews() {
         const carouselsContainer = document.getElementById('home-carousels-container');
         if (!carouselsContainer) return;
-        carouselsContainer.innerHTML = ''; // Limpa
+        carouselsContainer.innerHTML = '';
 
-        // --- 1. CONTINUAR ASSISTINDO (NOVO) ---
+        // --- 1. CONTINUAR ASSISTINDO (LÓGICA CORRIGIDA) ---
         if (userId && currentProfile) {
             try {
-                // Busca progresso no Firestore
                 const progressRef = collection(db, 'users', userId, 'profiles', currentProfile.id, 'watch-progress');
                 const snapshot = await getDocs(progressRef);
 
-                const continueWatchingItems = [];
+                const moviesList = [];
+                const seriesMap = {}; // Mapa para garantir apenas 1 episódio por série
 
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     // Calcula porcentagem
                     const percent = (data.currentTime / data.duration) * 100;
 
-                    // Regra: Mostrar se assistiu mais de 1% e menos de 95%
+                    // Regra: Mostrar se assistiu entre 1% e 95%
                     if (percent > 1 && percent < 95 && data.item) {
 
-                        // Prepara o objeto do card misturando dados do item + dados do progresso
-                        const itemData = {
-                            ...data.item, // Título, poster, docId, etc
-                            progressPercent: percent, // Para a barra vermelha
-                            // Se for série, adiciona info do episódio (ex: T1 E2)
-                            episodeInfo: data.episode ? `T${data.episode.season_number} E${data.episode.episode_number}` : null,
-                            lastWatched: data.lastWatched || 0
-                        };
-                        continueWatchingItems.push(itemData);
+                        // Se for FILME
+                        if (data.item.type === 'movie') {
+                            moviesList.push({ ...data, progressPercent: percent });
+                        }
+                        // Se for SÉRIE (Lógica de Agrupamento)
+                        else if (data.item.type === 'tv') {
+                            const seriesId = data.item.docId || data.item.id;
+                            // Se a série não está no mapa OU se este episódio é mais recente que o salvo no mapa
+                            if (!seriesMap[seriesId] || data.lastWatched > seriesMap[seriesId].lastWatched) {
+                                seriesMap[seriesId] = { ...data, progressPercent: percent };
+                            }
+                        }
                     }
                 });
 
-                // Ordena pelo último assistido (mais recente primeiro)
+                // Junta os filmes e as séries (já filtradas)
+                const continueWatchingItems = [...moviesList, ...Object.values(seriesMap)];
+
+                // Ordena tudo pela data da última visualização
                 continueWatchingItems.sort((a, b) => b.lastWatched - a.lastWatched);
 
-                // Se tiver itens, cria o carrossel no topo
+                // Se tiver itens, constrói o carrossel MANUALMENTE para ter controle do clique
                 if (continueWatchingItems.length > 0) {
-                    createCarousel(carouselsContainer, "Continuar Assistindo", continueWatchingItems);
-                }
+                    const section = document.createElement('section');
+                    section.innerHTML = `
+                        <div class="liquid-glass-card inline-block mb-6 rounded-full" style="--bg-color: rgba(30,30,30,0.3);">
+                             <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
+                             <h2 class="glass-content text-xl sm:text-2xl font-bold text-white px-6 py-2 flex items-center gap-2">
+                                <i data-lucide="play-circle" class="w-6 h-6 text-indigo-400"></i> Continuar Assistindo
+                             </h2>
+                        </div>
+                        <div class="carousel-container relative">
+                            <div class="carousel space-x-4 px-4 sm:px-6 lg:px-8 py-4 overflow-x-auto hide-scrollbar scroll-smooth" id="cw-carousel-track">
+                                </div>
+                        </div>`;
 
+                    const track = section.querySelector('#cw-carousel-track');
+
+                    continueWatchingItems.forEach(data => {
+                        const item = data.item;
+                        const posterPath = item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
+
+                        // Badge T1 E2
+                        const epInfo = data.episode
+                            ? `<div class="absolute top-2 right-2 text-[10px] font-bold text-white bg-indigo-600/90 px-2 py-1 rounded backdrop-blur-md shadow-lg z-20">T${data.episode.season_number} E${data.episode.episode_number}</div>`
+                            : '';
+
+                        const card = document.createElement('div');
+                        card.className = 'carousel-item w-36 sm:w-48 cursor-pointer group block flex-shrink-0 relative cw-card-trigger';
+
+                        // Salva os dados no elemento para usar no clique
+                        card.playerData = data;
+
+                        card.innerHTML = `
+                            <div class="liquid-glass-card aspect-[2/3] bg-stone-800 overflow-hidden relative transition-transform duration-300 group-hover:scale-105">
+                                 <div class="glass-filter"></div>
+                                 <div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.1);"></div>
+                                 <div class="glass-specular"></div>
+                                 
+                                 <div class="glass-content p-0 h-full relative">
+                                     <img src="${posterPath}" alt="${item.title}" loading="lazy" class="w-full h-full object-cover rounded-[inherit]">
+                                     <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+                                         <div class="bg-white/20 backdrop-blur-md p-3 rounded-full border border-white/30">
+                                             <i data-lucide="play" class="w-8 h-8 text-white fill-white"></i>
+                                         </div>
+                                     </div>
+                                     ${epInfo}
+                                 </div>
+                                 
+                                 <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: rgba(0,0,0,0.6); z-index: 20;">
+                                    <div style="height: 100%; width: ${data.progressPercent}%; background: linear-gradient(90deg, #e50914, #ff4757); box-shadow: 0 0 8px rgba(229, 9, 20, 0.6);"></div>
+                                 </div>
+                            </div>
+                            <h4 class="mt-2 text-sm font-medium text-gray-300 truncate pl-1 group-hover:text-white transition-colors">${item.title || item.name}</h4>
+                        `;
+                        track.appendChild(card);
+                    });
+
+                    // Evento de Clique para PLAY DIRETO
+                    track.addEventListener('click', (e) => {
+                        const card = e.target.closest('.cw-card-trigger');
+                        if (card && card.playerData) {
+                            e.preventDefault();
+                            e.stopPropagation();
+
+                            const data = card.playerData;
+                            const item = data.item;
+                            let context = {};
+
+                            if (item.type === 'movie') {
+                                context = {
+                                    videoUrl: item.url,
+                                    title: item.title || item.name,
+                                    itemData: item,
+                                    startTime: data.currentTime // Pula para o tempo salvo
+                                };
+                            } else if (item.type === 'tv' && data.episode) {
+                                // Tenta recuperar a lista de episódios se disponível no item salvo
+                                let allEpisodes = [];
+                                if (item.seasons && item.seasons[data.episode.season_number]) {
+                                    allEpisodes = item.seasons[data.episode.season_number].episodes;
+                                } else {
+                                    allEpisodes = [data.episode]; // Fallback
+                                }
+
+                                // Encontra índice
+                                const epIndex = allEpisodes.findIndex(ep => ep.episode_number === data.episode.episode_number);
+                                const safeIndex = epIndex >= 0 ? epIndex : 0;
+                                const epTitle = data.episode.title ? ` - ${data.episode.title}` : '';
+
+                                context = {
+                                    videoUrl: data.episode.url,
+                                    title: `${item.title || item.name} - T${data.episode.season_number} E${data.episode.episode_number}${epTitle}`,
+                                    itemData: item,
+                                    episodes: allEpisodes,
+                                    currentIndex: safeIndex,
+                                    startTime: data.currentTime // Pula para o tempo salvo
+                                };
+                            }
+                            showPlayer(context);
+                        }
+                    });
+
+                    carouselsContainer.appendChild(section);
+                }
             } catch (error) {
                 console.error("Erro ao carregar Continuar Assistindo:", error);
             }
@@ -713,7 +821,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         for (const genre of allGenres) {
             const originalGenreList = firestoreContent.filter(item => item.genres && item.genres.includes(genre));
-            // Usa a função de embaralhamento diário que já criamos
             const shuffledGenreList = getDailyShuffledList(originalGenreList, genre);
 
             if (shuffledGenreList.length > 0) {
@@ -722,6 +829,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         attachGlassButtonListeners();
+        lucide.createIcons();
     }
     // --- Navegação e Gerenciamento de Views ---
 
