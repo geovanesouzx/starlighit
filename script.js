@@ -653,6 +653,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     /**
          * Verifica se há pedidos atendidos e exibe um MODAL "HERO REVEAL" (Roxo/Rosa).
+         * CORREÇÃO: Fechamento instantâneo e suave (200ms).
          */
     async function checkFulfilledRequests() {
         if (!userId) return;
@@ -670,11 +671,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (userRequestObj) {
                 // Cria o modal
                 const modal = document.createElement('div');
-                modal.className = 'fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in';
+                // Adicionamos 'transition-all duration-200' base para garantir a saída suave depois
+                modal.className = 'fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in transition-all duration-200';
 
                 const poster = req.posterUrl || 'https://placehold.co/300x450?text=IMG';
 
-                // HTML REFEITO - ZERO VERDE, TEMA STARLIGHT PURO
+                // HTML HERO REVEAL (Tema Starlight)
                 modal.innerHTML = `
                     <div class="relative w-full max-w-2xl transform transition-all scale-100">
                         
@@ -728,19 +730,26 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                 `;
 
-                // CSS Inline para a máscara de gradiente da imagem de fundo
+                // CSS Inline para a máscara de gradiente
                 const style = document.createElement('style');
                 style.innerHTML = `.mask-image-gradient { -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%); mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%); }`;
                 modal.appendChild(style);
 
-                // --- Lógica de Dispensar (Mesma lógica segura) ---
+                // --- Lógica de Dispensar OTIMIZADA ---
                 const dismiss = async () => {
-                    modal.classList.add('opacity-0', 'scale-95'); // Animação de saída
-                    setTimeout(() => modal.remove(), 300);
+                    // 1. Remove a animação de entrada para não conflitar
+                    modal.classList.remove('animate-fade-in');
 
+                    // 2. Adiciona classes de saída imediata
+                    // pointer-events-none garante que o usuário não clique de novo
+                    modal.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
+
+                    // 3. Remove do DOM rapidinho (200ms = tempo da duration-200)
+                    setTimeout(() => modal.remove(), 200);
+
+                    // 4. Executa a atualização do banco em background
                     try {
                         const currentRequesters = req.requesters || [];
-                        // Remove APENAS o usuário atual da lista
                         const updatedRequesters = currentRequesters.filter(r => r.userId !== userId);
 
                         await updateDoc(doc(db, 'pedidos', docSnap.id), {
@@ -761,10 +770,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         setTimeout(() => {
             lucide.createIcons();
-            // Re-anexa o efeito 'glass' caso você use a função global para isso
             if (typeof attachGlassButtonListeners === 'function') attachGlassButtonListeners();
         }, 100);
     }
+
     /**
         * Popula a tela inicial com carrosséis.
         * - Tema atualizado para Roxo/Rosa (Starlight)
