@@ -1333,7 +1333,6 @@ header.header-hidden {
     left: 0;
     right: 0;
     height: 6px;
-    /* Um pouco mais alta */
     background-color: rgba(0, 0, 0, 0.6);
     z-index: 20;
 }
@@ -1392,20 +1391,4 @@ input[type="range"].player-seek-bar::-webkit-slider-thumb {
     background-color: #ec4899 !important;
     /* Rosa */
     box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
-}
-
-/* 5. Botões de Ação Principal (Assistir) */
-#details-watch-btn,
-.action-watch-btn {
-    background: linear-gradient(135deg, #9333ea 0%, #db2777 100%) !important;
-    /* Roxo -> Rosa Escuro */
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-#details-watch-btn:hover,
-.action-watch-btn:hover {
-    background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%) !important;
-    /* Roxo -> Rosa Claro */
-    box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
-    transform: scale(1.02);
 }
