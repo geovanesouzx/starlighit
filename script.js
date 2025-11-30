@@ -652,8 +652,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     /**
-         * Verifica se há pedidos atendidos e mostra um POP-UP (Modal).
-         */
+        * Verifica se há pedidos atendidos (para quem pediu OU votou) e mostra um POP-UP.
+        */
     async function checkFulfilledRequests() {
         if (!userId) return;
 
@@ -663,7 +663,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         snapshot.forEach(docSnap => {
             const req = docSnap.data();
-            // Verifica se o usuário atual está na lista de quem pediu
+
+            // Verifica se o usuário atual está na lista de interessados (quem pediu + quem votou)
             const userRequestObj = req.requesters ? req.requesters.find(r => r.userId === userId) : null;
 
             if (userRequestObj) {
@@ -687,15 +688,15 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20 mb-4 shadow-[0_0_20px_rgba(34,197,94,0.3)]">
                                     <i data-lucide="check" class="w-8 h-8 text-green-400"></i>
                                 </div>
-                                <h2 class="text-2xl font-black text-white mb-1">Seu Pedido Chegou!</h2>
-                                <p class="text-stone-300">O conteúdo que você pediu já está disponível.</p>
+                                <h2 class="text-2xl font-black text-white mb-1">Pedido Atendido!</h2>
+                                <p class="text-stone-300">Um conteúdo que você estava aguardando chegou.</p>
                             </div>
 
                             <div class="flex items-start gap-4 bg-white/5 p-4 rounded-xl border border-white/10 mb-6">
                                 <img src="${poster}" class="w-20 h-28 object-cover rounded-md shadow-lg">
                                 <div class="flex-1 text-left self-center">
                                     <h3 class="font-bold text-white text-lg leading-tight mb-1">${req.title}</h3>
-                                    <p class="text-xs text-stone-400 mb-2">Adicionado recentemente</p>
+                                    <p class="text-xs text-stone-400 mb-2">Você pediu ou votou neste item.</p>
                                     <span class="inline-block px-2 py-1 bg-green-500/20 text-green-400 text-[10px] font-bold rounded uppercase tracking-wider border border-green-500/20">Disponível</span>
                                 </div>
                             </div>
@@ -716,18 +717,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                 `;
 
-                // Função para fechar o modal e atualizar o banco DE FORMA SEGURA
+                // Função para fechar o modal e remover SOMENTE O USUÁRIO ATUAL da lista
                 const dismiss = async () => {
                     modal.classList.add('opacity-0'); // Fade out visual
                     setTimeout(() => modal.remove(), 300); // Remove do DOM
 
                     try {
-                        // CORREÇÃO: Em vez de arrayRemove, filtramos a lista manualmente
+                        // Pega a lista atual de requesters
                         const currentRequesters = req.requesters || [];
-                        // Cria uma nova lista removendo o usuário atual (pelo ID)
+
+                        // Filtra a lista: Mantém todo mundo cujo ID NÃO SEJA o do usuário atual
+                        // Isso garante que se o João e a Maria pediram, e o João clicar em fechar,
+                        // o nome do João sai da lista, mas o da Maria continua lá para ela ver o aviso.
                         const updatedRequesters = currentRequesters.filter(r => r.userId !== userId);
 
-                        // Atualiza o documento com a nova lista
+                        // Atualiza o documento no banco com a nova lista limpa
                         await updateDoc(doc(db, 'pedidos', docSnap.id), {
                             requesters: updatedRequesters
                         });
@@ -738,8 +742,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Listeners
                 modal.querySelector('.dismiss-req-btn').addEventListener('click', dismiss);
 
+                // Se clicar em assistir, também remove o aviso (pois ele já viu)
                 modal.querySelector('.action-watch-btn').addEventListener('click', () => {
-                    dismiss(); // Remove o aviso do banco ao clicar em assistir também
+                    dismiss();
                 });
 
                 document.body.appendChild(modal);
