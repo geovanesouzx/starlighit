@@ -1036,7 +1036,7 @@ document.addEventListener('DOMContentLoaded', function () {
                  <div class="absolute inset-0 details-gradient-overlay"></div>
             </div>
 
-            <div class="relative">
+            <div class="relative w-full overflow-x-hidden">
                 <button id="back-from-details" class="fixed top-6 left-6 z-20 bg-black/20 backdrop-blur-sm rounded-full p-2 hover:bg-black/40 transition-colors" aria-label="Voltar">
                     <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                 </button>
@@ -1046,20 +1046,21 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="flex-shrink-0 w-48 sm:w-56 md:w-64 mx-auto md:mx-0">
                             <img src="${posterUrl}" alt="${title}" class="rounded-lg shadow-2xl w-full aspect-[2/3] object-cover">
                         </div>
-                        <div class="flex-1 mt-6 md:mt-0 text-center md:text-left">
-                            <h1 class="text-3xl md:text-5xl lg:text-6xl font-black text-white" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.7);">${title}</h1>
+                        <div class="flex-1 mt-6 md:mt-0 text-center md:text-left w-full"> <h1 class="text-3xl md:text-5xl lg:text-6xl font-black text-white break-words" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.7);">${title}</h1>
+                            
                             <div id="details-meta" class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300">
-                                <!-- Metadados (ano, duração, classificação) serão inseridos aqui -->
-                            </div>
+                                </div>
                             <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genres}</div>
                             <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
                                 <button id="details-watch-btn" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"><svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>Assistir</div></button>
                                 <button id="details-add-to-list" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"></div></button>
                             </div>
+                            
                             <h3 class="mt-8 text-lg sm:text-xl font-semibold text-white">Sinopse</h3>
-                            <p class="mt-2 text-gray-300 max-w-2xl text-sm leading-relaxed">${data.synopsis || data.overview || 'Sinopse não disponível.'}</p>
-                            <div id="tv-content-details" class="mt-10"></div> <!-- Container para temporadas/episódios -->
-                        </div>
+                            
+                            <p class="mt-2 text-gray-300 max-w-2xl text-sm leading-relaxed break-words text-justify md:text-left mx-auto md:mx-0">${data.synopsis || data.overview || 'Sinopse não disponível.'}</p>
+                            
+                            <div id="tv-content-details" class="mt-10 w-full"></div> </div>
                     </div>
                 </div>
             </div>
