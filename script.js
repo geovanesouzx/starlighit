@@ -652,26 +652,39 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     /**
-        * Verifica se há pedidos atendidos e exibe um MODAL "MATTE DARK" (Limpo e sem brilho).
+        * Verifica se há pedidos atendidos - VERSÃO CORRIGIDA (Sem empilhamento)
+        * Design: Matte Dark (Clean)
         */
     async function checkFulfilledRequests() {
         if (!userId) return;
 
+        // TRAVA DE SEGURANÇA 1:
+        // Se já existe um modal de aviso aberto na tela, PARE aqui.
+        // Isso impede que eles se empilhem um em cima do outro.
+        if (document.querySelector('.req-modal-active')) return;
+
         const q = query(collection(db, "pedidos"), where("status", "==", "completed"));
         const snapshot = await getDocs(q);
 
+        // Usamos um loop 'for...of' para permitir break/return fácil se necessário, 
+        // mas o forEach também funciona se controlarmos a criação do DOM.
+        let foundOne = false;
+
         snapshot.forEach(docSnap => {
+            if (foundOne) return; // Só mostra 1 por vez para não poluir
+
             const req = docSnap.data();
             const userRequestObj = req.requesters ? req.requesters.find(r => r.userId === userId) : null;
 
             if (userRequestObj) {
+                foundOne = true; // Marca que achou para não abrir outros no mesmo loop
+
                 const modal = document.createElement('div');
-                // Fundo do overlay mais escuro e sólido para focar no modal
-                modal.className = 'fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/95 animate-fade-in transition-all duration-200';
+                // Adicionamos a classe 'req-modal-active' para a trava de segurança funcionar
+                modal.className = 'req-modal-active fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/95 animate-fade-in transition-all duration-200';
 
                 const poster = req.posterUrl || 'https://placehold.co/300x450?text=IMG';
 
-                // --- HTML LIMPO (MATTE DARK) ---
                 modal.innerHTML = `
                     <div class="relative w-full max-w-xl bg-[#0f0f0f] border border-white/10 rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100">
                         
@@ -714,15 +727,23 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                 `;
 
-                // --- Lógica de Dispensar Rápida ---
+                // --- Lógica de Dispensar ---
                 const dismiss = async () => {
+                    // TRAVA DE SEGURANÇA 2: Bloqueia cliques imediatos para evitar duplo clique
+                    modal.style.pointerEvents = 'none';
+
+                    // Animação de saída visual imediata
                     modal.classList.remove('animate-fade-in');
-                    modal.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
+                    modal.classList.add('opacity-0', 'scale-95');
+
+                    // Remove do HTML
                     setTimeout(() => modal.remove(), 200);
 
+                    // Atualiza o banco de dados em segundo plano
                     try {
                         const currentRequesters = req.requesters || [];
                         const updatedRequesters = currentRequesters.filter(r => r.userId !== userId);
+
                         await updateDoc(doc(db, 'pedidos', docSnap.id), {
                             requesters: updatedRequesters
                         });
