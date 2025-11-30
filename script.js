@@ -652,8 +652,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     /**
-         * Verifica se há pedidos atendidos e exibe um MODAL PREMIUM "Cinemático".
-         */
+        * Verifica se há pedidos atendidos (para quem pediu OU votou) e mostra um POP-UP.
+        */
     async function checkFulfilledRequests() {
         if (!userId) return;
 
@@ -664,76 +664,85 @@ document.addEventListener('DOMContentLoaded', function () {
         snapshot.forEach(docSnap => {
             const req = docSnap.data();
 
-            // Verifica se o usuário atual está na lista de interessados
+            // Verifica se o usuário atual está na lista de interessados (quem pediu + quem votou)
             const userRequestObj = req.requesters ? req.requesters.find(r => r.userId === userId) : null;
 
             if (userRequestObj) {
-                // Cria o elemento do MODAL
+                // Cria o elemento do MODAL (Pop-up)
                 const modal = document.createElement('div');
-                modal.className = 'fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in transition-all duration-500';
+                modal.className = 'fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in';
 
-                const poster = req.posterUrl || 'https://placehold.co/300x450?text=IMG';
-                // Tenta usar backdrop se tiver (se não tiver, usa o poster mesmo pro fundo)
-                const bgImage = req.backdropUrl || poster;
+                const poster = req.posterUrl || 'https://placehold.co/100x150?text=IMG';
 
                 modal.innerHTML = `
-                    <div class="relative w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl border border-white/10 transform transition-all hover:scale-[1.01]">
+                    <div class="liquid-glass-card w-full max-w-lg overflow-hidden relative transform transition-all scale-100">
+                        <div class="glass-filter"></div>
+                        <div class="glass-specular"></div>
+                        <div class="glass-overlay" style="--bg-color: rgba(20, 20, 20, 0.6);"></div>
                         
-                        <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('${bgImage}');"></div>
-                        <div class="absolute inset-0 bg-black/60 backdrop-blur-xl"></div>
-                        <div class="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-900/80 to-transparent"></div>
+                        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500 via-emerald-400 to-green-500 z-20"></div>
 
-                        <div class="relative z-10 flex flex-col items-center pt-10 pb-8 px-6 text-center">
+                        <div class="glass-content p-6 sm:p-8 relative z-10">
                             
-                            <div class="mb-6 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
-                                <span class="relative flex h-2 w-2">
-                                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                                  <span class="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
-                                </span>
-                                <span class="text-xs font-bold text-white tracking-widest uppercase">Disponível Agora</span>
+                            <div class="text-center mb-6">
+                                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20 mb-4 shadow-[0_0_20px_rgba(34,197,94,0.3)]">
+                                    <i data-lucide="check" class="w-8 h-8 text-green-400"></i>
+                                </div>
+                                <h2 class="text-2xl font-black text-white mb-1">Pedido Atendido!</h2>
+                                <p class="text-stone-300">Um conteúdo que você estava aguardando chegou.</p>
                             </div>
 
-                            <div class="relative w-32 mb-6 group">
-                                <div class="absolute -inset-1 bg-gradient-to-b from-purple-600 to-pink-600 rounded-lg blur opacity-40 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
-                                <img src="${poster}" class="relative w-full rounded-lg shadow-2xl border border-white/10 aspect-[2/3] object-cover">
+                            <div class="flex items-start gap-4 bg-white/5 p-4 rounded-xl border border-white/10 mb-6">
+                                <img src="${poster}" class="w-20 h-28 object-cover rounded-md shadow-lg">
+                                <div class="flex-1 text-left self-center">
+                                    <h3 class="font-bold text-white text-lg leading-tight mb-1">${req.title}</h3>
+                                    <p class="text-xs text-stone-400 mb-2">Você pediu ou votou neste item.</p>
+                                    <span class="inline-block px-2 py-1 bg-green-500/20 text-green-400 text-[10px] font-bold rounded uppercase tracking-wider border border-green-500/20">Disponível</span>
+                                </div>
                             </div>
 
-                            <h2 class="text-2xl font-black text-white leading-tight mb-2 drop-shadow-md">${req.title}</h2>
-                            <p class="text-sm text-stone-300 max-w-[250px] mx-auto leading-relaxed mb-8">
-                                O conteúdo que você pediu (ou votou) acabou de ser adicionado ao catálogo!
-                            </p>
-
-                            <div class="w-full space-y-3">
-                                <a href="#details/${req.contentId}" class="action-watch-btn w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold shadow-lg shadow-purple-900/40 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 active:scale-95">
-                                    <i data-lucide="play" class="w-5 h-5 fill-current"></i>
+                            <div class="flex flex-col gap-3">
+                                <a href="#details/${req.contentId}" class="action-watch-btn w-full glass-button rounded-xl py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-900/40 group">
+                                    <i data-lucide="play" class="w-5 h-5 fill-current group-hover:scale-110 transition-transform"></i>
                                     Assistir Agora
                                 </a>
-                                
-                                <button class="dismiss-req-btn w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-stone-400 hover:text-white text-sm font-medium transition-colors">
-                                    Dispensar aviso
+                                <button class="dismiss-req-btn w-full py-3 text-stone-400 hover:text-white text-sm font-medium transition-colors">
+                                    Fechar e não mostrar mais
                                 </button>
                             </div>
                         </div>
-
-                        <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+                        
+                        <div class="absolute -top-10 -right-10 w-40 h-40 bg-green-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                        <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
                     </div>
                 `;
 
-                // --- Lógica de Dispensar (Idêntica, funcional) ---
+                // Função para fechar o modal e remover SOMENTE O USUÁRIO ATUAL da lista
                 const dismiss = async () => {
-                    modal.classList.add('opacity-0', 'scale-90'); // Animação de saída
-                    setTimeout(() => modal.remove(), 300);
+                    modal.classList.add('opacity-0'); // Fade out visual
+                    setTimeout(() => modal.remove(), 300); // Remove do DOM
 
                     try {
+                        // Pega a lista atual de requesters
                         const currentRequesters = req.requesters || [];
+
+                        // Filtra a lista: Mantém todo mundo cujo ID NÃO SEJA o do usuário atual
+                        // Isso garante que se o João e a Maria pediram, e o João clicar em fechar,
+                        // o nome do João sai da lista, mas o da Maria continua lá para ela ver o aviso.
                         const updatedRequesters = currentRequesters.filter(r => r.userId !== userId);
+
+                        // Atualiza o documento no banco com a nova lista limpa
                         await updateDoc(doc(db, 'pedidos', docSnap.id), {
                             requesters: updatedRequesters
                         });
-                    } catch (e) { console.error("Erro ao dispensar:", e); }
+
+                    } catch (e) { console.error("Erro ao dispensar notificação:", e); }
                 };
 
+                // Listeners
                 modal.querySelector('.dismiss-req-btn').addEventListener('click', dismiss);
+
+                // Se clicar em assistir, também remove o aviso (pois ele já viu)
                 modal.querySelector('.action-watch-btn').addEventListener('click', () => {
                     dismiss();
                 });
@@ -744,6 +753,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         setTimeout(() => {
             lucide.createIcons();
+            attachGlassButtonListeners();
         }, 100);
     }
     /**
