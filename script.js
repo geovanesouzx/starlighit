@@ -919,145 +919,120 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     // --- Navegação e Gerenciamento de Views ---
 
-    // --- Navegação e Gerenciamento de Views (CLEAN URLS) ---
+    // Listener para cliques nos links de navegação (desktop e mobile)
+    const navLinks = document.querySelectorAll('.nav-item, .mobile-nav-item');
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault(); // Impede a navegação padrão do link
+            const targetId = link.getAttribute('data-target'); // Pega o ID da view alvo
+            if (!targetId) return; // Sai se não houver alvo
 
-    // Mapa das rotas: Caminho da URL -> ID da View no HTML
-    const routes = {
-        '/': 'home-view',
-        '/inicio': 'home-view',
-        '/series': 'series-view',
-        '/filmes': 'movies-view',
-        '/minha-lista': 'mylist-view',
-        '/novidades': 'news-view',
-        '/pedidos': 'requests-view',
-        '/reportar': 'report-view',
-        '/login': 'login-view',
-        '/perfis': 'manage-profile-view',
-        '/player': 'player-view'
-    };
-
-    /**
-     * Interceptador Global de Cliques
-     * Transforma links normais (<a href="/filmes">) em navegação SPA sem recarregar
-     */
-    document.body.addEventListener('click', (e) => {
-        // Encontra o link clicado (ou o pai, caso clique numa imagem dentro do link)
-        const link = e.target.closest('a');
-
-        // Verifica se é um link interno (começa com /) e se não é um link de âncora (#)
-        if (link && link.getAttribute('href') && link.getAttribute('href').startsWith('/')) {
-            e.preventDefault(); // Impede o navegador de recarregar a página
-            const href = link.getAttribute('href');
-
-            // Muda a URL no navegador
-            history.pushState(null, '', href);
-
-            // Chama o roteador para atualizar a tela
-            handleNavigation();
-        }
+            // Muda o hash da URL. O listener 'hashchange' cuidará da lógica de mostrar/esconder.
+            if (window.location.hash !== `#${targetId}`) {
+                window.location.hash = targetId;
+            }
+        });
     });
 
     /**
-     * Renderiza o conteúdo específico de uma tela principal.
-     * (Mantivemos sua lógica original de carregar carrosséis, grids, etc.)
+     * Renderiza o conteúdo específico de uma tela principal (Home, Séries, Filmes, etc.).
+     * @param {string} screenId - O ID da tela a ser renderizada.
+     * @param {boolean} [forceReload=false] - Se true, força o recarregamento (não usado atualmente).
      */
     function renderScreenContent(screenId, forceReload = false) {
         const screenElement = document.getElementById(screenId);
-        if (!screenElement) return;
+        if (!screenElement) return; // Sai se a tela não for encontrada
 
+        // Lógica de renderização específica para cada tela
         if (screenId === 'home-view') {
+            // Pega os itens em destaque e atualiza o hero
             const featuredItems = featuredItemIds.map(id => firestoreContent.find(item => item.docId === id)).filter(Boolean);
             if (featuredItems.length > 0) {
-                updateHero(featuredItems[0]);
-                startHeroRotation();
+                updateHero(featuredItems[0]); // Mostra o primeiro item
+                startHeroRotation(); // Inicia a rotação
             }
-            populateAllViews();
+            populateAllViews(); // Popula os carrosséis da home
         } else if (screenId === 'series-view') {
             const grid = document.getElementById('series-grid');
-            const series = firestoreContent.filter(item => item.type === 'tv');
-            grid.innerHTML = series.map(createGridCard).join('');
+            const series = firestoreContent.filter(item => item.type === 'tv'); // Filtra apenas séries
+            grid.innerHTML = series.map(createGridCard).join(''); // Cria a grid de séries
         } else if (screenId === 'movies-view') {
             const grid = document.getElementById('movies-grid');
-            const movies = firestoreContent.filter(item => item.type === 'movie');
-            grid.innerHTML = movies.map(createGridCard).join('');
+            const movies = firestoreContent.filter(item => item.type === 'movie'); // Filtra apenas filmes
+            grid.innerHTML = movies.map(createGridCard).join(''); // Cria a grid de filmes
         } else if (screenId === 'mylist-view') {
-            populateMyList();
+            populateMyList(); // Popula a grid da "Minha Lista"
         } else if (screenId === 'requests-view') {
-            renderPendingRequests();
+            renderPendingRequests(); // Renderiza os pedidos pendentes
         } else if (screenId === 'news-view') {
-            renderNewsFeed();
+            renderNewsFeed(); // NOVO: Renderiza o feed de novidades
         } else if (screenId === 'report-view') {
-            lucide.createIcons();
+            lucide.createIcons(); // Garante que os ícones do formulário apareçam
         }
 
-        lucide.createIcons();
-        attachGlassButtonListeners();
+        lucide.createIcons(); // Recria ícones gerais
+        attachGlassButtonListeners(); // Reatacha listeners visuais
     }
 
-    // Listener global para cliques em links de detalhes antigos (fallback)
-    // Mantido caso algum link #details escape, mas o ideal é usar /detalhes
+    // Listener global para cliques em links de detalhes (cards de conteúdo)
     document.body.addEventListener('click', (e) => {
-        const anchor = e.target.closest('a');
-        if (anchor && anchor.hash && anchor.hash.startsWith('#details/')) {
-            e.preventDefault();
-            // Converte hash antigo para nova rota
-            const id = anchor.hash.split('/')[1];
-            history.pushState(null, '', `/detalhes/${id}`);
-            handleNavigation();
+        const anchor = e.target.closest('a'); // Encontra o link pai mais próximo
+        // Se for um link de detalhes
+        if (anchor && anchor.hash.startsWith('#details/')) {
+            e.preventDefault(); // Impede a navegação padrão
+            window.location.hash = anchor.hash; // Muda o hash para acionar o roteador
         }
     });
 
     /**
-     * Mostra a tela de detalhes (Função auxiliar wrapper)
+     * Renderiza a tela de detalhes para um item específico.
+     * @param {object} item - Objeto contendo o docId do item.
      */
     async function showDetailsView(item) {
         // Esconde header/footer
         document.querySelector('header').classList.add('hidden');
         document.querySelector('footer').classList.add('hidden');
 
-        detailsView.classList.remove('hidden');
-        detailsView.innerHTML = '<div class="glass-spinner-wrapper h-screen flex items-center justify-center"><div class="glass-spinner"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content"><div class="spinner-ring"></div><div class="spinner-core"></div></div></div></div>';
-        window.scrollTo(0, 0);
+        detailsView.classList.remove('hidden'); // Mostra a view de detalhes
+        detailsView.innerHTML = '<div class="spinner mx-auto mt-20"></div>'; // Mostra spinner
+        window.scrollTo(0, 0); // Rola para o topo
 
-        // Busca dados
+        // Busca os dados do item no cache local do Firestore
         const data = firestoreContent.find(i => i.docId === item.docId);
-
-        if (!data) {
-            // Se não achou no cache, tenta esperar um pouco ou buscar direto (fallback simples)
-            if (firestoreContent.length === 0) {
-                setTimeout(() => showDetailsView(item), 500); // Tenta de novo se o Firestore ainda não carregou
-                return;
-            }
-            detailsView.innerHTML = '<p class="text-center text-red-400 mt-20">Conteúdo não encontrado.</p><button onclick="history.back()" class="block mx-auto mt-4 text-white hover:underline">Voltar</button>';
+        if (!data) { // Se não encontrar, mostra erro
+            detailsView.innerHTML = '<p class="text-center text-red-400">Conteúdo não encontrado.</p>';
             return;
         }
 
-        // --- AQUI VEM O SEU CÓDIGO ORIGINAL DE RENDERIZAR DETALHES ---
-        // (Como a função showDetailsView original era grande, estou inserindo a lógica de renderização
-        //  diretamente aqui para garantir que funcione com o novo router).
-
-        currentDetailsItem = data;
+        currentDetailsItem = data; // Define o item atual dos detalhes
+        // Extrai informações do item
         const title = data.title || data.name;
         const releaseYear = data.year || '';
         const genres = data.genres ? data.genres.map(g => `<span class="bg-white/10 text-xs font-semibold px-2 py-1 rounded-full text-white">${g}</span>`).join('') : '';
         let duration = '';
-        if (data.type === 'movie' && data.duration) duration = data.duration;
-        else if (data.type === 'tv' && data.seasons) duration = `${Object.keys(data.seasons).length} Temporada(s)`;
+        if (data.type === 'movie' && data.duration) {
+            duration = data.duration;
+        } else if (data.type === 'tv' && data.seasons) {
+            duration = `${Object.keys(data.seasons).length} Temporada(s)`;
+        }
 
+        // Define URLs de imagem com fallback
         let backgroundUrl = data.backdrop;
-        const finalImageUrl = backgroundUrl && backgroundUrl.startsWith('http') ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
-        const posterUrl = data.poster && data.poster.startsWith('http') ? data.poster : 'https://placehold.co/500x750/1a1a1a/ffffff?text=Capa';
+        const finalImageUrl = backgroundUrl.startsWith('http') ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
+        const posterUrl = data.poster.startsWith('http') ? data.poster : 'https://placehold.co/500x750/1a1a1a/ffffff?text=Capa';
 
-        // HTML DA TELA DE DETALHES
+        // Define o HTML da tela de detalhes
         detailsView.innerHTML = `
             <div class="fixed inset-0 z-[-1] bg-cover bg-center bg-no-repeat" style="background-image: url('${finalImageUrl}');">
                  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
                  <div class="absolute inset-0 details-gradient-overlay"></div>
             </div>
+
             <div class="relative">
                 <button id="back-from-details" class="fixed top-6 left-6 z-20 bg-black/20 backdrop-blur-sm rounded-full p-2 hover:bg-black/40 transition-colors" aria-label="Voltar">
                     <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                 </button>
+
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-screen flex items-center pt-24 pb-12">
                     <div class="flex flex-col md:flex-row items-center md:items-start gap-8 lg:gap-12 w-full">
                         <div class="flex-shrink-0 w-48 sm:w-56 md:w-64 mx-auto md:mx-0">
@@ -1065,7 +1040,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         </div>
                         <div class="flex-1 mt-6 md:mt-0 text-center md:text-left">
                             <h1 class="text-3xl md:text-5xl lg:text-6xl font-black text-white" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.7);">${title}</h1>
-                            <div id="details-meta" class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300"></div>
+                            <div id="details-meta" class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300">
+                                <!-- Metadados (ano, duração, classificação) serão inseridos aqui -->
+                            </div>
                             <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genres}</div>
                             <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
                                 <button id="details-watch-btn" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"><svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>Assistir</div></button>
@@ -1073,152 +1050,980 @@ document.addEventListener('DOMContentLoaded', function () {
                             </div>
                             <h3 class="mt-8 text-lg sm:text-xl font-semibold text-white">Sinopse</h3>
                             <p class="mt-2 text-gray-300 max-w-2xl text-sm leading-relaxed">${data.synopsis || data.overview || 'Sinopse não disponível.'}</p>
-                            <div id="tv-content-details" class="mt-10"></div>
+                            <div id="tv-content-details" class="mt-10"></div> <!-- Container para temporadas/episódios -->
                         </div>
                     </div>
                 </div>
             </div>
         `;
 
-        // Metadados
+        // Popula a seção de metadados
         const detailsMetaContainer = detailsView.querySelector('#details-meta');
         if (detailsMetaContainer) {
-            displayContentRating(data, detailsMetaContainer);
-            detailsMetaContainer.innerHTML += `${releaseYear ? `<span>${releaseYear}</span>` : ''}${duration ? `<span>•</span><span>${duration}</span>` : ''}`;
+            displayContentRating(data, detailsMetaContainer); // Adiciona classificação
+            // Adiciona ano e duração
+            detailsMetaContainer.innerHTML += `
+                ${releaseYear ? `<span>${releaseYear}</span>` : ''}
+                ${duration ? `<span>•</span><span>${duration}</span>` : ''}
+            `;
         }
 
-        // Listeners
-        document.getElementById('back-from-details').addEventListener('click', () => history.back());
-
-        document.getElementById('details-watch-btn').addEventListener('click', () => {
+        // Adiciona listeners aos botões da tela de detalhes
+        document.getElementById('back-from-details').addEventListener('click', () => history.back()); // Botão voltar
+        document.getElementById('details-watch-btn').addEventListener('click', () => { // Botão assistir
             if (data.type === 'movie') {
+                // Se for filme, inicia o player com a URL do filme
                 showPlayer({ videoUrl: data.url, title: title, itemData: data });
             } else if (data.type === 'tv' && data.seasons) {
-                // Tenta achar o primeiro episódio
+                // Se for série, encontra o primeiro episódio da primeira temporada
                 const firstSeasonKey = Object.keys(data.seasons).sort((a, b) => parseInt(a) - parseInt(b))[0];
                 const firstEpisode = data.seasons[firstSeasonKey]?.episodes?.[0];
+
                 if (firstEpisode) {
+                    // Prepara o contexto do player com informações da série e episódio
+                    const allEpisodesOfSeason = data.seasons[firstSeasonKey].episodes;
+
+                    // Pega o título do episódio, com fallback
                     const epTitle = firstEpisode.title ? ` - ${firstEpisode.title}` : '';
+
                     const context = {
                         videoUrl: firstEpisode.url,
+                        // CORRIGIDO: Adiciona o epTitle
                         title: `${title} - T${firstSeasonKey} E${firstEpisode.episode_number || 1}${epTitle}`,
                         itemData: data,
-                        episodes: data.seasons[firstSeasonKey].episodes,
-                        currentIndex: 0
+                        episodes: allEpisodesOfSeason,
+                        currentIndex: 0 // Começa no primeiro episódio
                     };
-                    showPlayer(context);
+                    showPlayer(context); // Inicia o player
                 } else {
-                    showToast("Nenhum episódio encontrado.", true);
+                    showToast("Nenhum episódio encontrado.", true); // Mensagem de erro
                 }
             }
         });
+        await updateListButton(document.getElementById('details-add-to-list'), data); // Atualiza botão "Minha Lista"
 
-        await updateListButton(document.getElementById('details-add-to-list'), data);
-
+        // Se for uma série, renderiza a seção de temporadas/episódios
         if (data.type === 'tv' && data.seasons) {
             renderTvDetails(data);
         }
-        attachGlassButtonListeners();
+        attachGlassButtonListeners(); // Reatacha listeners visuais
     }
 
     /**
-     * ROTEADOR PRINCIPAL (CLEAN URLS)
-     * Lê a URL (pathname) e decide o que mostrar.
-     */
-    async function handleNavigation() {
-        const path = window.location.pathname;
-        let viewId = routes[path];
+      * Renderiza a seção de temporadas e episódios para uma série na tela de detalhes.
+      * @param {object} data - Os dados da série.
+      */
+    function renderTvDetails(data) {
+        const container = document.getElementById('tv-content-details');
+        if (!container) return;
 
-        // --- Lógica Especial para /detalhes/ID ---
-        if (path.startsWith('/detalhes/')) {
-            const pathParts = path.split('/');
-            // pathParts[0] = "", pathParts[1] = "detalhes", pathParts[2] = "ID"
-            const docId = pathParts[2];
-            if (docId) {
-                viewId = 'details-view';
-                // Precisamos garantir que o showDetailsView seja chamado
-                // Como ele não é um "view" padrão do routes, chamamos direto aqui
-                showDetailsView({ docId });
-            }
-        }
-
-        // --- Verificações de Segurança ---
-
-        // 1. Se não logado -> Vai para Login
-        if (!userId && path !== '/login') {
-            history.replaceState(null, '', '/login');
-            showLoginScreen();
+        // Pega as chaves das temporadas (números) e ordena
+        const seasonKeys = Object.keys(data.seasons).sort((a, b) => parseInt(a) - parseInt(b));
+        if (seasonKeys.length === 0) {
+            container.innerHTML = '<p class="text-stone-400">Nenhuma temporada encontrada.</p>';
             return;
         }
 
-        // 2. Se logado mas sem perfil -> Vai para Perfis
-        if (userId && !currentProfile && path !== '/perfis' && path !== '/login') {
-            // Tenta recuperar do localStorage (se o onAuthStateChanged ainda não rodou)
-            const lastProfileId = localStorage.getItem(`starlight-lastProfile-${userId}`);
-            // Se não tiver salvo, força seleção
-            if (!lastProfileId) {
-                history.replaceState(null, '', '/perfis');
-                showProfileScreen();
+        // Tenta pegar a última temporada selecionada do localStorage, ou usa a primeira
+        const savedSeason = localStorage.getItem(`starlight-selected-season-${data.docId}`);
+        const firstSeasonKey = (savedSeason && data.seasons[savedSeason]) ? savedSeason : seasonKeys[0];
+
+        // Cria o HTML do seletor
+        container.innerHTML = `
+            <div class="custom-select-container relative w-full md:w-64 mb-6">
+                <button id="season-selector-button" class="glass-container glass-button rounded-lg w-full text-left">
+                    <div class="glass-filter"></div>
+                    <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.5);"></div>
+                    <div class="glass-specular"></div>
+                    <div class="glass-content flex justify-between items-center p-3">
+                        <span id="selected-season-text">${data.seasons[firstSeasonKey]?.title || `Temporada ${firstSeasonKey}`}</span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 transition-transform"></i>
+                    </div>
+                </button>
+                <div id="season-options" class="hidden custom-select-options glass-container rounded-lg animate-fade-in-down">
+                      <div class="glass-filter"></div>
+                      <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.7);"></div>
+                      <div class="glass-specular"></div>
+                      <div id="season-options-content" class="glass-content p-2">
+                          ${seasonKeys.map(key => `<div class="custom-select-option p-3 rounded-md cursor-pointer" data-season="${key}">${data.seasons[key]?.title || `Temporada ${key}`}</div>`).join('')}
+                      </div>
+                </div>
+            </div>
+            <div id="episode-list-container" class="space-y-3"></div>
+        `;
+        lucide.createIcons();
+
+        // Renderiza a lista de episódios
+        const renderEpisodes = (seasonKey) => {
+            const season = data.seasons[seasonKey];
+            const episodes = season?.episodes;
+            const episodeContainer = document.getElementById('episode-list-container');
+
+            if (!episodes || episodes.length === 0) {
+                episodeContainer.innerHTML = '<p class="text-stone-400">Nenhum episódio encontrado para esta temporada.</p>';
                 return;
             }
-            // Se tiver salvo, o onAuthStateChanged vai lidar, então deixamos passar
-        }
 
-        // --- Renderização ---
+            episodeContainer.innerHTML = episodes.map((ep, index) => {
+                const epTitle = ep.title || `Episódio ${ep.episode_number || index + 1}`;
+                const epOverview = ep.overview || 'Sem descrição.';
+                const stillPath = ep.still_path ? (ep.still_path.startsWith('/') ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : ep.still_path) : 'https://placehold.co/300x168/1c1917/FFFFFF?text=Starlight';
 
-        // Esconde TODAS as views e o player
-        document.querySelectorAll('#view-container > .content-view').forEach(view => view.classList.add('hidden'));
-        document.getElementById('player-view').classList.add('hidden');
+                // --- LÓGICA DE EM BREVE ---
+                // Se a URL estiver vazia OU se a propriedade isComingSoon for verdadeira
+                const isComingSoon = !ep.url || ep.isComingSoon === true;
 
-        // Controla Header e Footer (esconde em login, player, perfis e detalhes)
-        const header = document.querySelector('header');
-        const footer = document.querySelector('footer');
-        const hideNav = path === '/login' || path === '/perfis' || path === '/player' || path.startsWith('/detalhes/');
+                // Estilos condicionais
+                const opacityClass = isComingSoon ? 'opacity-60' : '';
+                const cursorClass = isComingSoon ? 'cursor-not-allowed' : 'cursor-pointer group';
 
-        if (hideNav) {
-            header.classList.add('hidden');
-            footer.classList.add('hidden');
-        } else {
-            header.classList.remove('hidden');
-            footer.classList.remove('hidden');
-        }
+                // Overlay da imagem (Play ou Badge EM BREVE)
+                const overlayHTML = isComingSoon
+                    ? `<div class="absolute inset-0 bg-black/50 flex items-center justify-center rounded-md border border-white/10">
+                         <span class="text-[10px] font-bold text-white bg-stone-800 px-2 py-1 rounded tracking-wider">EM BREVE</span>
+                       </div>`
+                    : `<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                         <i data-lucide="play-circle" class="w-8 h-8 text-white"></i>
+                       </div>`;
 
-        // Mostra a View Alvo
-        if (viewId) {
-            const targetView = document.getElementById(viewId);
-            if (targetView) {
-                targetView.classList.remove('hidden');
-                // Se NÃO for a tela de detalhes (que já carregamos acima), renderiza o conteúdo padrão
-                if (viewId !== 'details-view') {
-                    renderScreenContent(viewId);
-                }
-            }
-        } else if (path === '/' || path === '') {
-            // Raiz -> Início
-            history.replaceState(null, '', '/inicio');
-            handleNavigation();
-        } else {
-            // 404 (Rota desconhecida) -> Início
-            history.replaceState(null, '', '/inicio');
-            handleNavigation();
-        }
+                // Badge de texto para mobile/lista
+                const textBadge = isComingSoon
+                    ? `<span class="ml-2 text-[10px] text-stone-400 border border-stone-600 px-1.5 py-0.5 rounded">Em Breve</span>`
+                    : '';
 
-        // Atualiza classe 'active' no menu
-        document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('href') === path) {
-                link.classList.add('active');
+                return `
+                    <div class="episode-item glass-container glass-button rounded-lg overflow-hidden ${cursorClass} ${opacityClass}" data-index="${index}" data-season="${seasonKey}" data-coming-soon="${isComingSoon}">
+                        <div class="glass-filter"></div>
+                        <div class="glass-overlay" style="--glass-bg-color: rgba(25, 25, 25, 0.3);"></div>
+                        <div class="glass-specular"></div>
+                        <div class="glass-content flex items-start p-3 gap-4">
+                            <div class="relative flex-shrink-0 w-32 sm:w-40 aspect-video">
+                                <img src="${stillPath}" alt="Cena do episódio" class="w-full h-full rounded-md object-cover">
+                                ${overlayHTML}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h4 class="font-semibold text-white truncate flex items-center flex-wrap">
+                                    ${index + 1}. ${epTitle}
+                                    ${textBadge}
+                                </h4>
+                                <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden line-clamp-3">${epOverview}</p> 
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        };
+
+        renderEpisodes(firstSeasonKey);
+
+        // Listeners do seletor
+        const seasonSelectorBtn = document.getElementById('season-selector-button');
+        const seasonOptions = document.getElementById('season-options');
+
+        seasonSelectorBtn.addEventListener('click', () => {
+            const isHidden = seasonOptions.classList.toggle('hidden');
+            seasonSelectorBtn.querySelector('i').style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
+        });
+
+        document.getElementById('season-options-content').addEventListener('click', (e) => {
+            const option = e.target.closest('.custom-select-option');
+            if (option) {
+                const seasonKey = option.dataset.season;
+                document.getElementById('selected-season-text').textContent = data.seasons[seasonKey]?.title || `Temporada ${seasonKey}`;
+                renderEpisodes(seasonKey);
+                localStorage.setItem(`starlight-selected-season-${data.docId}`, seasonKey);
+                seasonSelectorBtn.click();
+                attachGlassButtonListeners();
             }
         });
 
-        updateMobileNavIndicator();
-        // Não rola para o topo se estiver apenas mudando abas de notificação, mas sim se mudar de página
-        if (!path.startsWith('/detalhes/')) {
-            window.scrollTo(0, 0);
+        // Listener de clique no episódio (COM PROTEÇÃO)
+        document.getElementById('episode-list-container').addEventListener('click', (e) => {
+            const episodeItem = e.target.closest('.episode-item');
+
+            if (episodeItem) {
+                // --- PROTEÇÃO ---
+                // Verifica se é "Em Breve" lendo o atributo que definimos acima
+                const isComingSoon = episodeItem.getAttribute('data-coming-soon') === 'true';
+
+                if (isComingSoon) {
+                    showToast("Este episódio estará disponível em breve!", true);
+                    return; // PARA TUDO AQUI. Não tenta tocar.
+                }
+                // ----------------
+
+                const seasonKey = episodeItem.dataset.season;
+                const episodeIndex = parseInt(episodeItem.dataset.index, 10);
+                const allEpisodesOfSeason = data.seasons[seasonKey].episodes;
+                const episode = allEpisodesOfSeason[episodeIndex];
+
+                const epTitle = episode.title ? ` - ${episode.title}` : '';
+
+                const context = {
+                    videoUrl: episode.url,
+                    title: `${data.title || data.name} - T${seasonKey} E${episode.episode_number || episodeIndex + 1}${epTitle}`,
+                    itemData: data,
+                    episodes: allEpisodesOfSeason,
+                    currentIndex: episodeIndex
+                };
+                showPlayer(context);
+            }
+        });
+    }
+
+    /** Efeito visual: Atualiza gradiente especular ao mover o mouse sobre elementos 'glass' */
+    function handleMouseMove(e) { const rect = this.getBoundingClientRect(); const x = e.clientX - rect.left; const y = e.clientY - rect.top; const specular = this.querySelector('.glass-specular'); if (specular) specular.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 30%, rgba(255,255,255,0) 60%)`; }
+    /** Efeito visual: Remove gradiente especular ao tirar o mouse */
+    function handleMouseLeave() { const specular = this.querySelector('.glass-specular'); if (specular) specular.style.background = 'none'; }
+    /** Adiciona listeners para os efeitos visuais 'glass' a todos os elementos relevantes */
+    function attachGlassButtonListeners() { document.querySelectorAll('.glass-button, .liquid-glass-card, .player-control-btn, .glass-container[style*="--bg-color"], .glass-form, .news-card, .comment-card, .reply-card').forEach(element => { if (!element.hasGlassListener) { element.addEventListener('mousemove', handleMouseMove); element.addEventListener('mouseleave', handleMouseLeave); element.hasGlassListener = true; } }); } // 'hasGlassListener' evita adicionar múltiplos listeners
+    /** Atualiza a posição e tamanho do indicador da navegação mobile */
+    function updateMobileNavIndicator() { const indicator = document.getElementById('mobile-nav-indicator'); const activeItem = document.querySelector('#mobile-nav .mobile-nav-item.active'); if (indicator && activeItem) { const left = activeItem.offsetLeft; const width = activeItem.offsetWidth; indicator.style.width = `${width}px`; indicator.style.transform = `translateX(${left}px)`; } }
+    /** Mostra ou esconde o overlay de busca */
+    function toggleSearchOverlay(show) { if (show) { searchOverlay.classList.remove('hidden'); searchInput.focus(); document.body.style.overflow = 'hidden'; } else { searchOverlay.classList.add('hidden'); searchInput.value = ''; searchResultsContainer.innerHTML = ''; document.body.style.overflow = 'auto'; } }
+
+    /**
+     * Realiza a busca no CATÁLOGO LOCAL (firestoreContent) e exibe os resultados.
+     */
+    function performSearch(query) {
+        if (query.length < 2) {
+            searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Digite pelo menos 2 caracteres.</p>`;
+            return;
+        }
+
+        // Garante que firestoreContent está disponível
+        if (!firestoreContent || firestoreContent.length === 0) {
+            searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">O catálogo está carregando. Tente novamente em alguns segundos.</p>`;
+            return;
+        }
+
+        const lowerCaseQuery = query.toLowerCase();
+        // Filtra o array firestoreContent local
+        const results = firestoreContent.filter(item => {
+            const title = (item.title || item.name || '').toLowerCase();
+            return title.includes(lowerCaseQuery);
+        });
+
+        if (results.length > 0) {
+            // Usa createGridCard para exibir os resultados na grid
+            // createGridCard usa 'item.docId' para criar o link correto
+            searchResultsContainer.innerHTML = results.map(item => createGridCard(item)).join('');
+        } else {
+            searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum resultado para "${query}" em nosso catálogo.</p>`;
+        }
+
+        // Re-anexa listeners para os cards de vidro recém-criados
+        attachGlassButtonListeners();
+    }
+
+
+    // --- Funções do Player ---
+
+    /**
+     * Mostra e configura o player de vídeo.
+     * @param {object} context - Informações sobre o vídeo a ser reproduzido.
+     */
+    async function showPlayer(context) {
+        // 1. Reset completo do player antes de iniciar um novo
+        hidePlayer(false, true); // Limpa estado anterior, marca como 'isChangingEpisode'
+        await new Promise(resolve => setTimeout(resolve, 50)); // Pequeno delay
+
+        let key; // Chave única para salvar o progresso (ex: 'movie-123', 'tv-456-s1-e2')
+        let itemData = context.itemData; // Dados gerais do item
+        if (!itemData) { // Erro se não houver dados do item
+            console.error("showPlayer called without itemData in context.");
+            return;
+        }
+
+        // Define a chave com base se é filme ou episódio de série
+        if (context.episodes) { // É uma série
+            const episode = context.episodes[context.currentIndex];
+            key = `tv-${itemData.docId}-s${episode.season_number}-e${episode.episode_number}`;
+        } else { // É um filme
+            key = `movie-${itemData.docId}`;
+        }
+
+        // Define o contexto atual do player
+        currentPlayerContext = { ...context, key, id: itemData.docId, itemData };
+
+        // Adiciona #player ao histórico do navegador se ainda não estiver lá
+        if (window.location.hash !== '#player') {
+            history.pushState({ view: 'player' }, '', '#player');
+        }
+
+        // Mostra a view do player e esconde a barra de rolagem do body
+        playerView.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        playerTitle.textContent = context.title; // Define o título no player
+
+        // Processa a URL do vídeo (caso especial para api.anivideo.net)
+        let urlToLoad = context.videoUrl;
+        try {
+            const urlObject = new URL(urlToLoad);
+            if (urlObject.hostname.includes('api.anivideo.net') && urlObject.pathname.includes('videohls.php')) {
+                const videoSrc = urlObject.searchParams.get('d');
+                if (videoSrc) {
+                    urlToLoad = videoSrc; // Usa a URL extraída do parâmetro 'd'
+                }
+            }
+        } catch (e) {
+            // URL inválida, usa a original
+        }
+
+        // Configura HLS.js se for um stream .m3u8 e o navegador suportar
+        if (Hls.isSupported() && urlToLoad.includes('.m3u8')) {
+            // MUDANÇA: Adiciona configuração de buffer para tentar reduzir travamentos
+            hls = new Hls({
+                maxBufferLength: 30,    // Segundos de buffer
+                maxBufferSize: 60 * 1000 * 1000, // 60MB de buffer
+                startLevel: -1           // Começa na qualidade automática
+            });
+            hls.loadSource(urlToLoad); // Carrega a fonte
+            hls.attachMedia(videoPlayer); // Anexa ao elemento <video>
+            hls.on(Hls.Events.MANIFEST_PARSED, () => { // Quando o manifesto HLS for carregado
+                // Se houver um tempo inicial definido (ex: continuar assistindo), pula para ele
+                if (context.startTime && context.startTime > 5) { // Só pula se for maior que 5s
+                    videoPlayer.currentTime = context.startTime;
+                }
+                videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo HLS:", e)); // Tenta iniciar a reprodução
+            });
+        } else { // Se não for HLS ou não for suportado, usa a tag <video> nativa
+            videoPlayer.src = urlToLoad; // Define a fonte do vídeo
+            videoPlayer.addEventListener('loadedmetadata', () => { // Quando os metadados do vídeo carregarem
+                if (context.startTime && context.startTime > 5) {
+                    videoPlayer.currentTime = context.startTime; // Pula se necessário
+                }
+                videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo:", e)); // Tenta iniciar
+            }, { once: true }); // Executa este listener apenas uma vez
+        }
+
+        // 2. Lógica de orientação e tela cheia para mobile
+        if (window.innerWidth < 768) { // Se for tela pequena (considerado mobile)
+            // MUDANÇA: Lógica ajustada para (re)tentar bloquear a orientação
+            if (!document.fullscreenElement) { // Só tenta entrar em fullscreen se já não estiver
+                try {
+                    await playerView.requestFullscreen();
+                } catch (err) {
+                    console.error("Não foi possível ativar tela cheia:", err);
+                }
+            }
+            // Tenta (re)travar a orientação.
+            // Se foi um clique (nextBtn), funciona.
+            // Se foi 'ended', pode falhar, mas como não demos unlock,
+            // a orientação anterior (landscape) deve ser mantida.
+            try {
+                if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                    await screen.orientation.lock('landscape');
+                }
+            } catch (err) {
+                console.error("Não foi possível bloquear orientação:", err);
+            }
+        }
+
+        // Mostra/Esconde botões de episódio anterior/próximo
+        if (context.episodes && context.episodes.length > 1) {
+            nextEpisodeBtn.classList.remove('hidden');
+            prevEpisodeBtn.classList.remove('hidden');
+        } else {
+            nextEpisodeBtn.classList.add('hidden');
+            prevEpisodeBtn.classList.add('hidden');
+        }
+
+        attachGlassButtonListeners(); // Reatacha listeners visuais
+    }
+
+    /**
+     * Esconde o player de vídeo e limpa seu estado.
+     * @param {boolean} [updateHistory=true] - Se true, salva o progresso e volta no histórico.
+     * @param {boolean} [isChangingEpisode=false] - Se true, não desbloqueia a orientação (mobile).
+     */
+    async function hidePlayer(updateHistory = true, isChangingEpisode = false) { // MUDANÇA: Adicionado isChangingEpisode
+        // Salva o progresso se updateHistory for true e houver um contexto válido
+        if (updateHistory && currentPlayerContext.key) {
+            await savePlayerProgress();
+        }
+
+        videoPlayer.pause(); // Pausa o vídeo
+
+        // Destrói a instância do HLS.js se existir
+        if (hls) {
+            hls.destroy();
+            hls = null;
+        }
+        // Remove o atributo 'src' e chama 'load()' para parar completamente o download do vídeo
+        videoPlayer.removeAttribute('src');
+        videoPlayer.load();
+
+        playerView.classList.add('hidden'); // Esconde a view do player
+        playerLoadingOverlay.classList.add('hidden'); // <--- ADICIONE A LINHA AQUI
+        document.body.style.overflow = 'auto'; // Restaura a rolagem do body
+        currentPlayerContext = {}; // Limpa o contexto do player
+        // 3. Sai da tela cheia e desbloqueia a orientação
+        // MUDANÇA: Só executa se NÃO estiver trocando de episódio
+        if (!isChangingEpisode) {
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(err => console.error("Erro ao sair da tela cheia:", err));
+            }
+            if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+                screen.orientation.unlock(); // Desbloqueia a orientação da tela
+            }
+        }
+
+        // MUDANÇA: Reseta o aspect ratio para o padrão
+        videoPlayer.style.objectFit = 'contain';
+        currentAspectRatio = 'contain';
+        if (aspectRatioBtn) aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectContain;
+
+        // NÃO chama history.back() aqui. O roteador (`handleNavigation`) fará isso
+        // quando o evento 'popstate' for disparado pelo clique no botão voltar do navegador.
+    }
+
+    /**
+     * Formata segundos para o formato HH:MM:SS ou MM:SS.
+     * @param {number} timeInSeconds - Tempo em segundos.
+     * @returns {string} - Tempo formatado.
+     */
+    function formatTime(timeInSeconds) {
+        if (isNaN(timeInSeconds) || timeInSeconds < 0) { return "00:00"; } // Retorna '00:00' para valores inválidos
+        const hours = Math.floor(timeInSeconds / 3600);
+        const minutes = Math.floor((timeInSeconds % 3600) / 60);
+        const seconds = Math.floor(timeInSeconds % 60);
+        // Garante que minutos e segundos tenham dois dígitos (ex: 05)
+        const formattedMinutes = String(minutes).padStart(2, '0');
+        const formattedSeconds = String(seconds).padStart(2, '0');
+        // Inclui horas apenas se for maior que 0
+        return hours > 0 ? `${hours}:${formattedMinutes}:${formattedSeconds}` : `${formattedMinutes}:${formattedSeconds}`;
+    }
+
+    /** Alterna entre play e pause no vídeo */
+    function togglePlay() {
+        if (videoPlayer.paused) {
+            videoPlayer.play().catch(error => {
+                // Ignora erro 'AbortError' que pode ocorrer ao trocar de vídeo rapidamente
+                if (error.name !== 'AbortError') { console.error("Video play error:", error); }
+            });
+        } else {
+            videoPlayer.pause();
         }
     }
 
-    // Ouve os botões "Voltar" e "Avançar" do navegador
+    /** Manipula cliques na área do vídeo em dispositivos móveis */
+    function handleMobilePlayerClick() {
+        // 1. Limpa qualquer timeout anterior para esconder os controles
+        clearTimeout(controlsTimeout);
+
+        // 2. Apenas MOSTRA os controles
+        playerView.classList.add('controls-active');
+
+        // 3. Define um novo timeout para esconder os controles (somente se o vídeo estiver tocando)
+        if (!videoPlayer.paused) {
+            controlsTimeout = setTimeout(() => {
+                playerView.classList.remove('controls-active');
+            }, 3000); // 3 segundos
+        }
+    }
+
+
+    /** Manipula cliques na área do vídeo em desktop */
+    function handlePlayerClick() {
+        clearTimeout(controlsTimeout); // Limpa timeout
+
+        if (!playerView.classList.contains('controls-active')) {
+            playerView.classList.add('controls-active'); // Se escondidos, apenas mostra
+        } else {
+            togglePlay(); // Se controles visíveis, alterna play/pause
+        }
+
+        // Reseta o timeout para esconder controles (somente se estiver tocando)
+        if (!videoPlayer.paused) {
+            controlsTimeout = setTimeout(() => {
+                playerView.classList.remove('controls-active');
+            }, 3000);
+        }
+    }
+
+
+    /** Adiciona listeners de evento ao elemento <video> */
+    function addPlayerEventListeners() {
+        // Remove listeners antigos antes de adicionar novos para evitar duplicidade
+        // Garantir que a referência da função é a mesma
+        const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        if (isTouchDevice) {
+            videoPlayer.removeEventListener('click', handlePlayerClick); // Remove listener desktop se existir
+            videoPlayer.removeEventListener('click', handleMobilePlayerClick); // Remove listener mobile antigo
+            videoPlayer.addEventListener('click', handleMobilePlayerClick); // Adiciona listener mobile correto
+        } else {
+            videoPlayer.removeEventListener('click', handleMobilePlayerClick); // Remove listener mobile se existir
+            videoPlayer.removeEventListener('click', handlePlayerClick); // Remove listener desktop antigo
+            videoPlayer.addEventListener('click', handlePlayerClick); // Adiciona listener desktop correto
+        }
+
+        // Esconde o loading overlay QUANDO o vídeo começar a tocar
+        videoPlayer.addEventListener('playing', () => {
+            if (playerLoadingOverlay) {
+                playerLoadingOverlay.classList.add('hidden');
+            }
+        });
+
+        // MOSTRA o loading overlay se o vídeo parar para bufferizar
+        videoPlayer.addEventListener('waiting', () => {
+            if (playerLoadingOverlay) {
+                playerLoadingOverlay.classList.remove('hidden');
+            }
+        });
+
+        // Listener para o evento 'play'
+        videoPlayer.addEventListener('play', () => {
+            playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.pause;
+            clearTimeout(controlsTimeout); // Limpa timeout ao dar play
+            // Agenda para esconder controles se estiverem visíveis
+            if (playerView.classList.contains('controls-active')) {
+                controlsTimeout = setTimeout(() => {
+                    playerView.classList.remove('controls-active');
+                }, 3000);
+            }
+        });
+        // Listener para o evento 'pause'
+        videoPlayer.addEventListener('pause', () => {
+            playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
+            clearTimeout(controlsTimeout); // Cancela o timeout ao pausar
+            // Garante que os controles fiquem visíveis ao pausar manualmente
+            if (!videoPlayer.ended) {
+                playerView.classList.add('controls-active');
+            }
+        });
+
+        // Quando o vídeo/episódio termina
+        videoPlayer.addEventListener('ended', () => {
+            // Se for série e houver próximo episódio, avança
+            if (currentPlayerContext.episodes && currentPlayerContext.currentIndex < currentPlayerContext.episodes.length - 1) {
+                changeEpisode(1); // Vai para o próximo
+            } else {
+                // Senão, apenas mostra o ícone de play e mantém controles visíveis
+                playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
+                playerView.classList.add('controls-active'); // Garante que controles fiquem visíveis no final
+                clearTimeout(controlsTimeout); // Cancela qualquer timeout pendente
+            }
+        });
+
+        // Atualiza a barra de progresso e salva progresso periodicamente
+        videoPlayer.addEventListener('timeupdate', () => {
+            if (isNaN(videoPlayer.currentTime)) return; // Ignora se currentTime for NaN
+            seekBar.value = videoPlayer.currentTime; // Atualiza valor do slider
+            if (videoPlayer.duration) { // Atualiza a barra visual
+                const progressPercent = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+                seekProgressBar.style.width = `${progressPercent}%`;
+            }
+            currentTimeEl.textContent = formatTime(videoPlayer.currentTime); // Atualiza tempo atual formatado
+
+            // Salva progresso a cada 5 segundos
+            const now = Date.now();
+            if (now - lastProgressSaveTime > 5000) {
+                savePlayerProgress();
+                lastProgressSaveTime = now;
+            }
+        });
+
+        // Quando metadados carregam (obtém duração)
+        videoPlayer.addEventListener('loadedmetadata', () => {
+            if (isNaN(videoPlayer.duration)) return; // Ignora se duration for NaN
+            seekBar.max = videoPlayer.duration; // Define o máximo do slider
+            durationEl.textContent = formatTime(videoPlayer.duration); // Mostra duração total formatada
+        });
+
+        // Atualiza ícone de volume e valor do slider de volume
+        videoPlayer.addEventListener('volumechange', () => {
+            volumeSlider.value = videoPlayer.volume;
+            volumeBtn.querySelector('.glass-content').innerHTML = (videoPlayer.muted || videoPlayer.volume === 0) ? ICONS.volumeMute : ICONS.volumeHigh;
+        });
+
+        // --- Listener de clique já está sendo adicionado no início da função ---
+    }
+
+    // --- Listeners dos Controles do Player ---
+    seekBar.addEventListener('input', () => { videoPlayer.currentTime = seekBar.value; }); // Pular ao arrastar barra
+    volumeSlider.addEventListener('input', (e) => { videoPlayer.volume = e.target.value; videoPlayer.muted = e.target.value == 0; }); // Ajustar volume
+    volumeBtn.addEventListener('click', () => { videoPlayer.muted = !videoPlayer.muted; }); // Mutar/Desmutar
+    rewindBtn.addEventListener('click', () => { videoPlayer.currentTime -= 10; }); // Voltar 10s
+    forwardBtn.addEventListener('click', () => { videoPlayer.currentTime += 10; }); // Avançar 10s
+
+    // NOVO: Listener do botão de Aspect Ratio
+    aspectRatioBtn.addEventListener('click', () => {
+        if (currentAspectRatio === 'contain') {
+            currentAspectRatio = 'cover';
+            videoPlayer.style.objectFit = 'cover';
+            aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectCover;
+            showToast('Proporção: Preencher');
+        } else {
+            currentAspectRatio = 'contain';
+            videoPlayer.style.objectFit = 'contain';
+            aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectContain;
+            showToast('Proporção: Padrão');
+        }
+    });
+
+    /**
+      * Muda para o episódio anterior ou próximo.
+      * @param {number} direction - 1 para próximo, -1 para anterior.
+      */
+    function changeEpisode(direction) {
+        if (!currentPlayerContext.episodes) return; // Sai se não for série
+        const newIndex = currentPlayerContext.currentIndex + direction; // Calcula novo índice
+        // Verifica se o novo índice é válido
+        if (newIndex >= 0 && newIndex < currentPlayerContext.episodes.length) {
+            const episode = currentPlayerContext.episodes[newIndex]; // Pega dados do novo episódio
+            // Pega o título do episódio, com fallback
+            const epTitle = episode.title ? ` - ${episode.title}` : '';
+
+            // Cria novo contexto com índice atualizado e novo título
+            const newContext = {
+                ...currentPlayerContext,
+                currentIndex: newIndex,
+                // CORREÇÃO: Usa (itemData.title || itemData.name) e adiciona o epTitle
+                title: `${currentPlayerContext.itemData.title || currentPlayerContext.itemData.name} - T${episode.season_number} E${episode.episode_number}${epTitle}`,
+                videoUrl: episode.url // IMPORTANTE: Atualizar a URL do vídeo
+            };
+            showPlayer(newContext); // Mostra o player com o novo episódio
+        }
+    }
+
+    // Listeners para botões de episódio
+    nextEpisodeBtn.addEventListener('click', () => changeEpisode(1));
+    prevEpisodeBtn.addEventListener('click', () => changeEpisode(-1));
+
+    // Listener para botão de tela cheia
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) { // Se não estiver em tela cheia
+            playerView.requestFullscreen().catch(err => console.error(`Erro ao entrar em tela cheia: ${err.message}`));
+        } else { // Se já estiver
+            document.exitFullscreen(); // Sai da tela cheia
+        }
+    });
+
+    // Listener para mudanças no estado de tela cheia (ex: pressionar ESC)
+    document.addEventListener('fullscreenchange', () => {
+        const isFullscreen = !!document.fullscreenElement; // Verifica se está em tela cheia
+        // Atualiza o ícone do botão
+        fullscreenBtn.querySelector('.glass-content').innerHTML = isFullscreen ? ICONS.exitFullscreen : ICONS.fullscreen;
+
+        // Se saiu da tela cheia E o player ainda deveria estar visível
+        if (!isFullscreen && !playerView.classList.contains('hidden')) {
+            // Força a volta no histórico (provavelmente para a tela de detalhes)
+            history.back();
+        }
+    });
+
+    // Listener botão play/pause principal
+    playPauseBtn.addEventListener('click', togglePlay);
+    // Listener botão voltar do player
+    playerBackBtn.addEventListener('click', () => history.back()); // Usa histórico do navegador
+
+    // Listener para mostrar controles ao mover o mouse sobre o player (desktop)
+    playerView.addEventListener('mousemove', () => {
+        // MUDANÇA: Não executar esta lógica em mobile
+        if (window.innerWidth >= 768) {
+            playerView.classList.add('controls-active'); // Mostra controles
+            clearTimeout(controlsTimeout); // Limpa timeout anterior
+            // Define novo timeout para esconder (se não estiver pausado)
+            if (!videoPlayer.paused) {
+                controlsTimeout = setTimeout(() => {
+                    playerView.classList.remove('controls-active');
+                }, 3000);
+            }
+        }
+    });
+
+    // Listener para botão de configurações (abre/fecha painel)
+    settingsBtn.addEventListener('click', (e) => { e.stopPropagation(); settingsPanel.classList.toggle('hidden'); });
+
+    // Listener global para fechar painéis (configurações, notificações, seletor de temporada) ao clicar fora
+    document.addEventListener('click', (e) => {
+        // Fecha painel de configurações
+        if (!settingsPanel.classList.contains('hidden') && !settingsBtn.contains(e.target) && !settingsPanel.contains(e.target)) { settingsPanel.classList.add('hidden'); }
+        // Fecha painel de notificações
+        if (!notificationPanel.classList.contains('hidden') && !notificationPanel.contains(e.target) && !notificationBtn.contains(e.target)) {
+            notificationPanel.classList.remove('animate-fade-in-down');
+            notificationPanel.classList.add('animate-fade-out-up');
+            setTimeout(() => notificationPanel.classList.add('hidden'), 250); // Adiciona 'hidden' após animação
+        }
+        // Fecha seletor de temporada
+        const openSelectPanel = document.querySelector('#season-options:not(.hidden)');
+        if (openSelectPanel && !openSelectPanel.closest('.custom-select-container').contains(e.target)) {
+            document.getElementById('season-selector-button')?.click(); // Simula clique no botão para fechar
+        }
+    });
+
+    /** Cria as opções no painel de configurações do player (velocidade, qualidade) */
+    function createSettingsOptions() {
+        const speedContainer = document.getElementById('settings-speed-options');
+        const qualityContainer = document.getElementById('settings-quality-options');
+        // Só cria se ainda não existirem (evita duplicação)
+        if (speedContainer.childElementCount > 1) return;
+
+        // Opções de velocidade
+        const speeds = [0.5, 1, 1.5, 2];
+        speeds.forEach(speed => {
+            const button = document.createElement('button');
+            button.className = 'settings-option-btn';
+            button.textContent = `${speed}x`;
+            if (speed === 1) button.classList.add('active'); // Marca 1x como padrão
+            button.onclick = () => { // Ao clicar
+                videoPlayer.playbackRate = speed; // Muda velocidade do vídeo
+                // Atualiza qual botão está ativo
+                speedContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+            };
+            speedContainer.appendChild(button);
+        });
+
+        // Opções de qualidade (Placeholder - HLS.js pode gerenciar isso dinamicamente)
+        const qualities = ["Auto", "1080p", "720p", "480p"];
+        qualities.forEach(quality => {
+            const button = document.createElement('button');
+            button.className = 'settings-option-btn';
+            button.textContent = quality;
+            if (quality === "Auto") button.classList.add('active'); // Marca Auto como padrão
+            button.onclick = () => { // Ao clicar (ação placeholder)
+                qualityContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                console.log(`Qualidade definida para ${quality}. (Funcionalidade de troca manual não implementada)`);
+                // NOTA: A troca real de qualidade com HLS.js é mais complexa
+            };
+            qualityContainer.appendChild(button);
+        });
+    }
+
+    /** Inicializa a UI do player (define ícones iniciais, adiciona listeners) */
+    function initializePlayerUI() {
+        // Define os ícones SVG para cada botão
+        playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
+        rewindBtn.querySelector('.glass-content').innerHTML = ICONS.rewind10;
+        forwardBtn.querySelector('.glass-content').innerHTML = ICONS.fastForward10;
+        nextEpisodeBtn.querySelector('.glass-content').innerHTML = ICONS.skipForward;
+        prevEpisodeBtn.querySelector('.glass-content').innerHTML = ICONS.skipBackward;
+        volumeBtn.querySelector('.glass-content').innerHTML = ICONS.volumeHigh;
+        fullscreenBtn.querySelector('.glass-content').innerHTML = ICONS.fullscreen;
+        settingsBtn.querySelector('.glass-content').innerHTML = ICONS.settings;
+        playerBackBtn.querySelector('.glass-content').innerHTML = ICONS.back;
+        aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectContain; // NOVO
+        createSettingsOptions(); // Cria opções de velocidade/qualidade
+        addPlayerEventListeners(); // Adiciona listeners ao <video>
+    }
+
+    // --- Listeners Gerais da UI (Busca, Notificações) ---
+    searchIconBtn.addEventListener('click', () => toggleSearchOverlay(true)); // Abrir busca (desktop)
+    closeSearchBtn.addEventListener('click', () => toggleSearchOverlay(false)); // Fechar busca
+    document.getElementById('search-overlay-bg').addEventListener('click', () => toggleSearchOverlay(false)); // Fechar ao clicar no fundo
+
+    // Listener de busca com debounce
+    searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            performSearch(searchInput.value); // Chama a função de busca
+        }, 400); // 400ms de debounce
+    });
+
+
+    // Botão de busca mobile
+    const mobileSearchBtn = document.getElementById('mobile-search-btn');
+    if (mobileSearchBtn) {
+        mobileSearchBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            // Marca o botão como ativo na nav mobile
+            document.querySelectorAll('.mobile-nav-item').forEach(item => item.classList.remove('active'));
+            mobileSearchBtn.classList.add('active');
+            updateMobileNavIndicator();
+            toggleSearchOverlay(true); // Abre o overlay de busca
+        });
+    }
+
+    // Botão de notificações
+    notificationBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Impede que o clique feche o painel imediatamente
+        renderNotifications(); // Renderiza o conteúdo das notificações
+        const isHidden = notificationPanel.classList.contains('hidden');
+        // Animação de abrir/fechar
+        if (isHidden) {
+            notificationPanel.classList.remove('hidden', 'animate-fade-out-up');
+            notificationPanel.classList.add('animate-fade-in-down');
+        } else {
+            notificationPanel.classList.remove('animate-fade-in-down');
+            notificationPanel.classList.add('animate-fade-out-up');
+            setTimeout(() => notificationPanel.classList.add('hidden'), 250);
+        }
+
+        // Marca notificações como lidas (atualiza timestamp da última verificação)
+        if (notifications.length > 0 && notifications[0].createdAt) {
+            // Pega o timestamp da notificação mais recente
+            const latestTimestamp = notifications[0].createdAt.toMillis ? notifications[0].createdAt.toMillis() : new Date(notifications[0].createdAt).getTime();
+            lastNotificationCheck = latestTimestamp; // Atualiza variável local
+            localStorage.setItem('starlight-lastNotificationCheck', latestTimestamp); // Salva no localStorage
+            updateNotificationBell(); // Atualiza indicador visual (ponto vermelho)
+        }
+    });
+
+    // --- Roteador Central ---
+    /** Função principal que lida com a navegação baseada no hash da URL */
+    async function handleNavigation() {
+        const hash = window.location.hash; // Pega o hash atual (ex: #home-view, #details/123)
+
+        // --- NOVA LÓGICA DE INTERCEPTAÇÃO DE "VOLTAR" ---
+
+        // 1. Detecta a primeira navegação da sessão
+        if (isFirstNavigation) {
+            isFirstNavigation = false; // Desativa a flag para que não rode de novo
+            const currentHash = window.location.hash;
+            if (currentHash.startsWith('#details/') || currentHash === '#player') {
+                // Se o usuário Pousou aqui, ativa a flag da sessão
+                sessionStorage.setItem('landedOnDetails', 'true');
+            } else {
+                // Se o usuário pousou na home ou outro lugar, desativa a flag
+                sessionStorage.setItem('landedOnDetails', 'false');
+            }
+        }
+
+        // 2. Intercepta o clique no botão "voltar" do navegador
+        // (Se a flag estiver 'true' E o usuário estiver voltando para a "raiz" do site)
+        if (sessionStorage.getItem('landedOnDetails') === 'true' && (hash === '' || hash === '#')) {
+            // Limpa a flag
+            sessionStorage.removeItem('landedOnDetails');
+            // Usa replaceState para mudar a URL para #home-view SEM adicionar ao histórico
+            history.replaceState(null, '', '#home-view');
+            // Roda a navegação novamente, mas agora com o hash corrigido
+            await handleNavigation();
+            return; // Interrompe a execução atual
+        }
+
+        // 3. Limpa a flag se o usuário navegar para a home manualmente
+        // (Isso desativa a interceptação do "voltar")
+        if (!hash.startsWith('#details/') && hash !== '#player' && hash !== '' && hash !== '#') {
+            sessionStorage.setItem('landedOnDetails', 'false');
+        }
+
+        // --- FIM DA NOVA LÓGICA ---
+
+        // --- Rota de Autenticação ---
+        if (!userId) { // Se o usuário NÃO está logado
+            // Garante que a view de login seja exibida
+            if (hash !== '#login-view') {
+                // Força o hash para #login-view sem adicionar ao histórico
+                history.replaceState(null, '', '#login-view');
+            }
+            showLoginScreen(); // Mostra a tela de login
+            return; // Interrompe a função aqui
+        }
+        // --- Rota de Seleção de Perfil ---
+        if (!currentProfile) { // Se o usuário está logado, MAS NENHUM perfil foi selecionado ainda
+            // Tenta carregar o último perfil usado do localStorage
+            const lastProfileId = localStorage.getItem(`starlight-lastProfile-${userId}`);
+            let autoSelectedProfile = false;
+            if (lastProfileId) {
+                // Carrega os perfis do Firestore APENAS se precisar verificar o último perfil
+                if (!profiles || profiles.length === 0) { // Evita recarregar se já tiver
+                    await loadProfiles(); // loadProfiles() também chama renderProfiles()
+                }
+                const foundProfile = profiles.find(p => p.id === lastProfileId);
+                if (foundProfile) {
+                    // Se encontrou um perfil válido salvo, seleciona-o automaticamente
+                    selectAndEnterProfile(foundProfile);
+                    autoSelectedProfile = true; // Marca que um perfil foi selecionado
+                    // Não retorna aqui, continua para o roteamento do app
+                }
+            }
+
+            // Se NENHUM perfil foi selecionado automaticamente
+            if (!autoSelectedProfile) {
+                // Garante que a view de seleção de perfil seja exibida
+                if (hash !== '#manage-profile-view') {
+                    history.replaceState(null, '', '#manage-profile-view');
+                }
+                showProfileScreen(); // Mostra a tela de seleção de perfil
+                return; // Interrompe a função aqui
+            }
+            // Se um perfil foi auto-selecionado, a função continua para o roteamento do app abaixo
+        }
+
+
+        // --- Roteamento do Aplicativo (Usuário Logado e com Perfil Selecionado) ---
+
+        // Garante que overlays especiais (busca) sejam fechados ao navegar
+        if (!searchOverlay.classList.contains('hidden')) {
+            toggleSearchOverlay(false);
+        }
+
+        // Esconde header/footer para views especiais (detalhes, player)
+        if (hash.startsWith('#details/') || hash === '#player') {
+            document.querySelector('header').classList.add('hidden');
+            document.querySelector('footer').classList.add('hidden');
+        } else {
+            // Mostra header/footer para views normais
+            document.querySelector('header').classList.remove('hidden');
+            document.querySelector('footer').classList.remove('hidden');
+        }
+
+        // Garante que views especiais (detalhes, player) sejam escondidas ao navegar para views normais
+        if (!hash.startsWith('#details/')) {
+            detailsView.classList.add('hidden'); // Esconde detalhes
+        }
+        if (hash !== '#player') {
+            if (!playerView.classList.contains('hidden')) {
+                hidePlayer(false, false); // Esconde player (NÃO está trocando de ep)
+            }
+        }
+
+        // Esconde todas as views principais antes de mostrar a correta
+        document.querySelectorAll('#view-container > .content-view').forEach(view => view.classList.add('hidden'));
+
+        // --- Lógica de Roteamento ---
+        if (hash.startsWith('#details/')) { // Se for uma rota de detalhes
+            const docId = hash.split('/')[1]; // Extrai o ID do item do hash
+            showDetailsView({ docId }); // Chama a função para renderizar detalhes
+        } else if (hash === '#player') { // Se for a rota do player
+            // O player é mostrado pela função showPlayer(). O roteador apenas garante
+            // que outras views estejam escondidas. Se o usuário recarregar em #player,
+            // não há contexto, então voltamos.
+            if (playerView.classList.contains('hidden')) {
+                history.back(); // Volta para a tela anterior (provavelmente detalhes)
+            }
+        } else { // Navegação para uma view principal (home, series, filmes, etc.)
+            const targetId = hash.substring(1) || 'home-view'; // Pega o ID do hash, ou usa 'home-view' como padrão
+            const targetView = document.getElementById(targetId); // Encontra o elemento da view
+
+            if (targetView && targetView.classList.contains('content-view')) { // Se a view existe e é válida
+                targetView.classList.remove('hidden'); // Mostra a view
+                renderScreenContent(targetId); // Renderiza o conteúdo específico da view
+            } else { // Se a view não existe ou hash é inválido
+                // Fallback para a tela inicial
+                document.getElementById('home-view').classList.remove('hidden');
+                renderScreenContent('home-view');
+                // Corrige o hash na URL se ele era inválido
+                if (window.location.hash !== '#home-view') {
+                    history.replaceState(null, '', '#home-view');
+                }
+            }
+
+            // --- Atualiza UI de Navegação ---
+            // Remove 'active' de todos os links
+            document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(l => l.classList.remove('active'));
+            // Adiciona 'active' aos links correspondentes à view atual
+            document.querySelectorAll(`[data-target="${targetId}"]`).forEach(l => l.classList.add('active'));
+            updateMobileNavIndicator(); // Atualiza indicador da nav mobile
+
+            // --- Atualiza Background e Rotação do Hero ---
+            // Mostra/Esconde background principal (só visível na home)
+            document.getElementById('main-background').style.opacity = (targetId === 'home-view' && currentHeroItem) ? 1 : 0;
+            // Para a rotação do hero se sair da home
+            if (targetId !== 'home-view' && heroCarouselInterval) {
+                clearInterval(heroCarouselInterval);
+                heroCarouselInterval = null;
+            }
+        }
+        // Força a checagem do header no final da navegação
+        handleHeaderScroll();
+    }
+
+    // Adiciona os listeners de navegação do navegador (botão voltar/avançar, mudança de hash)
     window.addEventListener('popstate', handleNavigation);
     // window.addEventListener('hashchange', handleNavigation); // Não precisamos mais do hashchange, popstate cobre tudo
 

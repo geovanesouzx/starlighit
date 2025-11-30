@@ -73,13 +73,13 @@
                         class="text-2xl font-black tracking-wider bg-gradient-to-r from-purple-500 to-pink-500 text-transparent bg-clip-text">
                         STARLIGHT</h1>
                     <ul class="hidden lg:flex items-center gap-6">
-                        <li><a href="/inicio" class="nav-item active">Início</a></li>
-                        <li><a href="/series" class="nav-item">Séries</a></li>
-                        <li><a href="/filmes" class="nav-item">Filmes</a></li>
-                        <li><a href="/minha-lista" class="nav-item">Minha Lista</a></li>
-                        <li><a href="/novidades" class="nav-item">Novidades</a></li>
-                        <li><a href="/pedidos" class="nav-item">Pedidos</a></li>
-                        <li><a href="/reportar" class="nav-item">Reportar</a></li>
+                        <li><a href="#" class="nav-item active" data-target="home-view">Início</a></li>
+                        <li><a href="#" class="nav-item" data-target="series-view">Séries</a></li>
+                        <li><a href="#" class="nav-item" data-target="movies-view">Filmes</a></li>
+                        <li><a href="#" class="nav-item" data-target="mylist-view">Minha Lista</a></li>
+                        <li><a href="#" class="nav-item" data-target="news-view">Novidades</a></li>
+                        <li><a href="#" class="nav-item" data-target="requests-view">Pedidos</a></li>
+                        <li><a href="#" class="nav-item" data-target="report-view">Reportar</a></li>
                     </ul>
                 </div>
                 <div class="flex items-center gap-2 sm:gap-4">
@@ -642,14 +642,22 @@
                         class="absolute h-[70%] top-[15%] bg-white/10 rounded-full transition-all duration-300 ease-in-out">
                     </div>
                     <ul id="mobile-nav" class="relative z-10 flex flex-nowrap justify-start items-center gap-2 py-3">
-                        <li><a href="/inicio" class="mobile-nav-item active text-sm px-4 py-2">Início</a></li>
+                        <!-- 3. Tags corrigidas -->
+                        <li><a href="#" class="mobile-nav-item active text-sm px-4 py-2"
+                                data-target="home-view">Início</a></li>
                         <li><a href="#" id="mobile-search-btn" class="mobile-nav-item text-sm px-4 py-2">Buscar</a></li>
-                        <li><a href="/series" class="mobile-nav-item text-sm px-4 py-2">Séries</a></li>
-                        <li><a href="/filmes" class="mobile-nav-item text-sm px-4 py-2">Filmes</a></li>
-                        <li><a href="/minha-lista" class="mobile-nav-item text-sm px-4 py-2">Lista</a></li>
-                        <li><a href="/novidades" class="mobile-nav-item text-sm px-4 py-2">Novidades</a></li>
-                        <li><a href="/pedidos" class="mobile-nav-item text-sm px-4 py-2">Pedidos</a></li>
-                        <li><a href="/reportar" class="mobile-nav-item text-sm px-4 py-2">Reportar</a></li>
+                        <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="series-view">Séries</a>
+                        </li>
+                        <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="movies-view">Filmes</a>
+                        </li>
+                        <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="mylist-view">Lista</a>
+                        </li>
+                        <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="news-view">Novidades</a>
+                        </li>
+                        <li><a href="#" class="mobile-nav-item text-sm px-4 py-2"
+                                data-target="requests-view">Pedidos</a></li>
+                        <li><a href="#" class="mobile-nav-item text-sm px-4 py-2" data-target="report-view">Reportar</a>
+                        </li>
                     </ul>
                 </div>
             </nav>
