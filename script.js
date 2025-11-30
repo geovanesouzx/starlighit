@@ -716,33 +716,36 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                 `;
 
-                // Função para fechar o modal e atualizar o banco
+                // Função para fechar o modal e atualizar o banco DE FORMA SEGURA
                 const dismiss = async () => {
-                    modal.classList.add('opacity-0'); // Fade out
+                    modal.classList.add('opacity-0'); // Fade out visual
                     setTimeout(() => modal.remove(), 300); // Remove do DOM
+
                     try {
-                        // Remove o usuário da lista de quem pediu
-                        await updateDoc(doc(db, 'pedidos', req.id), {
-                            requesters: arrayRemove(userRequestObj)
+                        // CORREÇÃO: Em vez de arrayRemove, filtramos a lista manualmente
+                        const currentRequesters = req.requesters || [];
+                        // Cria uma nova lista removendo o usuário atual (pelo ID)
+                        const updatedRequesters = currentRequesters.filter(r => r.userId !== userId);
+
+                        // Atualiza o documento com a nova lista
+                        await updateDoc(doc(db, 'pedidos', docSnap.id), {
+                            requesters: updatedRequesters
                         });
-                    } catch (e) { console.error(e); }
+
+                    } catch (e) { console.error("Erro ao dispensar notificação:", e); }
                 };
 
                 // Listeners
                 modal.querySelector('.dismiss-req-btn').addEventListener('click', dismiss);
 
-                // Se clicar em assistir, também remove o aviso (pois ele já viu)
                 modal.querySelector('.action-watch-btn').addEventListener('click', () => {
-                    dismiss(); // Remove o aviso do banco
-                    // O href do link cuidará da navegação
+                    dismiss(); // Remove o aviso do banco ao clicar em assistir também
                 });
 
-                // Adiciona o Modal ao BODY (para ficar por cima de tudo)
                 document.body.appendChild(modal);
             }
         });
 
-        // Pequeno delay para garantir que os ícones carreguem
         setTimeout(() => {
             lucide.createIcons();
             attachGlassButtonListeners();
