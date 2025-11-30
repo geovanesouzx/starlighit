@@ -414,29 +414,40 @@ document.addEventListener('DOMContentLoaded', function () {
         return newShuffledList;
     }
     /**
-     * Cria o HTML para um card de conteúdo (usado em carrosséis).
-     * @param {object} item - O objeto do item (filme/série).
-     * @returns {string} - O HTML do card.
-     */
+      * Cria o HTML para um card de conteúdo.
+      * Agora suporta barra de progresso se item.progressPercent existir.
+      */
     function createContentCard(item) {
-        if (!item || !item.poster) return ''; // Retorna vazio se não houver item ou pôster
-        // Define o caminho do pôster, com fallback para placeholder
+        if (!item || !item.poster) return '';
+
+        // Usa o poster salvo ou placeholder
         const posterPath = item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
-        // Retorna o HTML do card como um link para a tela de detalhes
+
+        // HTML da barra de progresso (só aparece se tiver progresso)
+        const progressBarHTML = item.progressPercent
+            ? `<div class="cw-progress-track"><div class="cw-progress-fill" style="width: ${item.progressPercent}%"></div></div>`
+            : '';
+
+        // Informação extra (ex: T1:E3) para séries no Continuar Assistindo
+        const episodeInfoHTML = item.episodeInfo
+            ? `<div class="absolute bottom-2 left-2 right-2 text-[10px] font-bold text-white bg-black/60 px-2 py-1 rounded backdrop-blur-sm truncate z-10">${item.episodeInfo}</div>`
+            : '';
+
         return `
-        <a href="#details/${item.docId}" class="carousel-item w-36 sm:w-48 cursor-pointer group block flex-shrink-0">
-            <div class="liquid-glass-card aspect-[2/3] bg-stone-800">
+        <a href="#details/${item.docId}" class="carousel-item w-36 sm:w-48 cursor-pointer group block flex-shrink-0 relative">
+            <div class="liquid-glass-card aspect-[2/3] bg-stone-800 overflow-hidden">
                  <div class="glass-filter"></div>
                  <div class="glass-distortion-overlay"></div>
                  <div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.1);"></div>
                  <div class="glass-specular"></div>
-                 <div class="glass-content p-0">
+                 <div class="glass-content p-0 h-full">
                      <img src="${posterPath}" alt="Pôster de ${item.title}" loading="lazy" class="w-full h-full object-cover rounded-[inherit]">
+                     ${episodeInfoHTML}
                  </div>
+                 ${progressBarHTML}
             </div>
         </a>`;
     };
-
     /**
      * Cria o HTML para um card de conteúdo em grid (usado em Séries, Filmes, Minha Lista).
      * @param {object} item - O objeto do item.
@@ -641,42 +652,77 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     /**
-     * Popula a tela inicial com carrosséis (adicionados recentemente, por gênero).
-     */
+       * Popula a tela inicial com carrosséis (Continuar Assistindo + Outros).
+       */
     async function populateAllViews() {
         const carouselsContainer = document.getElementById('home-carousels-container');
-        if (!carouselsContainer) return; // Sai se o container não existir
-        carouselsContainer.innerHTML = ''; // Limpa o container
+        if (!carouselsContainer) return;
+        carouselsContainer.innerHTML = ''; // Limpa
 
-        // Carrossel "Adicionado Recentemente"
-        // (ESTA PARTE FICA IGUAL, usando 'firestoreContent' original para ordenar por data)
+        // --- 1. CONTINUAR ASSISTINDO (NOVO) ---
+        if (userId && currentProfile) {
+            try {
+                // Busca progresso no Firestore
+                const progressRef = collection(db, 'users', userId, 'profiles', currentProfile.id, 'watch-progress');
+                const snapshot = await getDocs(progressRef);
+
+                const continueWatchingItems = [];
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    // Calcula porcentagem
+                    const percent = (data.currentTime / data.duration) * 100;
+
+                    // Regra: Mostrar se assistiu mais de 1% e menos de 95%
+                    if (percent > 1 && percent < 95 && data.item) {
+
+                        // Prepara o objeto do card misturando dados do item + dados do progresso
+                        const itemData = {
+                            ...data.item, // Título, poster, docId, etc
+                            progressPercent: percent, // Para a barra vermelha
+                            // Se for série, adiciona info do episódio (ex: T1 E2)
+                            episodeInfo: data.episode ? `T${data.episode.season_number} E${data.episode.episode_number}` : null,
+                            lastWatched: data.lastWatched || 0
+                        };
+                        continueWatchingItems.push(itemData);
+                    }
+                });
+
+                // Ordena pelo último assistido (mais recente primeiro)
+                continueWatchingItems.sort((a, b) => b.lastWatched - a.lastWatched);
+
+                // Se tiver itens, cria o carrossel no topo
+                if (continueWatchingItems.length > 0) {
+                    createCarousel(carouselsContainer, "Continuar Assistindo", continueWatchingItems);
+                }
+
+            } catch (error) {
+                console.error("Erro ao carregar Continuar Assistindo:", error);
+            }
+        }
+        // ---------------------------------------
+
+        // --- 2. Conteúdo Padrão (Adicionado Recentemente) ---
         const recentlyAdded = [...firestoreContent]
             .sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0))
-            .slice(0, 20); // Pega os 20 mais recentes
+            .slice(0, 20);
         createCarousel(carouselsContainer, "Adicionado Recentemente", recentlyAdded);
 
-        // Carrosséis por Gênero
-        // *** MODIFIQUE A PARTIR DAQUI ***
-
-        // 1. Pega todos os gêneros únicos do CONTEÚDO ORIGINAL
+        // --- 3. Carrosséis por Gênero (Embaralhado) ---
         const allGenres = [...new Set(firestoreContent.flatMap(item => item.genres || []))];
 
         for (const genre of allGenres) {
-            // 2. Filtra o CONTEÚDO ORIGINAL para obter a lista APENAS daquele gênero
             const originalGenreList = firestoreContent.filter(item => item.genres && item.genres.includes(genre));
-
-            // 3. Passa essa lista de gênero específica para a função de embaralhamento diário
-            // A chave de cache (o nome do gênero) garante um embaralhamento único por gênero
+            // Usa a função de embaralhamento diário que já criamos
             const shuffledGenreList = getDailyShuffledList(originalGenreList, genre);
 
-            // 4. Cria o carrossel com a lista de gênero embaralhada e cacheada
-            createCarousel(carouselsContainer, genre, shuffledGenreList);
+            if (shuffledGenreList.length > 0) {
+                createCarousel(carouselsContainer, genre, shuffledGenreList);
+            }
         }
-        // *** FIM DAS MODIFICAÇÕES ***
 
-        attachGlassButtonListeners(); // Reatacha listeners visuais
+        attachGlassButtonListeners();
     }
-
     // --- Navegação e Gerenciamento de Views ---
 
     // Listener para cliques nos links de navegação (desktop e mobile)

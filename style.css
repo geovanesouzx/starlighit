@@ -1325,3 +1325,22 @@ header.header-hidden {
     padding-left: 20px;
     /* Efeito de movimentozinho ao passar o mouse */
 }
+
+/* --- Barra de Progresso (Continuar Assistindo) --- */
+.cw-progress-track {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background-color: rgba(255, 255, 255, 0.3);
+    z-index: 5;
+}
+
+.cw-progress-fill {
+    height: 100%;
+    background-color: #e50914;
+    /* Vermelho Netflix */
+    width: 0%;
+    transition: width 0.3s ease;
+}
