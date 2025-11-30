@@ -652,51 +652,105 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     /**
-         * Popula a tela inicial com carrosséis.
-         * - Notificações de Pedidos (Adicionado de volta)
-         * - Continuar Assistindo (Com lógica de Play Direto e Agrupamento)
-         * - Adicionados Recentemente
-         * - Gêneros
-         */
+     * Verifica se há pedidos atendidos para o usuário e mostra o card.
+     */
+    async function checkFulfilledRequests() {
+        const container = document.getElementById('home-carousels-container');
+        if (!container || !userId) return;
+
+        // Busca pedidos com status 'completed'
+        const q = query(collection(db, "pedidos"), where("status", "==", "completed"));
+        const snapshot = await getDocs(q);
+
+        snapshot.forEach(docSnap => {
+            const req = docSnap.data();
+            // Verifica se o usuário atual está na lista de quem pediu
+            const userRequestObj = req.requesters ? req.requesters.find(r => r.userId === userId) : null;
+
+            if (userRequestObj) {
+                // Cria o Card de Notificação "CHEGOU!"
+                const notifCard = document.createElement('div');
+                notifCard.className = 'liquid-glass-card mb-10 p-6 relative overflow-hidden animate-fade-in-down mx-4 md:mx-8 mt-4';
+                notifCard.style.background = 'linear-gradient(135deg, rgba(22, 163, 74, 0.25), rgba(0, 0, 0, 0.6))';
+                notifCard.style.border = '1px solid rgba(22, 163, 74, 0.4)';
+
+                const poster = req.posterUrl || 'https://placehold.co/100x150?text=IMG';
+
+                notifCard.innerHTML = `
+                    <div class="glass-filter"></div>
+                    <div class="glass-specular"></div>
+                    <div class="glass-content flex flex-col sm:flex-row items-center gap-6 relative z-10">
+                        <div class="flex-shrink-0 relative group">
+                            <img src="${poster}" class="w-24 h-36 object-cover rounded-lg shadow-lg shadow-green-900/50">
+                            <div class="absolute -top-3 -right-3 bg-green-500 text-white text-xs font-black px-3 py-1 rounded-full shadow-lg animate-bounce">
+                                CHEGOU!
+                            </div>
+                        </div>
+                        <div class="flex-1 text-center sm:text-left">
+                            <h3 class="text-2xl font-black text-white mb-1">Seu pedido foi atendido!</h3>
+                            <p class="text-stone-300 mb-4 text-lg">Você pediu <span class="text-white font-bold">"${req.title}"</span> e ele já está disponível.</p>
+                            <div class="flex flex-col sm:flex-row gap-3 justify-center sm:justify-start">
+                                <a href="#details/${req.contentId}" class="glass-button rounded-full px-6 py-3 bg-green-600 hover:bg-green-500 text-white font-bold flex items-center justify-center gap-2 transition-all shadow-lg">
+                                    <i data-lucide="play" class="w-5 h-5 fill-current"></i> Assistir Agora
+                                </a>
+                                <button class="dismiss-req-btn glass-button rounded-full px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-medium">
+                                    Dispensar Aviso
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Botão Dispensar (Remove o usuário da lista do pedido)
+                notifCard.querySelector('.dismiss-req-btn').addEventListener('click', async () => {
+                    notifCard.style.opacity = '0';
+                    setTimeout(() => notifCard.remove(), 500);
+                    try {
+                        await updateDoc(doc(db, 'pedidos', req.id), {
+                            requesters: arrayRemove(userRequestObj)
+                        });
+                    } catch (e) { console.error(e); }
+                });
+
+                // Insere no topo da Home
+                container.prepend(notifCard);
+            }
+        });
+        lucide.createIcons();
+        attachGlassButtonListeners();
+    }
+    /**
+       * Popula a tela inicial com carrosséis (Aviso de Pedidos + Continuar Assistindo + Outros).
+       */
     async function populateAllViews() {
         const carouselsContainer = document.getElementById('home-carousels-container');
         if (!carouselsContainer) return;
-        carouselsContainer.innerHTML = '';
+        carouselsContainer.innerHTML = ''; // Limpa
 
-        // --- 0. VERIFICA PEDIDOS ATENDIDOS (IMPORTANTE: Adicionado de volta) ---
+        // --- 0. VERIFICA SE TEM PEDIDOS ATENDIDOS (NOVO) ---
         if (userId && currentProfile) {
-            // Chama a função para mostrar o card verde se houver pedidos prontos
-            if (typeof checkFulfilledRequests === 'function') {
-                checkFulfilledRequests();
-            }
+            checkFulfilledRequests(); // Chama a função que criamos acima
         }
-        // -------------------------------------------------------
+        // ---------------------------------------------------
 
-        // --- 1. CONTINUAR ASSISTINDO (LÓGICA CORRIGIDA) ---
+        // --- 1. CONTINUAR ASSISTINDO ---
         if (userId && currentProfile) {
             try {
                 const progressRef = collection(db, 'users', userId, 'profiles', currentProfile.id, 'watch-progress');
                 const snapshot = await getDocs(progressRef);
-
                 const moviesList = [];
-                const seriesMap = {}; // Mapa para garantir apenas 1 episódio por série
+                const seriesMap = {};
 
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    // Calcula porcentagem
                     const percent = (data.currentTime / data.duration) * 100;
 
-                    // Regra: Mostrar se assistiu entre 1% e 95%
                     if (percent > 1 && percent < 95 && data.item) {
-
-                        // Se for FILME
                         if (data.item.type === 'movie') {
                             moviesList.push({ ...data, progressPercent: percent });
                         }
-                        // Se for SÉRIE (Lógica de Agrupamento)
                         else if (data.item.type === 'tv') {
                             const seriesId = data.item.docId || data.item.id;
-                            // Se a série não está no mapa OU se este episódio é mais recente que o salvo no mapa
                             if (!seriesMap[seriesId] || data.lastWatched > seriesMap[seriesId].lastWatched) {
                                 seriesMap[seriesId] = { ...data, progressPercent: percent };
                             }
@@ -704,13 +758,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 });
 
-                // Junta os filmes e as séries (já filtradas)
                 const continueWatchingItems = [...moviesList, ...Object.values(seriesMap)];
-
-                // Ordena tudo pela data da última visualização
                 continueWatchingItems.sort((a, b) => b.lastWatched - a.lastWatched);
 
-                // Se tiver itens, constrói o carrossel MANUALMENTE para ter controle do clique
                 if (continueWatchingItems.length > 0) {
                     const section = document.createElement('section');
                     section.innerHTML = `
@@ -721,8 +771,7 @@ document.addEventListener('DOMContentLoaded', function () {
                              </h2>
                         </div>
                         <div class="carousel-container relative">
-                            <div class="carousel space-x-4 px-4 sm:px-6 lg:px-8 py-4 overflow-x-auto hide-scrollbar scroll-smooth" id="cw-carousel-track">
-                                </div>
+                            <div class="carousel space-x-4 px-4 sm:px-6 lg:px-8 py-4 overflow-x-auto hide-scrollbar scroll-smooth" id="cw-carousel-track"></div>
                         </div>`;
 
                     const track = section.querySelector('#cw-carousel-track');
@@ -730,71 +779,45 @@ document.addEventListener('DOMContentLoaded', function () {
                     continueWatchingItems.forEach(data => {
                         const item = data.item;
                         const posterPath = item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
-
-                        // Badge T1 E2
-                        const epInfo = data.episode
-                            ? `<div class="absolute top-2 right-2 text-[10px] font-bold text-white bg-indigo-600/90 px-2 py-1 rounded backdrop-blur-md shadow-lg z-20">T${data.episode.season_number} E${data.episode.episode_number}</div>`
-                            : '';
+                        const epInfo = data.episode ? `<div class="absolute top-2 right-2 text-[10px] font-bold text-white bg-indigo-600/90 px-2 py-1 rounded backdrop-blur-md shadow-lg z-20">T${data.episode.season_number} E${data.episode.episode_number}</div>` : '';
 
                         const card = document.createElement('div');
                         card.className = 'carousel-item w-36 sm:w-48 cursor-pointer group block flex-shrink-0 relative cw-card-trigger';
-
-                        // Salva os dados no elemento para usar no clique
                         card.playerData = data;
 
                         card.innerHTML = `
                             <div class="liquid-glass-card aspect-[2/3] bg-stone-800 overflow-hidden relative transition-transform duration-300 group-hover:scale-105">
-                                 <div class="glass-filter"></div>
-                                 <div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.1);"></div>
-                                 <div class="glass-specular"></div>
-                                 
+                                 <div class="glass-filter"></div><div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.1);"></div><div class="glass-specular"></div>
                                  <div class="glass-content p-0 h-full relative">
                                      <img src="${posterPath}" alt="${item.title}" loading="lazy" class="w-full h-full object-cover rounded-[inherit]">
                                      <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
-                                         <div class="bg-white/20 backdrop-blur-md p-3 rounded-full border border-white/30">
-                                             <i data-lucide="play" class="w-8 h-8 text-white fill-white"></i>
-                                         </div>
+                                         <div class="bg-white/20 backdrop-blur-md p-3 rounded-full border border-white/30"><i data-lucide="play" class="w-8 h-8 text-white fill-white"></i></div>
                                      </div>
                                      ${epInfo}
                                  </div>
-                                 
-                                 <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: rgba(0,0,0,0.6); z-index: 20;">
-                                    <div style="height: 100%; width: ${data.progressPercent}%; background: linear-gradient(90deg, #e50914, #ff4757); box-shadow: 0 0 8px rgba(229, 9, 20, 0.6);"></div>
-                                 </div>
+                                 <div class="cw-progress-container"><div class="cw-progress-fill" style="width: ${data.progressPercent}%"></div></div>
                             </div>
                             <h4 class="mt-2 text-sm font-medium text-gray-300 truncate pl-1 group-hover:text-white transition-colors">${item.title || item.name}</h4>
                         `;
                         track.appendChild(card);
                     });
 
-                    // Evento de Clique para PLAY DIRETO
                     track.addEventListener('click', (e) => {
                         const card = e.target.closest('.cw-card-trigger');
                         if (card && card.playerData) {
-                            e.preventDefault();
-                            e.stopPropagation();
-
+                            e.preventDefault(); e.stopPropagation();
                             const data = card.playerData;
                             const item = data.item;
                             let context = {};
 
                             if (item.type === 'movie') {
-                                context = {
-                                    videoUrl: item.url,
-                                    title: item.title || item.name,
-                                    itemData: item,
-                                    startTime: data.currentTime // Pula para o tempo salvo
-                                };
+                                context = { videoUrl: item.url, title: item.title || item.name, itemData: item, startTime: data.currentTime };
                             } else if (item.type === 'tv' && data.episode) {
-                                // Tenta recuperar a lista de episódios se disponível no item salvo
                                 let allEpisodes = [];
                                 if (item.seasons && item.seasons[data.episode.season_number]) {
                                     allEpisodes = item.seasons[data.episode.season_number].episodes;
-                                } else {
-                                    allEpisodes = [data.episode]; // Fallback
-                                }
+                                } else { allEpisodes = [data.episode]; }
 
-                                // Encontra índice
                                 const epIndex = allEpisodes.findIndex(ep => ep.episode_number === data.episode.episode_number);
                                 const safeIndex = epIndex >= 0 ? epIndex : 0;
                                 const epTitle = data.episode.title ? ` - ${data.episode.title}` : '';
@@ -802,42 +825,30 @@ document.addEventListener('DOMContentLoaded', function () {
                                 context = {
                                     videoUrl: data.episode.url,
                                     title: `${item.title || item.name} - T${data.episode.season_number} E${data.episode.episode_number}${epTitle}`,
-                                    itemData: item,
-                                    episodes: allEpisodes,
-                                    currentIndex: safeIndex,
-                                    startTime: data.currentTime // Pula para o tempo salvo
+                                    itemData: item, episodes: allEpisodes, currentIndex: safeIndex, startTime: data.currentTime
                                 };
                             }
                             showPlayer(context);
                         }
                     });
-
                     carouselsContainer.appendChild(section);
                 }
-            } catch (error) {
-                console.error("Erro ao carregar Continuar Assistindo:", error);
-            }
+            } catch (error) { console.error("Erro ao carregar Continuar Assistindo:", error); }
         }
-        // ---------------------------------------
 
-        // --- 2. Conteúdo Padrão (Adicionado Recentemente) ---
-        const recentlyAdded = [...firestoreContent]
-            .sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0))
-            .slice(0, 20);
+        // --- 2. Adicionados Recentemente ---
+        const recentlyAdded = [...firestoreContent].sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0)).slice(0, 20);
         createCarousel(carouselsContainer, "Adicionado Recentemente", recentlyAdded);
 
-        // --- 3. Carrosséis por Gênero (Embaralhado) ---
+        // --- 3. Gêneros ---
         const allGenres = [...new Set(firestoreContent.flatMap(item => item.genres || []))];
-
         for (const genre of allGenres) {
             const originalGenreList = firestoreContent.filter(item => item.genres && item.genres.includes(genre));
             const shuffledGenreList = getDailyShuffledList(originalGenreList, genre);
-
             if (shuffledGenreList.length > 0) {
                 createCarousel(carouselsContainer, genre, shuffledGenreList);
             }
         }
-
         attachGlassButtonListeners();
         lucide.createIcons();
     }
