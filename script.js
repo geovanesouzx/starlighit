@@ -652,11 +652,10 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     /**
-     * Verifica se há pedidos atendidos para o usuário e mostra o card.
-     */
+         * Verifica se há pedidos atendidos e mostra um POP-UP (Modal).
+         */
     async function checkFulfilledRequests() {
-        const container = document.getElementById('home-carousels-container');
-        if (!container || !userId) return;
+        if (!userId) return;
 
         // Busca pedidos com status 'completed'
         const q = query(collection(db, "pedidos"), where("status", "==", "completed"));
@@ -668,56 +667,86 @@ document.addEventListener('DOMContentLoaded', function () {
             const userRequestObj = req.requesters ? req.requesters.find(r => r.userId === userId) : null;
 
             if (userRequestObj) {
-                // Cria o Card de Notificação "CHEGOU!"
-                const notifCard = document.createElement('div');
-                notifCard.className = 'liquid-glass-card mb-10 p-6 relative overflow-hidden animate-fade-in-down mx-4 md:mx-8 mt-4';
-                notifCard.style.background = 'linear-gradient(135deg, rgba(22, 163, 74, 0.25), rgba(0, 0, 0, 0.6))';
-                notifCard.style.border = '1px solid rgba(22, 163, 74, 0.4)';
+                // Cria o elemento do MODAL (Pop-up)
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in';
 
                 const poster = req.posterUrl || 'https://placehold.co/100x150?text=IMG';
 
-                notifCard.innerHTML = `
-                    <div class="glass-filter"></div>
-                    <div class="glass-specular"></div>
-                    <div class="glass-content flex flex-col sm:flex-row items-center gap-6 relative z-10">
-                        <div class="flex-shrink-0 relative group">
-                            <img src="${poster}" class="w-24 h-36 object-cover rounded-lg shadow-lg shadow-green-900/50">
-                            <div class="absolute -top-3 -right-3 bg-green-500 text-white text-xs font-black px-3 py-1 rounded-full shadow-lg animate-bounce">
-                                CHEGOU!
+                modal.innerHTML = `
+                    <div class="liquid-glass-card w-full max-w-lg overflow-hidden relative transform transition-all scale-100">
+                        <div class="glass-filter"></div>
+                        <div class="glass-specular"></div>
+                        <div class="glass-overlay" style="--bg-color: rgba(20, 20, 20, 0.6);"></div>
+                        
+                        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500 via-emerald-400 to-green-500 z-20"></div>
+
+                        <div class="glass-content p-6 sm:p-8 relative z-10">
+                            
+                            <div class="text-center mb-6">
+                                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20 mb-4 shadow-[0_0_20px_rgba(34,197,94,0.3)]">
+                                    <i data-lucide="check" class="w-8 h-8 text-green-400"></i>
+                                </div>
+                                <h2 class="text-2xl font-black text-white mb-1">Seu Pedido Chegou!</h2>
+                                <p class="text-stone-300">O conteúdo que você pediu já está disponível.</p>
                             </div>
-                        </div>
-                        <div class="flex-1 text-center sm:text-left">
-                            <h3 class="text-2xl font-black text-white mb-1">Seu pedido foi atendido!</h3>
-                            <p class="text-stone-300 mb-4 text-lg">Você pediu <span class="text-white font-bold">"${req.title}"</span> e ele já está disponível.</p>
-                            <div class="flex flex-col sm:flex-row gap-3 justify-center sm:justify-start">
-                                <a href="#details/${req.contentId}" class="glass-button rounded-full px-6 py-3 bg-green-600 hover:bg-green-500 text-white font-bold flex items-center justify-center gap-2 transition-all shadow-lg">
-                                    <i data-lucide="play" class="w-5 h-5 fill-current"></i> Assistir Agora
+
+                            <div class="flex items-start gap-4 bg-white/5 p-4 rounded-xl border border-white/10 mb-6">
+                                <img src="${poster}" class="w-20 h-28 object-cover rounded-md shadow-lg">
+                                <div class="flex-1 text-left self-center">
+                                    <h3 class="font-bold text-white text-lg leading-tight mb-1">${req.title}</h3>
+                                    <p class="text-xs text-stone-400 mb-2">Adicionado recentemente</p>
+                                    <span class="inline-block px-2 py-1 bg-green-500/20 text-green-400 text-[10px] font-bold rounded uppercase tracking-wider border border-green-500/20">Disponível</span>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col gap-3">
+                                <a href="#details/${req.contentId}" class="action-watch-btn w-full glass-button rounded-xl py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-900/40 group">
+                                    <i data-lucide="play" class="w-5 h-5 fill-current group-hover:scale-110 transition-transform"></i>
+                                    Assistir Agora
                                 </a>
-                                <button class="dismiss-req-btn glass-button rounded-full px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-medium">
-                                    Dispensar Aviso
+                                <button class="dismiss-req-btn w-full py-3 text-stone-400 hover:text-white text-sm font-medium transition-colors">
+                                    Fechar e não mostrar mais
                                 </button>
                             </div>
                         </div>
+                        
+                        <div class="absolute -top-10 -right-10 w-40 h-40 bg-green-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                        <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
                     </div>
                 `;
 
-                // Botão Dispensar (Remove o usuário da lista do pedido)
-                notifCard.querySelector('.dismiss-req-btn').addEventListener('click', async () => {
-                    notifCard.style.opacity = '0';
-                    setTimeout(() => notifCard.remove(), 500);
+                // Função para fechar o modal e atualizar o banco
+                const dismiss = async () => {
+                    modal.classList.add('opacity-0'); // Fade out
+                    setTimeout(() => modal.remove(), 300); // Remove do DOM
                     try {
+                        // Remove o usuário da lista de quem pediu
                         await updateDoc(doc(db, 'pedidos', req.id), {
                             requesters: arrayRemove(userRequestObj)
                         });
                     } catch (e) { console.error(e); }
+                };
+
+                // Listeners
+                modal.querySelector('.dismiss-req-btn').addEventListener('click', dismiss);
+
+                // Se clicar em assistir, também remove o aviso (pois ele já viu)
+                modal.querySelector('.action-watch-btn').addEventListener('click', () => {
+                    dismiss(); // Remove o aviso do banco
+                    // O href do link cuidará da navegação
                 });
 
-                // Insere no topo da Home
-                container.prepend(notifCard);
+                // Adiciona o Modal ao BODY (para ficar por cima de tudo)
+                document.body.appendChild(modal);
             }
         });
-        lucide.createIcons();
-        attachGlassButtonListeners();
+
+        // Pequeno delay para garantir que os ícones carreguem
+        setTimeout(() => {
+            lucide.createIcons();
+            attachGlassButtonListeners();
+        }, 100);
     }
     /**
        * Popula a tela inicial com carrosséis (Aviso de Pedidos + Continuar Assistindo + Outros).
