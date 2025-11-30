@@ -2443,7 +2443,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // Marca o avatar atual (procura em todas as categorias geradas)
                 const currentAvatarImg = avatarContainer.querySelector(`img[data-avatar="${profile.avatar}"]`);
-                if (currentAvatarImg) currentAvatarImg.classList.add('!border-purple-500', 'scale-110');
+                if (currentAvatarImg) currentAvatarImg.classList.add('!border-pink-500', 'ring-2', 'ring-purple-500', 'scale-110', 'shadow-[0_0_15px_rgba(236,72,153,0.5)]');
             }
         } else {
             modalTitle.textContent = 'Adicionar Perfil';
@@ -2452,13 +2452,15 @@ document.addEventListener('DOMContentLoaded', function () {
             deleteBtn.classList.add('hidden');
         }
     }
-    // Listener para seleção de avatar no modal
+    // Listener para seleção de avatar no modal (ATUALIZADO COM TEMA STARLIGHT)
     avatarOptionsContainer.addEventListener('click', e => {
         if (e.target.tagName === 'IMG') { // Se clicou em uma imagem de avatar
             // Remove seleção de todos os avatares
-            avatarOptionsContainer.querySelectorAll('img').forEach(img => img.classList.remove('!border-purple-500', 'scale-110'));
-            // Marca o avatar clicado como selecionado
-            e.target.classList.add('!border-purple-500', 'scale-110');
+            avatarOptionsContainer.querySelectorAll('img').forEach(img =>
+                img.classList.remove('!border-pink-500', 'ring-2', 'ring-purple-500', 'scale-110', 'shadow-[0_0_15px_rgba(236,72,153,0.5)]')
+            );
+            // Marca o avatar clicado como selecionado (Rosa + Roxo + Brilho)
+            e.target.classList.add('!border-pink-500', 'ring-2', 'ring-purple-500', 'scale-110', 'shadow-[0_0_15px_rgba(236,72,153,0.5)]');
         }
     });
 
