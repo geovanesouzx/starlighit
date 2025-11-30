@@ -2351,6 +2351,47 @@ document.addEventListener('DOMContentLoaded', function () {
         // Se o hash já for #details/..., #series, etc., não fazemos nada.
         // O handleNavigation() que é chamado no onAuthStateChanged vai cuidar de carregar a página certa.
     }
+
+    /**
+     * Busca avatares do Firestore e agrupa por categoria
+     */
+    async function loadAvatarsFromFirestore() {
+        // Verifica se o cache existe e não está vazio
+        if (avatarsCache && Object.keys(avatarsCache).length > 0) {
+            return avatarsCache;
+        }
+
+        try {
+            const q = query(collection(db, 'avatars'), orderBy('category', 'asc'));
+            const snapshot = await getDocs(q);
+            const groups = {};
+
+            if (snapshot.empty) {
+                // Fallback caso não tenha nada no banco ainda
+                groups['Padrão'] = [
+                    'https://pbs.twimg.com/media/EcGdw6xXsAMkqGF?format=jpg&name=large',
+                    'https://pbs.twimg.com/media/FMs8_KeWYAAtoS3.jpg',
+                    'https://acteia.ca/avatars/avatar_174.png'
+                ];
+            } else {
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const cat = data.category || 'Geral';
+                    if (!groups[cat]) groups[cat] = [];
+                    groups[cat].push(data.url);
+                });
+            }
+            avatarsCache = groups; // Salva no cache
+            return groups;
+        } catch (error) {
+            console.error("Erro ao carregar avatares:", error);
+            // Retorna um fallback simples em caso de erro (ex: falta de permissão)
+            return {
+                'Erro': ['https://placehold.co/100x100?text=Erro']
+            };
+        }
+    }
+
     /**
          * Mostra o modal para adicionar ou editar um perfil (Versão Categorizada)
          */
