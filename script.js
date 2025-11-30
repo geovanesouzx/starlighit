@@ -653,6 +653,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     /**
          * Popula a tela inicial com carrosséis.
+         * - Notificações de Pedidos (Adicionado de volta)
          * - Continuar Assistindo (Com lógica de Play Direto e Agrupamento)
          * - Adicionados Recentemente
          * - Gêneros
@@ -661,6 +662,15 @@ document.addEventListener('DOMContentLoaded', function () {
         const carouselsContainer = document.getElementById('home-carousels-container');
         if (!carouselsContainer) return;
         carouselsContainer.innerHTML = '';
+
+        // --- 0. VERIFICA PEDIDOS ATENDIDOS (IMPORTANTE: Adicionado de volta) ---
+        if (userId && currentProfile) {
+            // Chama a função para mostrar o card verde se houver pedidos prontos
+            if (typeof checkFulfilledRequests === 'function') {
+                checkFulfilledRequests();
+            }
+        }
+        // -------------------------------------------------------
 
         // --- 1. CONTINUAR ASSISTINDO (LÓGICA CORRIGIDA) ---
         if (userId && currentProfile) {
