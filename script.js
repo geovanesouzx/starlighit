@@ -33,6 +33,8 @@ import {
 document.addEventListener('DOMContentLoaded', function () {
     lucide.createIcons();
 
+    const FALLBACK_IMAGE = 'https://files.catbox.moe/sytt0s.gif';
+
     // Define um hash padrão se nenhum existir e não for #player
     if (!window.location.hash || window.location.hash === '#player') {
         history.replaceState(null, '', window.location.pathname + window.location.search); // Limpa #player
@@ -409,12 +411,12 @@ document.addEventListener('DOMContentLoaded', function () {
       * Agora suporta barra de progresso se item.progressPercent existir.
       */
     function createContentCard(item) {
-        if (!item || !item.poster) return '';
+        if (!item) return ''; // Removi a checagem estrita !item.poster para o GIF aparecer se estiver vazio
 
-        // Usa o poster salvo ou placeholder
-        const posterPath = item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
+        // LÓGICA ALTERADA AQUI:
+        const posterPath = (item.poster && item.poster.startsWith('http')) ? item.poster : FALLBACK_IMAGE;
 
-        // HTML da barra de progresso (só aparece se tiver progresso)
+        // ... o resto da função continua igual ...
         const progressBarHTML = item.progressPercent
             ? `<div class="cw-progress-track"><div class="cw-progress-fill" style="width: ${item.progressPercent}%"></div></div>`
             : '';
@@ -445,8 +447,11 @@ document.addEventListener('DOMContentLoaded', function () {
      * @returns {string} - O HTML do card.
      */
     function createGridCard(item) {
-        if (!item || !item.poster) return '';
-        const posterPath = item.poster.startsWith('http') ? item.poster : `https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem`;
+        if (!item) return ''; // Removi a checagem estrita
+
+        // LÓGICA ALTERADA AQUI:
+        const posterPath = (item.poster && item.poster.startsWith('http')) ? item.poster : FALLBACK_IMAGE;
+
         // Inclui o título abaixo da imagem
         return `
         <a href="#details/${item.docId}" class="group block cursor-pointer">
@@ -987,6 +992,10 @@ document.addEventListener('DOMContentLoaded', function () {
      * Renderiza a tela de detalhes para um item específico.
      * @param {object} item - Objeto contendo o docId do item.
      */
+    /**
+         * Renderiza a tela de detalhes para um item específico.
+         * @param {object} item - Objeto contendo o docId do item.
+         */
     async function showDetailsView(item) {
         // Esconde header/footer
         document.querySelector('header').classList.add('hidden');
@@ -1017,8 +1026,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Define URLs de imagem com fallback
         let backgroundUrl = data.backdrop;
-        const finalImageUrl = backgroundUrl.startsWith('http') ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
-        const posterUrl = data.poster.startsWith('http') ? data.poster : 'https://placehold.co/500x750/1a1a1a/ffffff?text=Capa';
+        const finalImageUrl = (backgroundUrl && backgroundUrl.startsWith('http')) ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
+
+        // --- AQUI ESTÁ A ALTERAÇÃO PARA O GIF ---
+        // Verifica se existe poster e se é um link válido, senão usa o GIF
+        const posterUrl = (data.poster && data.poster.startsWith('http')) ? data.poster : 'https://files.catbox.moe/sytt0s.gif';
 
         // Define o HTML da tela de detalhes
         detailsView.innerHTML = `
@@ -1035,7 +1047,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-screen flex items-center pt-24 pb-12">
                     <div class="flex flex-col md:flex-row items-center md:items-start gap-8 lg:gap-12 w-full">
                         <div class="flex-shrink-0 w-48 sm:w-56 md:w-64 mx-auto md:mx-0">
-                            <img src="${posterUrl}" alt="${title}" class="rounded-lg shadow-2xl w-full aspect-[2/3] object-cover">
+                            <img src="${posterUrl}" alt="${title}" class="rounded-lg shadow-2xl w-full aspect-[2/3] object-cover bg-stone-800">
                         </div>
                         <div class="flex-1 mt-6 md:mt-0 text-center md:text-left w-full"> <h1 class="text-3xl md:text-5xl lg:text-6xl font-black text-white break-words" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.7);">${title}</h1>
                             
@@ -1067,6 +1079,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 ${duration ? `<span>•</span><span>${duration}</span>` : ''}
             `;
         }
+
+        // ... (O resto da função continua com os listeners de botões) ...
 
         // Adiciona listeners aos botões da tela de detalhes
         document.getElementById('back-from-details').addEventListener('click', () => history.back()); // Botão voltar
@@ -1108,7 +1122,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         attachGlassButtonListeners(); // Reatacha listeners visuais
     }
-
     /**
       * Renderiza a seção de temporadas e episódios para uma série na tela de detalhes.
       * @param {object} data - Os dados da série.
@@ -2219,7 +2232,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Cria o HTML para cada pedido pendente
         container.innerHTML = pendingRequests.map(request => {
-            const posterPath = request.posterUrl || 'https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem';
+            // --- ALTERAÇÃO AQUI: Verifica se tem URL válida, senão usa o GIF ---
+            const posterPath = (request.posterUrl && request.posterUrl.startsWith('http'))
+                ? request.posterUrl
+                : 'https://files.catbox.moe/sytt0s.gif';
+
             const requesterCount = (request.requesters || []).length; // Contagem de votos
             // Verifica se o usuário atual já votou neste pedido
             const userHasVoted = userId && (request.requesters || []).some(r => r.userId === userId);
@@ -2230,7 +2247,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="glass-overlay"></div>
                     <div class="glass-specular"></div>
                     <div class="glass-content w-full flex items-start gap-4">
-                        <img src="${posterPath}" alt="${request.title || request.name}" class="w-20 rounded-md aspect-[2/3] object-cover">
+                        <img src="${posterPath}" alt="${request.title || request.name}" class="w-20 rounded-md aspect-[2/3] object-cover bg-stone-800">
                         <div class="flex-1">
                             <h4 class="font-bold text-white">${request.title} (${request.year || 'N/A'})</h4>
                             <p class="text-xs text-indigo-300 mt-1">${requesterCount} ${requesterCount === 1 ? 'voto' : 'votos'}</p>
@@ -2254,7 +2271,6 @@ document.addEventListener('DOMContentLoaded', function () {
         attachGlassButtonListeners(); // Reatacha listeners visuais
         lucide.createIcons(); // Recria ícones
     }
-
     // --- Lógica de Gerenciamento de Perfil ---
     /** Carrega os perfis do usuário logado do Firestore */
     async function loadProfiles() {
@@ -2697,15 +2713,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         // Cria um card para cada resultado
         container.innerHTML = results.map(item => {
-            const posterPath = item.poster_path ? `${IMG_URL_POSTER}${item.poster_path}` : 'https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem';
+            // --- ALTERAÇÃO AQUI: Usa o GIF se não tiver poster_path ---
+            const posterPath = item.poster_path
+                ? `${IMG_URL_POSTER}${item.poster_path}`
+                : 'https://files.catbox.moe/sytt0s.gif';
+
             return `
-            <div class="cursor-pointer group tmdb-result-item" data-item='${JSON.stringify(item)}'> <!-- Armazena dados do item -->
-                <div class="liquid-glass-card aspect-[2/3] bg-stone-800">
+            <div class="cursor-pointer group tmdb-result-item" data-item='${JSON.stringify(item)}'> <div class="liquid-glass-card aspect-[2/3] bg-stone-800">
                     <div class="glass-filter"></div>
                     <div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.1);"></div>
                     <div class="glass-specular"></div>
                     <div class="glass-content p-0">
-                        <img src="${posterPath}" alt="${item.title || item.name}" class="w-full h-full object-cover rounded-[inherit]">
+                        <img src="${posterPath}" alt="${item.title || item.name}" class="w-full h-full object-cover rounded-[inherit] bg-stone-800">
                     </div>
                 </div>
                 <h4 class="text-white text-xs mt-2 truncate">${item.title || item.name}</h4>
