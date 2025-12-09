@@ -1123,9 +1123,9 @@ document.addEventListener('DOMContentLoaded', function () {
         attachGlassButtonListeners(); // Reatacha listeners visuais
     }
     /**
-      * Renderiza a seção de temporadas e episódios para uma série na tela de detalhes.
-      * @param {object} data - Os dados da série.
-      */
+         * Renderiza a seção de temporadas e episódios para uma série na tela de detalhes.
+         * @param {object} data - Os dados da série.
+         */
     function renderTvDetails(data) {
         const container = document.getElementById('tv-content-details');
         if (!container) return;
@@ -1180,10 +1180,13 @@ document.addEventListener('DOMContentLoaded', function () {
             episodeContainer.innerHTML = episodes.map((ep, index) => {
                 const epTitle = ep.title || `Episódio ${ep.episode_number || index + 1}`;
                 const epOverview = ep.overview || 'Sem descrição.';
-                const stillPath = ep.still_path ? (ep.still_path.startsWith('/') ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : ep.still_path) : 'https://placehold.co/300x168/1c1917/FFFFFF?text=Starlight';
+
+                // --- AQUI ESTÁ A MUDANÇA PARA O GIF NOS EPISÓDIOS ---
+                const stillPath = ep.still_path
+                    ? (ep.still_path.startsWith('/') ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : ep.still_path)
+                    : 'https://files.catbox.moe/sytt0s.gif';
 
                 // --- LÓGICA DE EM BREVE ---
-                // Se a URL estiver vazia OU se a propriedade isComingSoon for verdadeira
                 const isComingSoon = !ep.url || ep.isComingSoon === true;
 
                 // Estilos condicionais
