@@ -377,6 +377,91 @@
             </div>
         </section>
 
+        <section id="user-profile-view" class="content-view hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+                <h1 class="text-4xl font-bold text-white mb-8 mt-4">Meu Perfil</h1>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="md:col-span-1 space-y-6">
+                        <div class="liquid-glass-card p-6 text-center">
+                            <div class="glass-filter"></div>
+                            <div class="glass-overlay"></div>
+                            <div class="glass-specular"></div>
+                            <div class="glass-content relative z-10">
+                                <div
+                                    class="w-32 h-32 mx-auto rounded-full p-1 bg-gradient-to-tr from-purple-500 to-pink-500 mb-4">
+                                    <img id="settings-avatar-img" src=""
+                                        class="w-full h-full object-cover rounded-full border-4 border-[#0c0a09]">
+                                </div>
+                                <h2 id="settings-name-display" class="text-2xl font-bold text-white">Nome do Usuário
+                                </h2>
+                                <p class="text-stone-400 text-sm">Membro Starlight</p>
+                                <button id="change-avatar-btn"
+                                    class="mt-4 text-sm text-purple-400 hover:text-purple-300 font-semibold">Alterar
+                                    Avatar</button>
+                            </div>
+                        </div>
+
+                        <div class="liquid-glass-card p-2">
+                            <div class="glass-filter"></div>
+                            <div class="glass-overlay"></div>
+                            <div class="glass-specular"></div>
+                            <div class="glass-content relative z-10">
+                                <ul class="space-y-1">
+                                    <li><button
+                                            class="w-full text-left px-4 py-3 rounded-xl bg-white/10 text-white font-medium flex items-center gap-3"><i
+                                                data-lucide="user" class="w-4 h-4"></i> Conta</button></li>
+                                    <li><button
+                                            class="w-full text-left px-4 py-3 rounded-xl hover:bg-white/5 text-gray-300 flex items-center gap-3"><i
+                                                data-lucide="credit-card" class="w-4 h-4"></i> Assinatura</button></li>
+                                    <li><button id="switch-profile-menu-btn"
+                                            class="w-full text-left px-4 py-3 rounded-xl hover:bg-white/5 text-gray-300 flex items-center gap-3"><i
+                                                data-lucide="users" class="w-4 h-4"></i> Trocar Perfil</button></li>
+                                    <li><button id="logout-menu-btn"
+                                            class="w-full text-left px-4 py-3 rounded-xl hover:bg-white/5 text-red-400 flex items-center gap-3"><i
+                                                data-lucide="log-out" class="w-4 h-4"></i> Sair</button></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-2 space-y-8">
+                        <div class="liquid-glass-card p-8">
+                            <div class="glass-filter"></div>
+                            <div class="glass-overlay"></div>
+                            <div class="glass-specular"></div>
+                            <div class="glass-content relative z-10">
+                                <h3 class="text-xl font-bold mb-6 flex items-center gap-2 text-white"><i
+                                        data-lucide="edit-3" class="w-5 h-5 text-purple-400"></i> Dados Pessoais</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="space-y-2">
+                                        <label class="text-xs text-gray-400 uppercase font-bold">Nome do Perfil</label>
+                                        <input type="text" id="settings-input-name"
+                                            class="w-full px-4 py-3 rounded-xl bg-black/30 border border-white/10 text-white focus:outline-none focus:border-purple-500 transition-colors">
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label class="text-xs text-gray-400 uppercase font-bold">Email da Conta</label>
+                                        <input type="email" id="settings-input-email" disabled
+                                            class="w-full px-4 py-3 rounded-xl bg-black/30 border border-white/5 text-gray-500 cursor-not-allowed">
+                                    </div>
+                                </div>
+                                <button id="save-settings-btn"
+                                    class="mt-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-2 rounded-lg font-bold text-sm shadow-lg shadow-purple-900/20 transition-all transform hover:scale-105">Salvar
+                                    Alterações</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xl font-bold mb-4 flex items-center gap-2 text-white"><i data-lucide="list"
+                                    class="w-5 h-5 text-pink-400"></i> Minha Lista</h3>
+                            <div id="settings-mylist-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section id="manage-profile-view" class="content-view hidden flex flex-col items-center justify-center p-4"
             style="padding-top: 0;">
             <div class="w-full max-w-4xl text-center">
