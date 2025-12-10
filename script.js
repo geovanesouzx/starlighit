@@ -1163,44 +1163,132 @@ document.addEventListener('DOMContentLoaded', function () {
         lucide.createIcons();
 
         /**
-           * Renderiza a tela de Perfil do Usuário e preenche os dados (Nome, Email, Avatar)
+           * Renderiza a tela de Perfil do Usuário (Versão Blindada v2)
            */
         async function renderUserProfileView() {
-            // Verifica se há perfil selecionado. Se não, tenta usar o Auth ou sai.
+            console.log("--- Iniciando renderUserProfileView ---");
+
+            // 1. TENTATIVA DE RECUPERAÇÃO DE DADOS (CRÍTICO)
+            // Se currentProfile for nulo, tenta recuperar usando o ID salvo no LocalStorage
             if (!currentProfile) {
-                // Tenta recuperar do estado global se disponível, senão volta
-                if (auth.currentUser && profiles.length > 0) {
-                    // Fallback de segurança se currentProfile for nulo por algum motivo
-                    console.warn("Perfil não selecionado, redirecionando...");
-                    window.location.hash = '#manage-profile-view';
+                console.warn("currentProfile está nulo. Tentando recuperar...");
+
+                if (!userId && auth.currentUser) userId = auth.currentUser.uid;
+
+                if (userId) {
+                    const savedProfileId = localStorage.getItem(`starlight-lastProfile-${userId}`);
+                    // Se a lista de perfis estiver vazia, carrega ela agora
+                    if (!profiles || profiles.length === 0) {
+                        await loadProfiles();
+                    }
+                    // Tenta achar o perfil na lista
+                    if (savedProfileId && profiles.length > 0) {
+                        currentProfile = profiles.find(p => p.id === savedProfileId);
+                        console.log("Perfil recuperado via LocalStorage:", currentProfile);
+                    }
                 }
+            }
+
+            // Se ainda assim não tiver perfil, volta para a seleção
+            if (!currentProfile) {
+                console.error("Não foi possível carregar o perfil. Redirecionando.");
+                window.location.hash = '#manage-profile-view';
                 return;
             }
 
-            // --- 1. Preenche Avatar e Textos ---
+            // 2. REFERÊNCIAS AO DOM
             const avatarImg = document.getElementById('settings-avatar-img');
             const nameDisplay = document.getElementById('settings-name-display');
             const nameInput = document.getElementById('settings-input-name');
             const emailInput = document.getElementById('settings-input-email');
 
-            // Garante que usamos a imagem mais atual, com fallback
-            const currentAvatarUrl = currentProfile.avatar || AVATARS[0] || 'https://placehold.co/150';
+            // 3. ATUALIZAÇÃO DOS DADOS VISUAIS
 
+            // --- Avatar ---
+            // Se não tiver avatar, usa o padrão.
+            const avatarUrl = currentProfile.avatar || 'https://files.catbox.moe/sytt0s.gif';
             if (avatarImg) {
-                avatarImg.src = currentAvatarUrl;
-                // Força recarregamento visual removendo e readicionando src se necessário
-                avatarImg.setAttribute('src', currentAvatarUrl);
+                avatarImg.src = avatarUrl;
+                // Adiciona handler de erro caso a imagem esteja quebrada
+                avatarImg.onerror = function () {
+                    this.src = 'https://files.catbox.moe/sytt0s.gif';
+                };
             }
 
-            if (nameDisplay) nameDisplay.textContent = currentProfile.name;
-            if (nameInput) nameInput.value = currentProfile.name;
+            // --- Nome ---
+            if (nameDisplay) nameDisplay.innerText = currentProfile.name || "Sem Nome";
+            if (nameInput) nameInput.value = currentProfile.name || "";
 
-            // --- 2. Correção do Email ---
-            // Pega o email diretamente do objeto Auth do Firebase para garantir que apareça
-            const actualEmail = auth.currentUser ? auth.currentUser.email : (userEmail || "Email não disponível");
-            if (emailInput) emailInput.value = actualEmail;
+            // --- Email (Correção do Bug de Login) ---
+            // Tenta pegar do Auth do Firebase, se não der, tenta da variável global
+            let userEmailText = "Email indisponível";
+            if (auth.currentUser && auth.currentUser.email) {
+                userEmailText = auth.currentUser.email;
+            } else if (userEmail) {
+                userEmailText = userEmail;
+            }
 
-            // --- 3. Renderiza "Minha Lista" (Mantido igual) ---
+            if (emailInput) {
+                emailInput.value = userEmailText;
+                console.log("Email definido para:", userEmailText);
+            }
+
+            // 4. CONFIGURAÇÃO DO BOTÃO SALVAR (Clonagem para limpar listeners antigos)
+            const oldSaveBtn = document.getElementById('save-settings-btn');
+            if (oldSaveBtn) {
+                const newSaveBtn = oldSaveBtn.cloneNode(true);
+                oldSaveBtn.parentNode.replaceChild(newSaveBtn, oldSaveBtn);
+
+                newSaveBtn.addEventListener('click', async () => {
+                    const newName = document.getElementById('settings-input-name').value.trim();
+
+                    if (!newName) {
+                        showToast('O nome não pode estar vazio.', true);
+                        return;
+                    }
+
+                    newSaveBtn.innerText = "Salvando...";
+                    newSaveBtn.disabled = true;
+
+                    try {
+                        // Atualiza no Firebase
+                        const docRef = doc(db, 'users', userId, 'profiles', currentProfile.id);
+                        await updateDoc(docRef, { name: newName });
+
+                        // Atualiza Localmente
+                        currentProfile.name = newName;
+                        const pIndex = profiles.findIndex(p => p.id === currentProfile.id);
+                        if (pIndex > -1) profiles[pIndex].name = newName;
+
+                        // Atualiza a tela imediatamente
+                        if (nameDisplay) nameDisplay.innerText = newName;
+
+                        showToast('Nome salvo com sucesso!');
+                    } catch (e) {
+                        console.error("Erro ao salvar nome:", e);
+                        showToast('Erro ao salvar.', true);
+                    } finally {
+                        newSaveBtn.innerText = "Salvar Alterações";
+                        newSaveBtn.disabled = false;
+                    }
+                });
+            }
+
+            // 5. BOTÃO DE TROCAR AVATAR
+            const changeAvatarBtn = document.getElementById('change-avatar-btn');
+            if (changeAvatarBtn) {
+                // Remove listener antigo substituindo o elemento
+                const newChangeBtn = changeAvatarBtn.cloneNode(true);
+                changeAvatarBtn.parentNode.replaceChild(newChangeBtn, changeAvatarBtn);
+
+                newChangeBtn.onclick = (e) => {
+                    e.preventDefault();
+                    isEditMode = true; // Importante para o modal saber que é edição
+                    showProfileModal(currentProfile.id);
+                };
+            }
+
+            // 6. RENDERIZA A MINHA LISTA (Grid abaixo)
             const myListGrid = document.getElementById('settings-mylist-grid');
             if (myListGrid) {
                 myListGrid.innerHTML = '<div class="spinner w-6 h-6 border-2 mx-auto col-span-full"></div>';
@@ -1209,95 +1297,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (list.length === 0) {
                     myListGrid.innerHTML = '<p class="text-stone-500 text-sm col-span-full">Sua lista está vazia.</p>';
                 } else {
-                    const previewList = list.slice(0, 3);
+                    // Mostra apenas os 4 primeiros itens
+                    const previewList = list.slice(0, 4);
                     myListGrid.innerHTML = previewList.map(item => createGridCard(item)).join('');
                 }
             }
 
-            // --- 4. Botão Salvar Alterações (Nome) - Lógica Corrigida ---
-            const saveBtn = document.getElementById('save-settings-btn');
-            if (saveBtn) {
-                // Clona para remover listeners antigos e evitar duplicação
-                const newSaveBtn = saveBtn.cloneNode(true);
-                saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
-
-                newSaveBtn.addEventListener('click', async () => {
-                    const newName = document.getElementById('settings-input-name').value.trim(); // Pega valor fresco
-
-                    if (newName && newName !== currentProfile.name) {
-                        // Feedback visual de carregamento
-                        const originalText = newSaveBtn.innerText;
-                        newSaveBtn.innerText = "Salvando...";
-                        newSaveBtn.disabled = true;
-
-                        try {
-                            const docRef = doc(db, 'users', userId, 'profiles', currentProfile.id);
-                            await updateDoc(docRef, { name: newName });
-
-                            // Atualiza estado global
-                            currentProfile.name = newName;
-
-                            // Atualiza UI
-                            if (nameDisplay) nameDisplay.textContent = newName;
-                            if (headerProfileBtn) headerProfileBtn.title = newName;
-
-                            showToast('Nome atualizado com sucesso!');
-                        } catch (e) {
-                            console.error(e);
-                            showToast('Erro ao atualizar nome.', true);
-                        } finally {
-                            newSaveBtn.innerText = originalText;
-                            newSaveBtn.disabled = false;
-                        }
-                    } else {
-                        showToast('Nenhuma alteração detectada.');
-                    }
-                });
-            }
-
-            // --- 5. Botão Alterar Avatar ---
-            const changeAvatarBtn = document.getElementById('change-avatar-btn');
-            if (changeAvatarBtn) {
-                // Remove listener antigo substituindo o elemento (clone)
-                const newChangeAvatarBtn = changeAvatarBtn.cloneNode(true);
-                changeAvatarBtn.parentNode.replaceChild(newChangeAvatarBtn, changeAvatarBtn);
-
-                newChangeAvatarBtn.onclick = (e) => {
-                    e.preventDefault();
-                    // Importante: define isEditMode como true para o modal saber que é edição
-                    isEditMode = true;
-                    showProfileModal(currentProfile.id);
-                };
-            }
-
-            // --- 6. Botão Sair do Menu Lateral ---
-            const menuLogoutBtn = document.getElementById('logout-menu-btn');
-            if (menuLogoutBtn) {
-                menuLogoutBtn.onclick = (e) => {
-                    e.preventDefault();
-                    document.getElementById('logout-btn').click(); // Aciona o logout principal
-                };
-            }
-
-            // --- 7. Botão Trocar Perfil ---
-            const switchProfileBtn = document.getElementById('switch-profile-menu-btn');
-            if (switchProfileBtn) {
-                switchProfileBtn.onclick = (e) => {
-                    e.preventDefault();
-                    // Limpa perfil atual
-                    currentProfile = null;
-                    userDisplayName = null;
-                    localStorage.removeItem(`starlight-lastProfile-${userId}`);
-                    // Força recarregamento da view de perfis
-                    window.location.hash = '#manage-profile-view';
-                    showProfileScreen();
-                };
-            }
-
+            // Reativa os efeitos de vidro nos novos elementos
             attachGlassButtonListeners();
             lucide.createIcons();
         }
-
         // Renderiza a lista de episódios
         const renderEpisodes = (seasonKey) => {
             const season = data.seasons[seasonKey];
