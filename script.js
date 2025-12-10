@@ -1163,9 +1163,9 @@ document.addEventListener('DOMContentLoaded', function () {
         lucide.createIcons();
 
         /**
-         * Renderiza a tela de Perfil (VERSÃO AGRESSIVA V3)
-         * Força a injeção de dados mesmo se houver atraso no carregamento.
-         */
+                 * Renderiza a tela de Perfil (VERSÃO AGRESSIVA V3)
+                 * Força a injeção de dados mesmo se houver atraso no carregamento.
+                 */
         async function renderUserProfileView() {
             console.log(">>> RENDERIZANDO PERFIL DO USUÁRIO V3 <<<");
 
@@ -2494,8 +2494,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
-     * Busca avatares do Firestore e agrupa por categoria
-     */
+         * Busca avatares do Firestore e agrupa por categoria
+         */
     async function loadAvatarsFromFirestore() {
         // Verifica se o cache existe e não está vazio
         if (avatarsCache && Object.keys(avatarsCache).length > 0) {
@@ -2534,8 +2534,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
-         * Mostra o modal para adicionar ou editar um perfil (Versão Categorizada)
-         */
+     * Mostra o modal para adicionar ou editar um perfil (Versão Categorizada)
+     */
     async function showProfileModal(profileId = null) {
         // Elementos do modal
         const modalTitle = document.getElementById('modal-title');
@@ -2593,6 +2593,7 @@ document.addEventListener('DOMContentLoaded', function () {
             deleteBtn.classList.add('hidden');
         }
     }
+
     // Listener para seleção de avatar no modal (ATUALIZADO COM TEMA STARLIGHT)
     avatarOptionsContainer.addEventListener('click', e => {
         if (e.target.tagName === 'IMG') { // Se clicou em uma imagem de avatar

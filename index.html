@@ -683,33 +683,44 @@
 
     <!-- Profile Edit Modal -->
     <div id="profile-modal"
-        class="hidden fixed inset-0 z-[200] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+        class="hidden fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="liquid-glass-card w-full max-w-md">
             <div class="glass-filter"></div>
-            <div class="glass-distortion-overlay"></div>
             <div class="glass-overlay"></div>
             <div class="glass-specular"></div>
-            <div class="glass-content p-8">
-                <h2 id="modal-title" class="text-2xl font-bold mb-6">Editar Perfil</h2>
+
+            <div class="glass-content p-8 relative z-10">
+                <h2 id="modal-title" class="text-2xl font-bold mb-6 text-white">Adicionar Perfil</h2>
+
                 <input type="hidden" id="profile-id-input">
+
                 <input id="profile-name-input" type="text"
-                    class="w-full bg-black/30 text-white text-center text-lg py-3 px-4 rounded-lg outline-none border-2 border-transparent focus:border-purple-500 mb-6"
+                    class="w-full bg-black/40 text-white text-center text-lg py-3 px-4 rounded-xl outline-none border border-white/10 focus:border-purple-500 mb-6 placeholder-gray-500 transition-colors"
                     placeholder="Nome do Perfil">
-                <div class="mb-6">
-                    <h3 class="text-lg font-semibold mb-3">Escolha um avatar</h3>
-                    <div id="avatar-options" class="flex justify-center gap-4 flex-wrap">
-                        <!-- Avatars will be injected here -->
+
+                <div class="mb-8">
+                    <h3 class="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wider">Escolha um avatar</h3>
+
+                    <div id="avatar-options" class="max-h-[300px] overflow-y-auto pr-2 hide-scrollbar">
+                        <div class="flex justify-center items-center h-20">
+                            <div class="spinner w-6 h-6 border-2"></div>
+                        </div>
                     </div>
                 </div>
-                <div class="flex gap-4">
+
+                <div class="flex gap-3">
                     <button id="save-profile-btn"
-                        class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-2 px-6 rounded-full transition-all shadow-lg shadow-purple-900/20 transform hover:scale-105">
+                        class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-full transition-all shadow-[0_0_15px_rgba(168,85,247,0.4)]">
                         Salvar
                     </button>
                     <button id="cancel-profile-btn"
-                        class="bg-gray-600/50 hover:bg-gray-500/50 text-white font-bold py-2 px-6 rounded-full transition-colors">Cancelar</button>
+                        class="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-full transition-colors border border-white/5">
+                        Cancelar
+                    </button>
                     <button id="delete-profile-btn"
-                        class="bg-red-600/80 hover:bg-red-700/80 text-white font-bold py-2 px-6 rounded-full transition-colors hidden ml-auto">Excluir</button>
+                        class="hidden px-4 text-red-400 hover:text-red-300 transition-colors">
+                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -887,7 +898,7 @@
             </div>
         </div>
 
-        <script type="module" src="script.js?v=2.2"></script>
+        <script type="module" src="script.js?v=2.1"></script>
 </body>
 
 </html>
