@@ -2576,59 +2576,65 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Listener para o botão "Salvar" do modal de perfil (ATUALIZADO)
+    // Listener para o botão "Salvar" do modal de perfil (CORRIGIDO PARA ATUALIZAR NA HORA)
     document.getElementById('save-profile-btn').addEventListener('click', async () => {
         const name = document.getElementById('profile-name-input').value.trim();
-        const selectedAvatar = document.querySelector('#avatar-options .scale-110')?.dataset.avatar;
+
+        // Pega o avatar que está com o efeito de zoom (selecionado)
+        const selectedElement = document.querySelector('#avatar-options img.scale-110');
+        const selectedAvatar = selectedElement ? selectedElement.dataset.avatar : null;
+
         const profileId = document.getElementById('profile-id-input').value; // ID do perfil sendo editado
 
         if (!name || !selectedAvatar) {
-            showToast('Preencha o nome e selecione um avatar.', true);
-            return;
-        }
-        if (!userId) {
-            showToast('Erro de autenticação.', true);
+            showToast('Selecione um avatar antes de salvar.', true);
             return;
         }
 
         const profileData = { name, avatar: selectedAvatar };
 
         try {
+            const btn = document.getElementById('save-profile-btn');
+            btn.textContent = "Salvando...";
+            btn.disabled = true;
+
             if (profileId) { // EDITAR PERFIL EXISTENTE
                 const docRef = doc(db, 'users', userId, 'profiles', profileId);
                 await updateDoc(docRef, profileData);
-                showToast('Perfil atualizado!');
 
-                // --- NOVO: Se editamos o perfil que estamos usando agora ---
+                // --- O PULO DO GATO: Atualiza a tela imediatamente ---
                 if (currentProfile && currentProfile.id === profileId) {
-                    // Atualiza os dados na memória
-                    currentProfile.name = name;
+                    // 1. Atualiza a variável global
                     currentProfile.avatar = selectedAvatar;
+                    currentProfile.name = name;
 
-                    // Atualiza a bolinha do header imediatamente
-                    const headerImg = headerProfileBtn.querySelector('img');
+                    // 2. Atualiza a bolinha do perfil lá no topo (Header)
+                    const headerImg = document.querySelector('#header-profile-btn img');
                     if (headerImg) headerImg.src = selectedAvatar;
 
-                    // Se a tela de configurações estiver aberta, atualiza ela também
-                    if (window.location.hash === '#user-profile-view') {
-                        document.getElementById('settings-avatar-img').src = selectedAvatar;
-                        document.getElementById('settings-name-display').textContent = name;
-                        document.getElementById('settings-input-name').value = name;
-                    }
+                    // 3. Atualiza a foto grande na tela de configurações (Se ela estiver aberta)
+                    const settingsImg = document.getElementById('settings-avatar-img');
+                    if (settingsImg) settingsImg.src = selectedAvatar;
                 }
-                // -----------------------------------------------------------
+                // -----------------------------------------------------
 
+                showToast('Perfil atualizado!');
             } else { // CRIAR NOVO PERFIL
                 const colRef = collection(db, 'users', userId, 'profiles');
                 await addDoc(colRef, profileData);
-                showToast('Perfil criado com sucesso!');
+                showToast('Perfil criado!');
             }
 
-            await loadProfiles(); // Recarrega a lista da tela de gerenciamento
-            profileModal.classList.add('hidden'); // Fecha o modal
+            await loadProfiles(); // Atualiza a lista da tela de gerenciamento
+            document.getElementById('profile-modal').classList.add('hidden'); // Fecha modal
+
         } catch (error) {
-            console.error("Erro ao salvar perfil: ", error);
+            console.error("Erro ao salvar:", error);
             showToast('Erro ao salvar.', true);
+        } finally {
+            const btn = document.getElementById('save-profile-btn');
+            btn.textContent = "Salvar";
+            btn.disabled = false;
         }
     });
 
