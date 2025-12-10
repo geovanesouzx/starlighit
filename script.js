@@ -939,10 +939,10 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     /**
-       * Renderiza o conteúdo específico de uma tela principal (Home, Séries, Filmes, etc.).
-       * @param {string} screenId - O ID da tela a ser renderizada.
-       * @param {boolean} [forceReload=false] - Se true, força o recarregamento (não usado atualmente).
-       */
+     * Renderiza o conteúdo específico de uma tela principal (Home, Séries, Filmes, etc.).
+     * @param {string} screenId - O ID da tela a ser renderizada.
+     * @param {boolean} [forceReload=false] - Se true, força o recarregamento (não usado atualmente).
+     */
     function renderScreenContent(screenId, forceReload = false) {
         const screenElement = document.getElementById(screenId);
         if (!screenElement) return; // Sai se a tela não for encontrada
@@ -972,8 +972,6 @@ document.addEventListener('DOMContentLoaded', function () {
             renderNewsFeed(); // NOVO: Renderiza o feed de novidades
         } else if (screenId === 'report-view') {
             lucide.createIcons(); // Garante que os ícones do formulário apareçam
-        } else if (screenId === 'user-profile-view') {
-            renderUserProfileView(); // Renderiza a tela de perfil detalhada
         }
 
         lucide.createIcons(); // Recria ícones gerais
@@ -994,6 +992,10 @@ document.addEventListener('DOMContentLoaded', function () {
      * Renderiza a tela de detalhes para um item específico.
      * @param {object} item - Objeto contendo o docId do item.
      */
+    /**
+         * Renderiza a tela de detalhes para um item específico.
+         * @param {object} item - Objeto contendo o docId do item.
+         */
     async function showDetailsView(item) {
         // Esconde header/footer
         document.querySelector('header').classList.add('hidden');
@@ -1026,6 +1028,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let backgroundUrl = data.backdrop;
         const finalImageUrl = (backgroundUrl && backgroundUrl.startsWith('http')) ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
 
+        // --- AQUI ESTÁ A ALTERAÇÃO PARA O GIF ---
         // Verifica se existe poster e se é um link válido, senão usa o GIF
         const posterUrl = (data.poster && data.poster.startsWith('http')) ? data.poster : 'https://files.catbox.moe/sytt0s.gif';
 
@@ -1077,6 +1080,8 @@ document.addEventListener('DOMContentLoaded', function () {
             `;
         }
 
+        // ... (O resto da função continua com os listeners de botões) ...
+
         // Adiciona listeners aos botões da tela de detalhes
         document.getElementById('back-from-details').addEventListener('click', () => history.back()); // Botão voltar
         document.getElementById('details-watch-btn').addEventListener('click', () => { // Botão assistir
@@ -1117,11 +1122,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         attachGlassButtonListeners(); // Reatacha listeners visuais
     }
-
     /**
-     * Renderiza a seção de temporadas e episódios para uma série na tela de detalhes.
-     * @param {object} data - Os dados da série.
-     */
+         * Renderiza a seção de temporadas e episódios para uma série na tela de detalhes.
+         * @param {object} data - Os dados da série.
+         */
     function renderTvDetails(data) {
         const container = document.getElementById('tv-content-details');
         if (!container) return;
@@ -1162,151 +1166,6 @@ document.addEventListener('DOMContentLoaded', function () {
         `;
         lucide.createIcons();
 
-        /**
-           * Renderiza a tela de Perfil do Usuário (Versão Blindada v2)
-           */
-        async function renderUserProfileView() {
-            console.log("--- Iniciando renderUserProfileView ---");
-
-            // 1. TENTATIVA DE RECUPERAÇÃO DE DADOS (CRÍTICO)
-            // Se currentProfile for nulo, tenta recuperar usando o ID salvo no LocalStorage
-            if (!currentProfile) {
-                console.warn("currentProfile está nulo. Tentando recuperar...");
-
-                if (!userId && auth.currentUser) userId = auth.currentUser.uid;
-
-                if (userId) {
-                    const savedProfileId = localStorage.getItem(`starlight-lastProfile-${userId}`);
-                    // Se a lista de perfis estiver vazia, carrega ela agora
-                    if (!profiles || profiles.length === 0) {
-                        await loadProfiles();
-                    }
-                    // Tenta achar o perfil na lista
-                    if (savedProfileId && profiles.length > 0) {
-                        currentProfile = profiles.find(p => p.id === savedProfileId);
-                        console.log("Perfil recuperado via LocalStorage:", currentProfile);
-                    }
-                }
-            }
-
-            // Se ainda assim não tiver perfil, volta para a seleção
-            if (!currentProfile) {
-                console.error("Não foi possível carregar o perfil. Redirecionando.");
-                window.location.hash = '#manage-profile-view';
-                return;
-            }
-
-            // 2. REFERÊNCIAS AO DOM
-            const avatarImg = document.getElementById('settings-avatar-img');
-            const nameDisplay = document.getElementById('settings-name-display');
-            const nameInput = document.getElementById('settings-input-name');
-            const emailInput = document.getElementById('settings-input-email');
-
-            // 3. ATUALIZAÇÃO DOS DADOS VISUAIS
-
-            // --- Avatar ---
-            // Se não tiver avatar, usa o padrão.
-            const avatarUrl = currentProfile.avatar || 'https://files.catbox.moe/sytt0s.gif';
-            if (avatarImg) {
-                avatarImg.src = avatarUrl;
-                // Adiciona handler de erro caso a imagem esteja quebrada
-                avatarImg.onerror = function () {
-                    this.src = 'https://files.catbox.moe/sytt0s.gif';
-                };
-            }
-
-            // --- Nome ---
-            if (nameDisplay) nameDisplay.innerText = currentProfile.name || "Sem Nome";
-            if (nameInput) nameInput.value = currentProfile.name || "";
-
-            // --- Email (Correção do Bug de Login) ---
-            // Tenta pegar do Auth do Firebase, se não der, tenta da variável global
-            let userEmailText = "Email indisponível";
-            if (auth.currentUser && auth.currentUser.email) {
-                userEmailText = auth.currentUser.email;
-            } else if (userEmail) {
-                userEmailText = userEmail;
-            }
-
-            if (emailInput) {
-                emailInput.value = userEmailText;
-                console.log("Email definido para:", userEmailText);
-            }
-
-            // 4. CONFIGURAÇÃO DO BOTÃO SALVAR (Clonagem para limpar listeners antigos)
-            const oldSaveBtn = document.getElementById('save-settings-btn');
-            if (oldSaveBtn) {
-                const newSaveBtn = oldSaveBtn.cloneNode(true);
-                oldSaveBtn.parentNode.replaceChild(newSaveBtn, oldSaveBtn);
-
-                newSaveBtn.addEventListener('click', async () => {
-                    const newName = document.getElementById('settings-input-name').value.trim();
-
-                    if (!newName) {
-                        showToast('O nome não pode estar vazio.', true);
-                        return;
-                    }
-
-                    newSaveBtn.innerText = "Salvando...";
-                    newSaveBtn.disabled = true;
-
-                    try {
-                        // Atualiza no Firebase
-                        const docRef = doc(db, 'users', userId, 'profiles', currentProfile.id);
-                        await updateDoc(docRef, { name: newName });
-
-                        // Atualiza Localmente
-                        currentProfile.name = newName;
-                        const pIndex = profiles.findIndex(p => p.id === currentProfile.id);
-                        if (pIndex > -1) profiles[pIndex].name = newName;
-
-                        // Atualiza a tela imediatamente
-                        if (nameDisplay) nameDisplay.innerText = newName;
-
-                        showToast('Nome salvo com sucesso!');
-                    } catch (e) {
-                        console.error("Erro ao salvar nome:", e);
-                        showToast('Erro ao salvar.', true);
-                    } finally {
-                        newSaveBtn.innerText = "Salvar Alterações";
-                        newSaveBtn.disabled = false;
-                    }
-                });
-            }
-
-            // 5. BOTÃO DE TROCAR AVATAR
-            const changeAvatarBtn = document.getElementById('change-avatar-btn');
-            if (changeAvatarBtn) {
-                // Remove listener antigo substituindo o elemento
-                const newChangeBtn = changeAvatarBtn.cloneNode(true);
-                changeAvatarBtn.parentNode.replaceChild(newChangeBtn, changeAvatarBtn);
-
-                newChangeBtn.onclick = (e) => {
-                    e.preventDefault();
-                    isEditMode = true; // Importante para o modal saber que é edição
-                    showProfileModal(currentProfile.id);
-                };
-            }
-
-            // 6. RENDERIZA A MINHA LISTA (Grid abaixo)
-            const myListGrid = document.getElementById('settings-mylist-grid');
-            if (myListGrid) {
-                myListGrid.innerHTML = '<div class="spinner w-6 h-6 border-2 mx-auto col-span-full"></div>';
-                const list = await getMyList();
-
-                if (list.length === 0) {
-                    myListGrid.innerHTML = '<p class="text-stone-500 text-sm col-span-full">Sua lista está vazia.</p>';
-                } else {
-                    // Mostra apenas os 4 primeiros itens
-                    const previewList = list.slice(0, 4);
-                    myListGrid.innerHTML = previewList.map(item => createGridCard(item)).join('');
-                }
-            }
-
-            // Reativa os efeitos de vidro nos novos elementos
-            attachGlassButtonListeners();
-            lucide.createIcons();
-        }
         // Renderiza a lista de episódios
         const renderEpisodes = (seasonKey) => {
             const season = data.seasons[seasonKey];
@@ -2626,90 +2485,40 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Listener para o botão "Salvar" do modal de perfil
     document.getElementById('save-profile-btn').addEventListener('click', async () => {
-        const name = document.getElementById('profile-name-input').value.trim();
+        const name = document.getElementById('profile-name-input').value.trim(); // Pega o nome
+        const selectedAvatar = document.querySelector('#avatar-options .scale-110')?.dataset.avatar; // Pega o avatar selecionado
+        const profileId = document.getElementById('profile-id-input').value; // Pega o ID (se estiver editando)
 
-        // Pega o avatar que está com o efeito de zoom (selecionado)
-        const selectedElement = document.querySelector('#avatar-options img.scale-110');
-        const selectedAvatar = selectedElement ? selectedElement.dataset.avatar : null;
-
-        const profileId = document.getElementById('profile-id-input').value; // ID do perfil sendo editado
-
-        if (!name) {
-            showToast('O nome não pode estar vazio.', true);
+        // Validação simples
+        if (!name || !selectedAvatar) {
+            showToast('Por favor, preencha o nome e selecione um avatar.', true);
+            return;
+        }
+        if (!userId) { // Verifica se o usuário ainda está logado
+            showToast('Erro de autenticação. Por favor, recarregue a página.', true);
             return;
         }
 
-        // Se estiver editando e não selecionou avatar novo, mantem o antigo (se disponível)
-        let avatarToSave = selectedAvatar;
-        if (!avatarToSave && profileId) {
-            const existingProfile = profiles.find(p => p.id === profileId);
-            if (existingProfile) avatarToSave = existingProfile.avatar;
-        }
-
-        if (!avatarToSave) {
-            showToast('Selecione um avatar.', true);
-            return;
-        }
-
-        const profileData = { name, avatar: avatarToSave };
+        const profileData = { name, avatar: selectedAvatar }; // Dados a serem salvos
 
         try {
-            const btn = document.getElementById('save-profile-btn');
-            btn.textContent = "Salvando...";
-            btn.disabled = true;
-
-            if (profileId) { // EDITAR PERFIL EXISTENTE
+            if (profileId) { // Se tem ID, atualiza o perfil existente
                 const docRef = doc(db, 'users', userId, 'profiles', profileId);
                 await updateDoc(docRef, profileData);
-
-                // --- ATUALIZAÇÃO EM TEMPO REAL DA UI ---
-
-                // 1. Atualiza o array local de perfis
-                const pIndex = profiles.findIndex(p => p.id === profileId);
-                if (pIndex > -1) {
-                    profiles[pIndex].name = name;
-                    profiles[pIndex].avatar = avatarToSave;
-                }
-
-                // 2. Se o perfil editado é o que estamos usando agora
-                if (currentProfile && currentProfile.id === profileId) {
-                    // Atualiza variável global
-                    currentProfile.name = name;
-                    currentProfile.avatar = avatarToSave;
-
-                    // Atualiza Header (Bolinha pequena)
-                    const headerImg = document.querySelector('#header-profile-btn img');
-                    if (headerImg) headerImg.src = avatarToSave;
-
-                    // Atualiza Tela de Configurações (Imagem Grande e Texto)
-                    const settingsImg = document.getElementById('settings-avatar-img');
-                    const settingsName = document.getElementById('settings-name-display');
-                    const settingsInput = document.getElementById('settings-input-name');
-
-                    if (settingsImg) settingsImg.src = avatarToSave;
-                    if (settingsName) settingsName.textContent = name;
-                    if (settingsInput) settingsInput.value = name;
-                }
-
-                showToast('Perfil atualizado!');
-            } else { // CRIAR NOVO PERFIL
+                showToast('Perfil atualizado com sucesso!');
+            } else { // Se não tem ID, adiciona um novo perfil
                 const colRef = collection(db, 'users', userId, 'profiles');
                 await addDoc(colRef, profileData);
-                showToast('Perfil criado!');
+                showToast('Perfil criado com sucesso!');
             }
-
-            await loadProfiles(); // Atualiza a lista da tela de gerenciamento
-            document.getElementById('profile-modal').classList.add('hidden'); // Fecha modal
-
+            await loadProfiles(); // Recarrega a lista de perfis da UI
+            profileModal.classList.add('hidden'); // Esconde o modal
         } catch (error) {
-            console.error("Erro ao salvar:", error);
-            showToast('Erro ao salvar.', true);
-        } finally {
-            const btn = document.getElementById('save-profile-btn');
-            btn.textContent = "Salvar";
-            btn.disabled = false;
+            console.error("Erro ao salvar perfil: ", error);
+            showToast('Não foi possível salvar o perfil.', true);
         }
     });
+
     // Listener para o botão "Cancelar" do modal de perfil
     document.getElementById('cancel-profile-btn').addEventListener('click', () => profileModal.classList.add('hidden'));
 
@@ -2748,9 +2557,15 @@ document.addEventListener('DOMContentLoaded', function () {
         renderProfiles(); // Re-renderiza os perfis para mostrar/esconder o ícone de edição
     });
 
-    // Listener para o botão de perfil no header (leva para a tela DETALHADA de perfil)
+    // Listener para o botão de perfil no header (leva para a tela de gerenciamento)
     headerProfileBtn.addEventListener('click', () => {
-        window.location.hash = 'user-profile-view'; // Apenas navega para a tela de configurações
+        // Reseta o estado de edição e força a seleção de perfil ao mudar o hash
+        isEditMode = false;
+        manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
+        document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
+        currentProfile = null; // **IMPORTANTE:** Limpa o perfil atual para forçar seleção
+        localStorage.removeItem(`starlight-lastProfile-${userId}`); // Limpa o perfil salvo
+        window.location.hash = 'manage-profile-view'; // Navega para a tela de gerenciamento
     });
 
     // --- Lógica de Autenticação e Troca de Formulário (Login/Registro) ---
