@@ -1163,79 +1163,91 @@ document.addEventListener('DOMContentLoaded', function () {
         lucide.createIcons();
 
         /**
-     * Renderiza a tela de Perfil do Usuário (Configurações)
-     */
+             * Renderiza a tela de Perfil do Usuário e preenche os dados (Nome, Email, Avatar)
+             */
         async function renderUserProfileView() {
             if (!currentProfile) return;
 
-            // Preenche os dados básicos
+            // 1. Pega os elementos da tela
             const avatarImg = document.getElementById('settings-avatar-img');
             const nameDisplay = document.getElementById('settings-name-display');
             const nameInput = document.getElementById('settings-input-name');
             const emailInput = document.getElementById('settings-input-email');
 
-            // Define valores
-            avatarImg.src = currentProfile.avatar;
-            nameDisplay.textContent = currentProfile.name;
-            nameInput.value = currentProfile.name;
-            emailInput.value = userEmail || "Email não disponível";
+            // 2. Preenche com os dados atuais do usuário e do perfil
+            avatarImg.src = currentProfile.avatar; // Põe a foto
+            nameDisplay.textContent = currentProfile.name; // Põe o nome grande
+            nameInput.value = currentProfile.name; // Põe o nome no input editável
+            emailInput.value = userEmail || "Email indisponível"; // Põe o email (bloqueado)
 
-            // --- Renderiza "Minha Lista" (Limitada a 3 itens para preview) ---
+            // 3. Renderiza prévia da "Minha Lista" (mostra apenas 3 itens)
             const myListGrid = document.getElementById('settings-mylist-grid');
             myListGrid.innerHTML = '<div class="spinner w-6 h-6 border-2 mx-auto col-span-full"></div>';
 
-            const list = await getMyList();
+            const list = await getMyList(); // Busca a lista no banco
 
             if (list.length === 0) {
                 myListGrid.innerHTML = '<p class="text-stone-500 text-sm col-span-full">Sua lista está vazia.</p>';
             } else {
-                // Pega apenas os 3 primeiros itens
-                const previewList = list.slice(0, 3);
+                const previewList = list.slice(0, 3); // Pega só os 3 primeiros
                 myListGrid.innerHTML = previewList.map(item => createGridCard(item)).join('');
             }
 
-            // --- Listeners dos Botões desta tela ---
-
-            // 1. Salvar Alterações (Nome)
+            // 4. Configura o botão "Salvar Alterações" (Para mudar o NOME)
             const saveBtn = document.getElementById('save-settings-btn');
-            // Remove listener antigo para evitar duplicação
+            // Truque para remover listeners antigos e evitar cliques duplos
             const newSaveBtn = saveBtn.cloneNode(true);
             saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
 
             newSaveBtn.addEventListener('click', async () => {
                 const newName = nameInput.value.trim();
+
+                // Só salva se o nome for válido e diferente do atual
                 if (newName && newName !== currentProfile.name) {
+                    newSaveBtn.disabled = true;
+                    newSaveBtn.textContent = "Salvando...";
                     try {
+                        // Atualiza no Firebase
                         const docRef = doc(db, 'users', userId, 'profiles', currentProfile.id);
                         await updateDoc(docRef, { name: newName });
-                        currentProfile.name = newName; // Atualiza local
-                        nameDisplay.textContent = newName; // Atualiza display
+
+                        // Atualiza variáveis locais e a tela
+                        currentProfile.name = newName;
+                        nameDisplay.textContent = newName;
+
+                        // Se a variável userDisplayName for usada, atualiza também
+                        userDisplayName = newName;
+
                         showToast('Nome atualizado com sucesso!');
                     } catch (e) {
                         console.error(e);
                         showToast('Erro ao atualizar nome.', true);
+                    } finally {
+                        newSaveBtn.disabled = false;
+                        newSaveBtn.textContent = "Salvar Alterações";
                     }
                 } else {
-                    showToast('Nenhuma alteração detectada.');
+                    showToast('Nenhuma alteração para salvar.');
                 }
             });
 
-            // 2. Botão Sair (Logout)
-            document.getElementById('logout-menu-btn').onclick = () => document.getElementById('logout-btn').click();
+            // 5. Botão "Alterar Avatar" - Abre o modal de perfis existente
+            const changeAvatarBtn = document.getElementById('change-avatar-btn');
+            // Clona para remover listeners antigos
+            const newChangeAvatarBtn = changeAvatarBtn.cloneNode(true);
+            changeAvatarBtn.parentNode.replaceChild(newChangeAvatarBtn, changeAvatarBtn);
 
-            // 3. Botão Trocar Perfil (Volta para a tela de gerenciamento)
+            newChangeAvatarBtn.onclick = () => {
+                isEditMode = true; // Ativa modo de edição para podermos salvar
+                showProfileModal(currentProfile.id); // Abre o modal focado neste perfil
+            };
+
+            // 6. Botões de Menu Lateral
+            document.getElementById('logout-menu-btn').onclick = () => document.getElementById('logout-btn').click();
             document.getElementById('switch-profile-menu-btn').onclick = () => {
-                // Limpa o perfil atual e vai para a tela de seleção
                 currentProfile = null;
                 localStorage.removeItem(`starlight-lastProfile-${userId}`);
                 window.location.hash = '#manage-profile-view';
-            };
-
-            // 4. Botão Alterar Avatar (Abre o modal existente)
-            document.getElementById('change-avatar-btn').onclick = () => {
-                // Reutiliza a lógica de abrir modal de edição
-                isEditMode = true;
-                showProfileModal(currentProfile.id);
             };
 
             attachGlassButtonListeners();
@@ -2559,39 +2571,59 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Listener para o botão "Salvar" do modal de perfil
+    // Listener para o botão "Salvar" do modal de perfil (ATUALIZADO)
     document.getElementById('save-profile-btn').addEventListener('click', async () => {
-        const name = document.getElementById('profile-name-input').value.trim(); // Pega o nome
-        const selectedAvatar = document.querySelector('#avatar-options .scale-110')?.dataset.avatar; // Pega o avatar selecionado
-        const profileId = document.getElementById('profile-id-input').value; // Pega o ID (se estiver editando)
+        const name = document.getElementById('profile-name-input').value.trim();
+        const selectedAvatar = document.querySelector('#avatar-options .scale-110')?.dataset.avatar;
+        const profileId = document.getElementById('profile-id-input').value; // ID do perfil sendo editado
 
-        // Validação simples
         if (!name || !selectedAvatar) {
-            showToast('Por favor, preencha o nome e selecione um avatar.', true);
+            showToast('Preencha o nome e selecione um avatar.', true);
             return;
         }
-        if (!userId) { // Verifica se o usuário ainda está logado
-            showToast('Erro de autenticação. Por favor, recarregue a página.', true);
+        if (!userId) {
+            showToast('Erro de autenticação.', true);
             return;
         }
 
-        const profileData = { name, avatar: selectedAvatar }; // Dados a serem salvos
+        const profileData = { name, avatar: selectedAvatar };
 
         try {
-            if (profileId) { // Se tem ID, atualiza o perfil existente
+            if (profileId) { // EDITAR PERFIL EXISTENTE
                 const docRef = doc(db, 'users', userId, 'profiles', profileId);
                 await updateDoc(docRef, profileData);
-                showToast('Perfil atualizado com sucesso!');
-            } else { // Se não tem ID, adiciona um novo perfil
+                showToast('Perfil atualizado!');
+
+                // --- NOVO: Se editamos o perfil que estamos usando agora ---
+                if (currentProfile && currentProfile.id === profileId) {
+                    // Atualiza os dados na memória
+                    currentProfile.name = name;
+                    currentProfile.avatar = selectedAvatar;
+
+                    // Atualiza a bolinha do header imediatamente
+                    const headerImg = headerProfileBtn.querySelector('img');
+                    if (headerImg) headerImg.src = selectedAvatar;
+
+                    // Se a tela de configurações estiver aberta, atualiza ela também
+                    if (window.location.hash === '#user-profile-view') {
+                        document.getElementById('settings-avatar-img').src = selectedAvatar;
+                        document.getElementById('settings-name-display').textContent = name;
+                        document.getElementById('settings-input-name').value = name;
+                    }
+                }
+                // -----------------------------------------------------------
+
+            } else { // CRIAR NOVO PERFIL
                 const colRef = collection(db, 'users', userId, 'profiles');
                 await addDoc(colRef, profileData);
                 showToast('Perfil criado com sucesso!');
             }
-            await loadProfiles(); // Recarrega a lista de perfis da UI
-            profileModal.classList.add('hidden'); // Esconde o modal
+
+            await loadProfiles(); // Recarrega a lista da tela de gerenciamento
+            profileModal.classList.add('hidden'); // Fecha o modal
         } catch (error) {
             console.error("Erro ao salvar perfil: ", error);
-            showToast('Não foi possível salvar o perfil.', true);
+            showToast('Erro ao salvar.', true);
         }
     });
 
