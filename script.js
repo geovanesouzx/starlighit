@@ -1168,87 +1168,92 @@ document.addEventListener('DOMContentLoaded', function () {
         async function renderUserProfileView() {
             if (!currentProfile) return;
 
-            // 1. Pega os elementos da tela
+            // Preenche os dados básicos
             const avatarImg = document.getElementById('settings-avatar-img');
             const nameDisplay = document.getElementById('settings-name-display');
             const nameInput = document.getElementById('settings-input-name');
             const emailInput = document.getElementById('settings-input-email');
 
-            // 2. Preenche com os dados atuais do usuário e do perfil
-            avatarImg.src = currentProfile.avatar; // Põe a foto
-            nameDisplay.textContent = currentProfile.name; // Põe o nome grande
-            nameInput.value = currentProfile.name; // Põe o nome no input editável
-            emailInput.value = userEmail || "Email indisponível"; // Põe o email (bloqueado)
+            // Define valores
+            if (avatarImg) avatarImg.src = currentProfile.avatar;
+            if (nameDisplay) nameDisplay.textContent = currentProfile.name;
+            if (nameInput) nameInput.value = currentProfile.name;
+            if (emailInput) emailInput.value = userEmail || "Email não disponível";
 
-            // 3. Renderiza prévia da "Minha Lista" (mostra apenas 3 itens)
+            // --- Renderiza "Minha Lista" ---
             const myListGrid = document.getElementById('settings-mylist-grid');
-            myListGrid.innerHTML = '<div class="spinner w-6 h-6 border-2 mx-auto col-span-full"></div>';
+            if (myListGrid) {
+                myListGrid.innerHTML = '<div class="spinner w-6 h-6 border-2 mx-auto col-span-full"></div>';
+                const list = await getMyList();
 
-            const list = await getMyList(); // Busca a lista no banco
-
-            if (list.length === 0) {
-                myListGrid.innerHTML = '<p class="text-stone-500 text-sm col-span-full">Sua lista está vazia.</p>';
-            } else {
-                const previewList = list.slice(0, 3); // Pega só os 3 primeiros
-                myListGrid.innerHTML = previewList.map(item => createGridCard(item)).join('');
+                if (list.length === 0) {
+                    myListGrid.innerHTML = '<p class="text-stone-500 text-sm col-span-full">Sua lista está vazia.</p>';
+                } else {
+                    const previewList = list.slice(0, 3);
+                    myListGrid.innerHTML = previewList.map(item => createGridCard(item)).join('');
+                }
             }
 
-            // 4. Configura o botão "Salvar Alterações" (Para mudar o NOME)
+            // --- Botão Salvar Alterações (Nome) ---
             const saveBtn = document.getElementById('save-settings-btn');
-            // Truque para remover listeners antigos e evitar cliques duplos
-            const newSaveBtn = saveBtn.cloneNode(true);
-            saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+            if (saveBtn) {
+                const newSaveBtn = saveBtn.cloneNode(true);
+                saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
 
-            newSaveBtn.addEventListener('click', async () => {
-                const newName = nameInput.value.trim();
-
-                // Só salva se o nome for válido e diferente do atual
-                if (newName && newName !== currentProfile.name) {
-                    newSaveBtn.disabled = true;
-                    newSaveBtn.textContent = "Salvando...";
-                    try {
-                        // Atualiza no Firebase
-                        const docRef = doc(db, 'users', userId, 'profiles', currentProfile.id);
-                        await updateDoc(docRef, { name: newName });
-
-                        // Atualiza variáveis locais e a tela
-                        currentProfile.name = newName;
-                        nameDisplay.textContent = newName;
-
-                        // Se a variável userDisplayName for usada, atualiza também
-                        userDisplayName = newName;
-
-                        showToast('Nome atualizado com sucesso!');
-                    } catch (e) {
-                        console.error(e);
-                        showToast('Erro ao atualizar nome.', true);
-                    } finally {
-                        newSaveBtn.disabled = false;
-                        newSaveBtn.textContent = "Salvar Alterações";
+                newSaveBtn.addEventListener('click', async () => {
+                    const newName = nameInput.value.trim();
+                    if (newName && newName !== currentProfile.name) {
+                        try {
+                            const docRef = doc(db, 'users', userId, 'profiles', currentProfile.id);
+                            await updateDoc(docRef, { name: newName });
+                            currentProfile.name = newName;
+                            if (nameDisplay) nameDisplay.textContent = newName;
+                            showToast('Nome atualizado com sucesso!');
+                        } catch (e) {
+                            console.error(e);
+                            showToast('Erro ao atualizar nome.', true);
+                        }
+                    } else {
+                        showToast('Nenhuma alteração detectada.');
                     }
-                } else {
-                    showToast('Nenhuma alteração para salvar.');
-                }
-            });
+                });
+            }
 
-            // 5. Botão "Alterar Avatar" - Abre o modal de perfis existente
+            // --- CORREÇÃO DO BOTÃO SAIR ---
+            const menuLogoutBtn = document.getElementById('logout-menu-btn');
+            if (menuLogoutBtn) {
+                menuLogoutBtn.onclick = (e) => {
+                    e.preventDefault(); // Evita comportamento padrão
+                    const mainLogoutBtn = document.getElementById('logout-btn');
+                    if (mainLogoutBtn) {
+                        mainLogoutBtn.click(); // Aciona o botão de sair real
+                    } else {
+                        // Fallback se o botão principal não for achado
+                        signOut(auth).then(() => location.reload());
+                    }
+                };
+            }
+
+            // --- Botão Trocar Perfil ---
+            const switchProfileBtn = document.getElementById('switch-profile-menu-btn');
+            if (switchProfileBtn) {
+                switchProfileBtn.onclick = (e) => {
+                    e.preventDefault();
+                    currentProfile = null;
+                    localStorage.removeItem(`starlight-lastProfile-${userId}`);
+                    window.location.hash = '#manage-profile-view';
+                };
+            }
+
+            // --- Botão Alterar Avatar ---
             const changeAvatarBtn = document.getElementById('change-avatar-btn');
-            // Clona para remover listeners antigos
-            const newChangeAvatarBtn = changeAvatarBtn.cloneNode(true);
-            changeAvatarBtn.parentNode.replaceChild(newChangeAvatarBtn, changeAvatarBtn);
-
-            newChangeAvatarBtn.onclick = () => {
-                isEditMode = true; // Ativa modo de edição para podermos salvar
-                showProfileModal(currentProfile.id); // Abre o modal focado neste perfil
-            };
-
-            // 6. Botões de Menu Lateral
-            document.getElementById('logout-menu-btn').onclick = () => document.getElementById('logout-btn').click();
-            document.getElementById('switch-profile-menu-btn').onclick = () => {
-                currentProfile = null;
-                localStorage.removeItem(`starlight-lastProfile-${userId}`);
-                window.location.hash = '#manage-profile-view';
-            };
+            if (changeAvatarBtn) {
+                changeAvatarBtn.onclick = (e) => {
+                    e.preventDefault();
+                    isEditMode = true;
+                    showProfileModal(currentProfile.id);
+                };
+            }
 
             attachGlassButtonListeners();
             lucide.createIcons();
