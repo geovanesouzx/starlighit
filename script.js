@@ -939,10 +939,10 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     /**
-     * Renderiza o conteúdo específico de uma tela principal (Home, Séries, Filmes, etc.).
-     * @param {string} screenId - O ID da tela a ser renderizada.
-     * @param {boolean} [forceReload=false] - Se true, força o recarregamento (não usado atualmente).
-     */
+       * Renderiza o conteúdo específico de uma tela principal (Home, Séries, Filmes, etc.).
+       * @param {string} screenId - O ID da tela a ser renderizada.
+       * @param {boolean} [forceReload=false] - Se true, força o recarregamento (não usado atualmente).
+       */
     function renderScreenContent(screenId, forceReload = false) {
         const screenElement = document.getElementById(screenId);
         if (!screenElement) return; // Sai se a tela não for encontrada
@@ -972,6 +972,8 @@ document.addEventListener('DOMContentLoaded', function () {
             renderNewsFeed(); // NOVO: Renderiza o feed de novidades
         } else if (screenId === 'report-view') {
             lucide.createIcons(); // Garante que os ícones do formulário apareçam
+        } else if (screenId === 'user-profile-view') {
+            renderUserProfileView(); // Renderiza a tela de perfil detalhada
         }
 
         lucide.createIcons(); // Recria ícones gerais
@@ -992,10 +994,6 @@ document.addEventListener('DOMContentLoaded', function () {
      * Renderiza a tela de detalhes para um item específico.
      * @param {object} item - Objeto contendo o docId do item.
      */
-    /**
-         * Renderiza a tela de detalhes para um item específico.
-         * @param {object} item - Objeto contendo o docId do item.
-         */
     async function showDetailsView(item) {
         // Esconde header/footer
         document.querySelector('header').classList.add('hidden');
@@ -1028,7 +1026,6 @@ document.addEventListener('DOMContentLoaded', function () {
         let backgroundUrl = data.backdrop;
         const finalImageUrl = (backgroundUrl && backgroundUrl.startsWith('http')) ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
 
-        // --- AQUI ESTÁ A ALTERAÇÃO PARA O GIF ---
         // Verifica se existe poster e se é um link válido, senão usa o GIF
         const posterUrl = (data.poster && data.poster.startsWith('http')) ? data.poster : 'https://files.catbox.moe/sytt0s.gif';
 
@@ -1080,8 +1077,6 @@ document.addEventListener('DOMContentLoaded', function () {
             `;
         }
 
-        // ... (O resto da função continua com os listeners de botões) ...
-
         // Adiciona listeners aos botões da tela de detalhes
         document.getElementById('back-from-details').addEventListener('click', () => history.back()); // Botão voltar
         document.getElementById('details-watch-btn').addEventListener('click', () => { // Botão assistir
@@ -1122,10 +1117,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         attachGlassButtonListeners(); // Reatacha listeners visuais
     }
+
     /**
-         * Renderiza a seção de temporadas e episódios para uma série na tela de detalhes.
-         * @param {object} data - Os dados da série.
-         */
+     * Renderiza a seção de temporadas e episódios para uma série na tela de detalhes.
+     * @param {object} data - Os dados da série.
+     */
     function renderTvDetails(data) {
         const container = document.getElementById('tv-content-details');
         if (!container) return;
@@ -1166,6 +1162,132 @@ document.addEventListener('DOMContentLoaded', function () {
         `;
         lucide.createIcons();
 
+        /**
+         * Renderiza a tela de Perfil (VERSÃO AGRESSIVA V3)
+         * Força a injeção de dados mesmo se houver atraso no carregamento.
+         */
+        async function renderUserProfileView() {
+            console.log(">>> RENDERIZANDO PERFIL DO USUÁRIO V3 <<<");
+
+            // 1. Recuperação de Falha de Perfil
+            if (!currentProfile) {
+                console.warn("Perfil perdido. Tentando recuperar do armazenamento...");
+                if (auth.currentUser) {
+                    const savedId = localStorage.getItem(`starlight-lastProfile-${auth.currentUser.uid}`);
+                    if (savedId && profiles.length === 0) await loadProfiles();
+                    if (savedId) currentProfile = profiles.find(p => p.id === savedId);
+                }
+            }
+
+            if (!currentProfile) {
+                console.error("Erro fatal: Nenhum perfil encontrado. Voltando para seleção.");
+                window.location.hash = '#manage-profile-view';
+                return;
+            }
+
+            // 2. Função de Injeção com Tentativas (Retry)
+            // Isso garante que, se o HTML demorar 1ms a mais pra renderizar, o JS tenta de novo.
+            const injectData = (retryCount = 0) => {
+                const avatarImg = document.getElementById('settings-avatar-img');
+                const nameDisplay = document.getElementById('settings-name-display');
+                const nameInput = document.getElementById('settings-input-name');
+                const emailInput = document.getElementById('settings-input-email');
+
+                // Se não achou os elementos e ainda não tentou 10 vezes, tenta de novo em 50ms
+                if ((!avatarImg || !nameDisplay) && retryCount < 10) {
+                    setTimeout(() => injectData(retryCount + 1), 50);
+                    return;
+                }
+
+                console.log("Elementos encontrados. Injetando dados:", currentProfile);
+
+                // -- INJEÇÃO DOS DADOS --
+                if (avatarImg) {
+                    // Adiciona timestamp para evitar cache antigo
+                    const cleanAvatar = currentProfile.avatar || 'https://files.catbox.moe/sytt0s.gif';
+                    avatarImg.src = cleanAvatar;
+                    avatarImg.classList.remove('hidden', 'opacity-0'); // Garante visibilidade
+                }
+
+                if (nameDisplay) nameDisplay.innerText = currentProfile.name;
+                if (nameInput) nameInput.value = currentProfile.name;
+
+                // Pega o email do Firebase Auth direto
+                const realEmail = auth.currentUser?.email || userEmail || "Email não detectado";
+                if (emailInput) {
+                    emailInput.value = realEmail;
+                    // Remove o atributo 'disabled' temporariamente para testar se é bloqueio visual, depois reativa se quiser
+                    // emailInput.disabled = false; 
+                }
+            };
+
+            // Executa a injeção
+            injectData();
+
+            // 3. Lógica do Botão Salvar (Blindada)
+            setTimeout(() => {
+                const saveBtn = document.getElementById('save-settings-btn');
+                if (saveBtn) {
+                    const newBtn = saveBtn.cloneNode(true);
+                    saveBtn.parentNode.replaceChild(newBtn, saveBtn);
+
+                    newBtn.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        const newName = document.getElementById('settings-input-name').value.trim();
+
+                        if (!newName) return showToast('Nome inválido.', true);
+
+                        newBtn.innerHTML = '<div class="spinner w-4 h-4 border-2"></div> Salvando...';
+                        newBtn.disabled = true;
+
+                        try {
+                            // Atualiza no Banco
+                            await updateDoc(doc(db, 'users', userId, 'profiles', currentProfile.id), {
+                                name: newName
+                            });
+
+                            // Atualiza na Memória
+                            currentProfile.name = newName;
+                            document.getElementById('settings-name-display').innerText = newName;
+
+                            // Atualiza no Header
+                            const headerImg = document.querySelector('#header-profile-btn img');
+                            if (headerImg) headerImg.src = currentProfile.avatar;
+
+                            showToast('Perfil salvo com sucesso!');
+                        } catch (error) {
+                            console.error(error);
+                            showToast('Erro ao salvar.', true);
+                        } finally {
+                            newBtn.innerText = 'Salvar Alterações';
+                            newBtn.disabled = false;
+                        }
+                    });
+                }
+
+                // 4. Lógica do Botão Trocar Avatar
+                const avatarBtn = document.getElementById('change-avatar-btn');
+                if (avatarBtn) {
+                    const newAvatarBtn = avatarBtn.cloneNode(true);
+                    avatarBtn.parentNode.replaceChild(newAvatarBtn, avatarBtn);
+
+                    newAvatarBtn.onclick = (e) => {
+                        e.preventDefault();
+                        isEditMode = true;
+                        showProfileModal(currentProfile.id);
+                    };
+                }
+            }, 100); // Pequeno delay para garantir que o DOM está pronto
+
+            // Recarrega a lista
+            const listGrid = document.getElementById('settings-mylist-grid');
+            if (listGrid) {
+                const list = await getMyList();
+                listGrid.innerHTML = list.length ? list.slice(0, 4).map(createGridCard).join('') : '<p class="text-stone-500 col-span-full">Lista vazia.</p>';
+            }
+
+            attachGlassButtonListeners();
+        }
         // Renderiza a lista de episódios
         const renderEpisodes = (seasonKey) => {
             const season = data.seasons[seasonKey];
@@ -2485,40 +2607,90 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Listener para o botão "Salvar" do modal de perfil
     document.getElementById('save-profile-btn').addEventListener('click', async () => {
-        const name = document.getElementById('profile-name-input').value.trim(); // Pega o nome
-        const selectedAvatar = document.querySelector('#avatar-options .scale-110')?.dataset.avatar; // Pega o avatar selecionado
-        const profileId = document.getElementById('profile-id-input').value; // Pega o ID (se estiver editando)
+        const name = document.getElementById('profile-name-input').value.trim();
 
-        // Validação simples
-        if (!name || !selectedAvatar) {
-            showToast('Por favor, preencha o nome e selecione um avatar.', true);
+        // Pega o avatar que está com o efeito de zoom (selecionado)
+        const selectedElement = document.querySelector('#avatar-options img.scale-110');
+        const selectedAvatar = selectedElement ? selectedElement.dataset.avatar : null;
+
+        const profileId = document.getElementById('profile-id-input').value; // ID do perfil sendo editado
+
+        if (!name) {
+            showToast('O nome não pode estar vazio.', true);
             return;
         }
-        if (!userId) { // Verifica se o usuário ainda está logado
-            showToast('Erro de autenticação. Por favor, recarregue a página.', true);
+
+        // Se estiver editando e não selecionou avatar novo, mantem o antigo (se disponível)
+        let avatarToSave = selectedAvatar;
+        if (!avatarToSave && profileId) {
+            const existingProfile = profiles.find(p => p.id === profileId);
+            if (existingProfile) avatarToSave = existingProfile.avatar;
+        }
+
+        if (!avatarToSave) {
+            showToast('Selecione um avatar.', true);
             return;
         }
 
-        const profileData = { name, avatar: selectedAvatar }; // Dados a serem salvos
+        const profileData = { name, avatar: avatarToSave };
 
         try {
-            if (profileId) { // Se tem ID, atualiza o perfil existente
+            const btn = document.getElementById('save-profile-btn');
+            btn.textContent = "Salvando...";
+            btn.disabled = true;
+
+            if (profileId) { // EDITAR PERFIL EXISTENTE
                 const docRef = doc(db, 'users', userId, 'profiles', profileId);
                 await updateDoc(docRef, profileData);
-                showToast('Perfil atualizado com sucesso!');
-            } else { // Se não tem ID, adiciona um novo perfil
+
+                // --- ATUALIZAÇÃO EM TEMPO REAL DA UI ---
+
+                // 1. Atualiza o array local de perfis
+                const pIndex = profiles.findIndex(p => p.id === profileId);
+                if (pIndex > -1) {
+                    profiles[pIndex].name = name;
+                    profiles[pIndex].avatar = avatarToSave;
+                }
+
+                // 2. Se o perfil editado é o que estamos usando agora
+                if (currentProfile && currentProfile.id === profileId) {
+                    // Atualiza variável global
+                    currentProfile.name = name;
+                    currentProfile.avatar = avatarToSave;
+
+                    // Atualiza Header (Bolinha pequena)
+                    const headerImg = document.querySelector('#header-profile-btn img');
+                    if (headerImg) headerImg.src = avatarToSave;
+
+                    // Atualiza Tela de Configurações (Imagem Grande e Texto)
+                    const settingsImg = document.getElementById('settings-avatar-img');
+                    const settingsName = document.getElementById('settings-name-display');
+                    const settingsInput = document.getElementById('settings-input-name');
+
+                    if (settingsImg) settingsImg.src = avatarToSave;
+                    if (settingsName) settingsName.textContent = name;
+                    if (settingsInput) settingsInput.value = name;
+                }
+
+                showToast('Perfil atualizado!');
+            } else { // CRIAR NOVO PERFIL
                 const colRef = collection(db, 'users', userId, 'profiles');
                 await addDoc(colRef, profileData);
-                showToast('Perfil criado com sucesso!');
+                showToast('Perfil criado!');
             }
-            await loadProfiles(); // Recarrega a lista de perfis da UI
-            profileModal.classList.add('hidden'); // Esconde o modal
+
+            await loadProfiles(); // Atualiza a lista da tela de gerenciamento
+            document.getElementById('profile-modal').classList.add('hidden'); // Fecha modal
+
         } catch (error) {
-            console.error("Erro ao salvar perfil: ", error);
-            showToast('Não foi possível salvar o perfil.', true);
+            console.error("Erro ao salvar:", error);
+            showToast('Erro ao salvar.', true);
+        } finally {
+            const btn = document.getElementById('save-profile-btn');
+            btn.textContent = "Salvar";
+            btn.disabled = false;
         }
     });
-
     // Listener para o botão "Cancelar" do modal de perfil
     document.getElementById('cancel-profile-btn').addEventListener('click', () => profileModal.classList.add('hidden'));
 
@@ -2557,15 +2729,9 @@ document.addEventListener('DOMContentLoaded', function () {
         renderProfiles(); // Re-renderiza os perfis para mostrar/esconder o ícone de edição
     });
 
-    // Listener para o botão de perfil no header (leva para a tela de gerenciamento)
+    // Listener para o botão de perfil no header (leva para a tela DETALHADA de perfil)
     headerProfileBtn.addEventListener('click', () => {
-        // Reseta o estado de edição e força a seleção de perfil ao mudar o hash
-        isEditMode = false;
-        manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
-        document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
-        currentProfile = null; // **IMPORTANTE:** Limpa o perfil atual para forçar seleção
-        localStorage.removeItem(`starlight-lastProfile-${userId}`); // Limpa o perfil salvo
-        window.location.hash = 'manage-profile-view'; // Navega para a tela de gerenciamento
+        window.location.hash = 'user-profile-view'; // Apenas navega para a tela de configurações
     });
 
     // --- Lógica de Autenticação e Troca de Formulário (Login/Registro) ---
