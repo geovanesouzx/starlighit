@@ -328,15 +328,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
-     * Cria e adiciona um carrossel de conteúdo a um container.
-     * @param {HTMLElement} container - O elemento onde o carrossel será adicionado.
-     * @param {string} title - O título do carrossel.
-     * @param {Array} data - Array de itens (filmes/séries) a serem exibidos.
-     */
+         * Cria e adiciona um carrossel de conteúdo a um container.
+         * ATUALIZADO: Com suporte a "Arrastar e Soltar" (Drag-to-Scroll) no PC.
+         */
     function createCarousel(container, title, data) {
-        if (!container || !data || data.length === 0) return; // Não faz nada se não houver dados
-        const section = document.createElement('section'); // Cria a seção do carrossel
-        // Define o HTML interno da seção
+        if (!container || !data || data.length === 0) return;
+
+        const section = document.createElement('section');
+
         section.innerHTML = `
             <div class="liquid-glass-card inline-block mb-6 rounded-full" style="--bg-color: rgba(30,30,30,0.3);">
                  <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
@@ -347,8 +346,49 @@ document.addEventListener('DOMContentLoaded', function () {
                     ${data.map(item => createContentCard(item)).join('')}
                 </div>
             </div>`;
-        container.appendChild(section); // Adiciona a seção ao container
-        lucide.createIcons(); // Recria ícones Lucide, se houver
+
+        container.appendChild(section);
+        lucide.createIcons();
+
+        // --- LÓGICA DE ARRASTAR COM O MOUSE (DRAG-TO-SCROLL) ---
+        const slider = section.querySelector('.carousel');
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+
+        slider.addEventListener('mousedown', (e) => {
+            isDown = true;
+            slider.classList.add('active'); // Muda cursor para 'grabbing'
+
+            // Desativa temporariamente o 'scroll-snap' para o arrasto ser fluido
+            slider.style.scrollSnapType = 'none';
+            slider.style.scrollBehavior = 'auto';
+
+            startX = e.pageX - slider.offsetLeft;
+            scrollLeft = slider.scrollLeft;
+        });
+
+        const stopDragging = () => {
+            if (!isDown) return;
+            isDown = false;
+            slider.classList.remove('active');
+
+            // Reativa o 'imã' do carrossel ao soltar
+            slider.style.scrollSnapType = 'x mandatory';
+            slider.style.scrollBehavior = 'smooth';
+        };
+
+        slider.addEventListener('mouseleave', stopDragging);
+        slider.addEventListener('mouseup', stopDragging);
+
+        slider.addEventListener('mousemove', (e) => {
+            if (!isDown) return; // Se não estiver clicando, não faz nada
+            e.preventDefault();  // Evita selecionar texto ou arrastar imagens
+
+            const x = e.pageX - slider.offsetLeft;
+            const walk = (x - startX) * 2; // Velocidade (multiplique por 3 para ir mais rápido)
+            slider.scrollLeft = scrollLeft - walk;
+        });
     }
 
     /**

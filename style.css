@@ -1392,3 +1392,16 @@ input[type="range"].player-seek-bar::-webkit-slider-thumb {
     /* Rosa */
     box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
 }
+
+/* --- ARRASTAR COM O MOUSE (DRAG TO SCROLL) --- */
+.carousel {
+    cursor: grab;
+    /* Mão aberta */
+    cursor: -webkit-grab;
+}
+
+.carousel.active {
+    cursor: grabbing;
+    /* Mão fechada (agarrando) */
+    cursor: -webkit-grabbing;
+}
