@@ -418,8 +418,12 @@
     <section id="player-view" class="hidden fixed inset-0 z-[200]">
         <video id="video-player" class="w-full h-full" preload="metadata"
             poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
+
+        <div class="player-watermark">
+            <img src="https://cdn-icons-png.flaticon.com/128/705/705062.png" alt="Logo">
+            <span>STARLIGHT</span>
+        </div>
         <div class="player-controls-wrapper absolute inset-0 p-4 sm:p-6 md:p-8 flex flex-col justify-between">
-            <!-- Top Controls -->
             <div class="flex justify-between items-start">
                 <button id="player-back-btn" class="glass-container glass-button player-control-btn rounded-full"
                     aria-label="Voltar">
@@ -439,7 +443,7 @@
                         <h3 id="player-title" class="text-white font-bold truncate"></h3>
                     </div>
                 </div>
-                <div></div> <!-- Placeholder for spacing -->
+                <div></div>
             </div>
 
             <!-- Bottom Controls -->
@@ -801,7 +805,7 @@
             </div>
         </div>
 
-        <script type="module" src="script.js?v=2.1"></script>
+        <script type="module" src="script.js?v=2.2"></script>
 </body>
 
 </html>

@@ -1392,3 +1392,74 @@ input[type="range"].player-seek-bar::-webkit-slider-thumb {
     /* Rosa */
     box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
 }
+
+/* --- MARCA D'ÁGUA DO PLAYER (STARLIGHT) --- */
+.player-watermark {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    z-index: 5;
+    /* Fica acima do vídeo, mas abaixo dos controles */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0.4;
+    /* Começa bem transparente para não atrapalhar */
+    pointer-events: none;
+    /* O MAIS IMPORTANTE: O clique atravessa a logo e pausa o vídeo */
+    user-select: none;
+    /* Impede seleção de texto */
+    transition: opacity 0.3s ease;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+    /* Sombra para destacar em cenas claras */
+}
+
+/* Fica um pouco mais visível quando mexe o mouse no player */
+#player-view:hover .player-watermark {
+    opacity: 0.8;
+}
+
+.player-watermark img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+.player-watermark span {
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    /* Fonte bem grossa */
+    font-size: 16px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+
+    /* Efeito Gradiente Roxo/Rosa no Texto */
+    background: linear-gradient(to right, #a855f7, #ec4899);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    /* O texto fica transparente para mostrar o gradiente */
+
+    /* Sombra extra no texto */
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 1));
+}
+
+/* Ajustes para Celular (Mobile) */
+@media (max-width: 768px) {
+    .player-watermark {
+        top: 16px;
+        right: 50px;
+        /* Afasta um pouco da borda por causa do notch ou botões */
+        opacity: 0.3;
+    }
+
+    .player-watermark img {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* No celular, escondemos o texto "STARLIGHT" para limpar a visão, mantendo só o ícone */
+    .player-watermark span {
+        display: none;
+    }
+}
