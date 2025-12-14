@@ -1405,3 +1405,36 @@ input[type="range"].player-seek-bar::-webkit-slider-thumb {
     /* Mão fechada (agarrando) */
     cursor: -webkit-grabbing;
 }
+
+/* --- CORREÇÃO DO ARRASTO (DRAG FIX) --- */
+
+/* Impede que o navegador tente arrastar a imagem (fantasma da imagem) */
+.carousel img {
+    -webkit-user-drag: none;
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    pointer-events: none;
+    /* Garante que o clique passe para o link/card */
+}
+
+/* Cursor de mãozinha */
+.carousel {
+    cursor: grab;
+    cursor: -webkit-grab;
+}
+
+/* Quando estiver clicando e arrastando */
+.carousel.active {
+    cursor: grabbing;
+    cursor: -webkit-grabbing;
+
+    /* O SEGREDO: Desliga qualquer suavização do navegador durante o arrasto */
+    scroll-behavior: auto !important;
+    scroll-snap-type: none !important;
+}
+
+/* Garante que o card em si não bloqueie o evento de mouse */
+.carousel-item {
+    user-select: none;
+}

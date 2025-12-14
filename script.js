@@ -328,9 +328,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
-         * Cria e adiciona um carrossel de conteúdo a um container.
-         * ATUALIZADO: Com suporte a "Arrastar e Soltar" (Drag-to-Scroll) no PC.
-         */
+      * Cria e adiciona um carrossel com suporte a Drag-to-Scroll (Mouse) fluido.
+      */
     function createCarousel(container, title, data) {
         if (!container || !data || data.length === 0) return;
 
@@ -342,7 +341,7 @@ document.addEventListener('DOMContentLoaded', function () {
                  <h2 class="glass-content text-xl sm:text-2xl font-bold text-white px-6 py-2">${title}</h2>
             </div>
             <div class="carousel-container relative">
-                <div class="carousel space-x-4 px-4 sm:px-6 lg:px-8 py-4 overflow-x-auto hide-scrollbar scroll-smooth">
+                <div class="carousel space-x-4 px-4 sm:px-6 lg:px-8 py-4 overflow-x-auto hide-scrollbar">
                     ${data.map(item => createContentCard(item)).join('')}
                 </div>
             </div>`;
@@ -350,7 +349,7 @@ document.addEventListener('DOMContentLoaded', function () {
         container.appendChild(section);
         lucide.createIcons();
 
-        // --- LÓGICA DE ARRASTAR COM O MOUSE (DRAG-TO-SCROLL) ---
+        // --- LÓGICA DE ARRASTAR (DRAG-TO-SCROLL) ---
         const slider = section.querySelector('.carousel');
         let isDown = false;
         let startX;
@@ -358,35 +357,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
         slider.addEventListener('mousedown', (e) => {
             isDown = true;
-            slider.classList.add('active'); // Muda cursor para 'grabbing'
-
-            // Desativa temporariamente o 'scroll-snap' para o arrasto ser fluido
-            slider.style.scrollSnapType = 'none';
-            slider.style.scrollBehavior = 'auto';
-
+            slider.classList.add('active'); // Ativa o CSS que remove o 'smooth'
             startX = e.pageX - slider.offsetLeft;
             scrollLeft = slider.scrollLeft;
         });
 
         const stopDragging = () => {
-            if (!isDown) return;
             isDown = false;
-            slider.classList.remove('active');
-
-            // Reativa o 'imã' do carrossel ao soltar
-            slider.style.scrollSnapType = 'x mandatory';
-            slider.style.scrollBehavior = 'smooth';
+            slider.classList.remove('active'); // Volta o CSS ao normal
         };
 
         slider.addEventListener('mouseleave', stopDragging);
         slider.addEventListener('mouseup', stopDragging);
 
         slider.addEventListener('mousemove', (e) => {
-            if (!isDown) return; // Se não estiver clicando, não faz nada
-            e.preventDefault();  // Evita selecionar texto ou arrastar imagens
+            if (!isDown) return;
+            e.preventDefault(); // Impede seleção de texto e arrasto nativo
 
             const x = e.pageX - slider.offsetLeft;
-            const walk = (x - startX) * 2; // Velocidade (multiplique por 3 para ir mais rápido)
+            const walk = (x - startX) * 2; // Velocidade do arrasto (2x)
+
+            // Aqui o scroll é aplicado diretamente, sem animação do CSS
             slider.scrollLeft = scrollLeft - walk;
         });
     }
