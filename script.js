@@ -905,38 +905,56 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) { console.error("Erro ao carregar Continuar Assistindo:", error); }
         }
 
-        // --- 1.5 NOVO: ÚLTIMOS EPISÓDIOS (Um por série) ---
-        // Filtra apenas séries que tenham dados de temporadas
+        // --- 1.5 NOVO: ÚLTIMOS EPISÓDIOS (CORRIGIDO: Prioriza data de exibição) ---
         const allSeries = firestoreContent.filter(item => item.type === 'tv' && item.seasons);
         const latestEpisodesList = [];
 
         allSeries.forEach(serie => {
-            // Pega as chaves das temporadas e ordena (maior número = temporada mais nova)
+            // Ordena as temporadas (da maior para a menor)
             const seasonKeys = Object.keys(serie.seasons).map(k => parseInt(k)).sort((a, b) => b - a);
 
             if (seasonKeys.length > 0) {
-                const lastSeasonKey = seasonKeys[0]; // Última temporada
+                const lastSeasonKey = seasonKeys[0];
                 const season = serie.seasons[lastSeasonKey];
 
                 if (season && season.episodes && season.episodes.length > 0) {
-                    // Pega o último episódio da lista dessa temporada
+                    // Pega o último episódio da lista
                     const lastEpisode = season.episodes[season.episodes.length - 1];
 
-                    // Verifica se tem data de lançamento para ordenar, ou usa a data de adição da série como fallback
-                    const dateSort = lastEpisode.air_date ? new Date(lastEpisode.air_date).getTime() : (serie.addedAt?.toMillis() || 0);
+                    // --- LÓGICA DE DATA REFINADA ---
+                    let sortDate = 0;
+
+                    // 1. Tenta a data de exibição do episódio específico (formato YYYY-MM-DD)
+                    if (lastEpisode.air_date) {
+                        sortDate = new Date(lastEpisode.air_date).getTime();
+                    }
+                    // 2. Se falhar, tenta o campo 'last_air_date' da série (padrão TMDB)
+                    else if (serie.last_air_date) {
+                        sortDate = new Date(serie.last_air_date).getTime();
+                    }
+                    // 3. Se falhar, tenta a data de atualização do documento (se você tiver implementado 'updatedAt')
+                    else if (serie.updatedAt) {
+                        sortDate = serie.updatedAt.toMillis ? serie.updatedAt.toMillis() : 0;
+                    }
+                    // 4. Último recurso: data de criação da série
+                    else {
+                        sortDate = (serie.addedAt?.toMillis() || 0);
+                    }
 
                     latestEpisodesList.push({
                         serieData: serie,
                         seasonNum: lastSeasonKey,
                         episodeData: lastEpisode,
-                        sortDate: dateSort
+                        sortDate: sortDate
                     });
                 }
             }
         });
 
-        // Ordena do mais recente para o mais antigo e pega os top 15
+        // Ordena pela data calculada (do mais recente para o mais antigo)
         latestEpisodesList.sort((a, b) => b.sortDate - a.sortDate);
+
+        // Pega os top 15
         const topLatestEpisodes = latestEpisodesList.slice(0, 15);
 
         if (topLatestEpisodes.length > 0) {
@@ -958,7 +976,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const ep = data.episodeData;
                 const serie = data.serieData;
 
-                // Lógica da Imagem: Tenta a imagem do episódio (still), se não tiver, tenta o backdrop da série
+                // Imagem: Prioriza still do episódio, depois backdrop da série
                 let imagePath = ep.still_path
                     ? (ep.still_path.startsWith('http') ? ep.still_path : `https://image.tmdb.org/t/p/w500${ep.still_path}`)
                     : (serie.backdrop || serie.poster || 'https://files.catbox.moe/sytt0s.gif');
@@ -967,10 +985,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 const serieTitle = serie.title || serie.name;
 
                 const card = document.createElement('div');
-                // Layout WIDE (Horizontal) para episódios
                 card.className = 'carousel-item w-60 sm:w-72 cursor-pointer group block flex-shrink-0 relative latest-ep-trigger';
 
-                // Armazena dados para o player abrir direto nesse episódio
                 card.playerContext = {
                     videoUrl: ep.url,
                     title: `${serieTitle} - T${data.seasonNum} E${ep.episode_number} - ${epTitle}`,
@@ -999,18 +1015,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                     <div class="mt-2 px-1">
                         <h4 class="text-sm font-bold text-white truncate group-hover:text-yellow-400 transition-colors">${serieTitle}</h4>
-                        <p class="text-xs text-stone-400 truncate">${epTitle}</p>
+                        <p class="text-xs text-stone-400 truncate flex justify-between">
+                            <span>${epTitle}</span>
+                            ${ep.air_date ? `<span class="text-stone-500 text-[10px]">${new Date(ep.air_date).toLocaleDateString('pt-BR')}</span>` : ''}
+                        </p>
                     </div>
                 `;
                 track.appendChild(card);
             });
 
-            // Adiciona o evento de clique para abrir o Player direto
             track.addEventListener('click', (e) => {
                 const card = e.target.closest('.latest-ep-trigger');
                 if (card && card.playerContext) {
                     e.preventDefault(); e.stopPropagation();
-                    showPlayer(card.playerContext); // Abre o player direto
+                    showPlayer(card.playerContext);
                 }
             });
 
