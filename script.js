@@ -328,27 +328,56 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
-     * Cria e adiciona um carrossel de conteúdo a um container.
-     * @param {HTMLElement} container - O elemento onde o carrossel será adicionado.
-     * @param {string} title - O título do carrossel.
-     * @param {Array} data - Array de itens (filmes/séries) a serem exibidos.
-     */
+         * Cria e adiciona um carrossel de conteúdo a um container.
+         * ATUALIZADO: Agora com botões de navegação para PC.
+         */
     function createCarousel(container, title, data) {
-        if (!container || !data || data.length === 0) return; // Não faz nada se não houver dados
-        const section = document.createElement('section'); // Cria a seção do carrossel
-        // Define o HTML interno da seção
+        if (!container || !data || data.length === 0) return;
+
+        const section = document.createElement('section');
+
+        // Estrutura HTML com os botões adicionados
         section.innerHTML = `
             <div class="liquid-glass-card inline-block mb-6 rounded-full" style="--bg-color: rgba(30,30,30,0.3);">
                  <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
                  <h2 class="glass-content text-xl sm:text-2xl font-bold text-white px-6 py-2">${title}</h2>
             </div>
-            <div class="carousel-container relative">
+            
+            <div class="carousel-container relative group"> <button class="carousel-btn prev hidden md:flex items-center justify-center glass-button z-20 absolute left-0 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/50 hover:bg-purple-600/50 text-white transition-all opacity-0 group-hover:opacity-100 -ml-6" aria-label="Anterior">
+                    <i data-lucide="chevron-left" class="w-8 h-8"></i>
+                </button>
+
                 <div class="carousel space-x-4 px-4 sm:px-6 lg:px-8 py-4 overflow-x-auto hide-scrollbar scroll-smooth">
                     ${data.map(item => createContentCard(item)).join('')}
                 </div>
+
+                <button class="carousel-btn next hidden md:flex items-center justify-center glass-button z-20 absolute right-0 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/50 hover:bg-purple-600/50 text-white transition-all opacity-0 group-hover:opacity-100 -mr-6" aria-label="Próximo">
+                    <i data-lucide="chevron-right" class="w-8 h-8"></i>
+                </button>
+
             </div>`;
-        container.appendChild(section); // Adiciona a seção ao container
-        lucide.createIcons(); // Recria ícones Lucide, se houver
+
+        container.appendChild(section);
+
+        // --- Lógica do Clique nos Botões ---
+        const track = section.querySelector('.carousel');
+        const prevBtn = section.querySelector('.carousel-btn.prev');
+        const nextBtn = section.querySelector('.carousel-btn.next');
+
+        if (track && prevBtn && nextBtn) {
+            // Distância do scroll: Metade da largura da tela ou 500px
+            const scrollAmount = () => track.offsetWidth * 0.75;
+
+            prevBtn.addEventListener('click', () => {
+                track.scrollBy({ left: -scrollAmount(), behavior: 'smooth' });
+            });
+
+            nextBtn.addEventListener('click', () => {
+                track.scrollBy({ left: scrollAmount(), behavior: 'smooth' });
+            });
+        }
+
+        lucide.createIcons(); // Recria ícones para as novas setas
     }
 
     /**

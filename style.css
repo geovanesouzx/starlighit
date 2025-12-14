@@ -1392,3 +1392,17 @@ input[type="range"].player-seek-bar::-webkit-slider-thumb {
     /* Rosa */
     box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
 }
+
+/* --- AJUSTE DOS BOTÕES DO CARROSSEL (PC) --- */
+
+/* Permite que os botões fiquem levemente para fora da área do carrossel */
+.carousel-container {
+    overflow: visible;
+}
+
+/* Dá o acabamento de vidro e borda fina para as setas */
+.carousel-btn {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
