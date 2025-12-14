@@ -905,6 +905,118 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) { console.error("Erro ao carregar Continuar Assistindo:", error); }
         }
 
+        // --- 1.5 NOVO: ÚLTIMOS EPISÓDIOS (Um por série) ---
+        // Filtra apenas séries que tenham dados de temporadas
+        const allSeries = firestoreContent.filter(item => item.type === 'tv' && item.seasons);
+        const latestEpisodesList = [];
+
+        allSeries.forEach(serie => {
+            // Pega as chaves das temporadas e ordena (maior número = temporada mais nova)
+            const seasonKeys = Object.keys(serie.seasons).map(k => parseInt(k)).sort((a, b) => b - a);
+
+            if (seasonKeys.length > 0) {
+                const lastSeasonKey = seasonKeys[0]; // Última temporada
+                const season = serie.seasons[lastSeasonKey];
+
+                if (season && season.episodes && season.episodes.length > 0) {
+                    // Pega o último episódio da lista dessa temporada
+                    const lastEpisode = season.episodes[season.episodes.length - 1];
+
+                    // Verifica se tem data de lançamento para ordenar, ou usa a data de adição da série como fallback
+                    const dateSort = lastEpisode.air_date ? new Date(lastEpisode.air_date).getTime() : (serie.addedAt?.toMillis() || 0);
+
+                    latestEpisodesList.push({
+                        serieData: serie,
+                        seasonNum: lastSeasonKey,
+                        episodeData: lastEpisode,
+                        sortDate: dateSort
+                    });
+                }
+            }
+        });
+
+        // Ordena do mais recente para o mais antigo e pega os top 15
+        latestEpisodesList.sort((a, b) => b.sortDate - a.sortDate);
+        const topLatestEpisodes = latestEpisodesList.slice(0, 15);
+
+        if (topLatestEpisodes.length > 0) {
+            const section = document.createElement('section');
+            section.innerHTML = `
+                <div class="liquid-glass-card inline-block mb-6 rounded-full" style="--bg-color: rgba(30,30,30,0.3);">
+                     <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
+                     <h2 class="glass-content text-xl sm:text-2xl font-bold text-white px-6 py-2 flex items-center gap-2">
+                        <i data-lucide="zap" class="w-6 h-6 text-yellow-400"></i> Últimos Episódios
+                     </h2>
+                </div>
+                <div class="carousel-container relative">
+                    <div class="carousel space-x-4 px-4 sm:px-6 lg:px-8 py-4 overflow-x-auto hide-scrollbar scroll-smooth" id="latest-ep-track"></div>
+                </div>`;
+
+            const track = section.querySelector('#latest-ep-track');
+
+            topLatestEpisodes.forEach(data => {
+                const ep = data.episodeData;
+                const serie = data.serieData;
+
+                // Lógica da Imagem: Tenta a imagem do episódio (still), se não tiver, tenta o backdrop da série
+                let imagePath = ep.still_path
+                    ? (ep.still_path.startsWith('http') ? ep.still_path : `https://image.tmdb.org/t/p/w500${ep.still_path}`)
+                    : (serie.backdrop || serie.poster || 'https://files.catbox.moe/sytt0s.gif');
+
+                const epTitle = ep.title || `Episódio ${ep.episode_number}`;
+                const serieTitle = serie.title || serie.name;
+
+                const card = document.createElement('div');
+                // Layout WIDE (Horizontal) para episódios
+                card.className = 'carousel-item w-60 sm:w-72 cursor-pointer group block flex-shrink-0 relative latest-ep-trigger';
+
+                // Armazena dados para o player abrir direto nesse episódio
+                card.playerContext = {
+                    videoUrl: ep.url,
+                    title: `${serieTitle} - T${data.seasonNum} E${ep.episode_number} - ${epTitle}`,
+                    itemData: serie,
+                    episodes: serie.seasons[data.seasonNum].episodes,
+                    currentIndex: serie.seasons[data.seasonNum].episodes.findIndex(e => e.episode_number === ep.episode_number)
+                };
+
+                card.innerHTML = `
+                    <div class="liquid-glass-card aspect-video bg-stone-800 overflow-hidden relative transition-transform duration-300 group-hover:scale-105 border border-white/5">
+                         <div class="glass-filter"></div><div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.2);"></div><div class="glass-specular"></div>
+                         
+                         <div class="glass-content p-0 h-full relative">
+                             <img src="${imagePath}" alt="${serieTitle}" loading="lazy" class="w-full h-full object-cover rounded-[inherit]">
+                             
+                             <div class="absolute top-2 right-2 text-[10px] font-bold text-white bg-black/60 px-2 py-1 rounded backdrop-blur-md border border-white/10 shadow-lg z-20">
+                                T${data.seasonNum} E${ep.episode_number}
+                             </div>
+
+                             <div class="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+                                 <div class="bg-white/10 backdrop-blur-md p-3 rounded-full border border-white/30 hover:bg-purple-500/20 transition-colors">
+                                     <i data-lucide="play" class="w-8 h-8 text-white fill-white ml-1"></i>
+                                 </div>
+                             </div>
+                         </div>
+                    </div>
+                    <div class="mt-2 px-1">
+                        <h4 class="text-sm font-bold text-white truncate group-hover:text-yellow-400 transition-colors">${serieTitle}</h4>
+                        <p class="text-xs text-stone-400 truncate">${epTitle}</p>
+                    </div>
+                `;
+                track.appendChild(card);
+            });
+
+            // Adiciona o evento de clique para abrir o Player direto
+            track.addEventListener('click', (e) => {
+                const card = e.target.closest('.latest-ep-trigger');
+                if (card && card.playerContext) {
+                    e.preventDefault(); e.stopPropagation();
+                    showPlayer(card.playerContext); // Abre o player direto
+                }
+            });
+
+            carouselsContainer.appendChild(section);
+        }
+
         // --- 2. Conteúdo Padrão ---
         const recentlyAdded = [...firestoreContent].sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0)).slice(0, 20);
         createCarousel(carouselsContainer, "Adicionado Recentemente", recentlyAdded);
