@@ -328,58 +328,27 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
-      * Cria e adiciona um carrossel com suporte a Drag-to-Scroll (Mouse) fluido.
-      */
+     * Cria e adiciona um carrossel de conteúdo a um container.
+     * @param {HTMLElement} container - O elemento onde o carrossel será adicionado.
+     * @param {string} title - O título do carrossel.
+     * @param {Array} data - Array de itens (filmes/séries) a serem exibidos.
+     */
     function createCarousel(container, title, data) {
-        if (!container || !data || data.length === 0) return;
-
-        const section = document.createElement('section');
-
+        if (!container || !data || data.length === 0) return; // Não faz nada se não houver dados
+        const section = document.createElement('section'); // Cria a seção do carrossel
+        // Define o HTML interno da seção
         section.innerHTML = `
             <div class="liquid-glass-card inline-block mb-6 rounded-full" style="--bg-color: rgba(30,30,30,0.3);">
                  <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
                  <h2 class="glass-content text-xl sm:text-2xl font-bold text-white px-6 py-2">${title}</h2>
             </div>
             <div class="carousel-container relative">
-                <div class="carousel space-x-4 px-4 sm:px-6 lg:px-8 py-4 overflow-x-auto hide-scrollbar">
+                <div class="carousel space-x-4 px-4 sm:px-6 lg:px-8 py-4 overflow-x-auto hide-scrollbar scroll-smooth">
                     ${data.map(item => createContentCard(item)).join('')}
                 </div>
             </div>`;
-
-        container.appendChild(section);
-        lucide.createIcons();
-
-        // --- LÓGICA DE ARRASTAR (DRAG-TO-SCROLL) ---
-        const slider = section.querySelector('.carousel');
-        let isDown = false;
-        let startX;
-        let scrollLeft;
-
-        slider.addEventListener('mousedown', (e) => {
-            isDown = true;
-            slider.classList.add('active'); // Ativa o CSS que remove o 'smooth'
-            startX = e.pageX - slider.offsetLeft;
-            scrollLeft = slider.scrollLeft;
-        });
-
-        const stopDragging = () => {
-            isDown = false;
-            slider.classList.remove('active'); // Volta o CSS ao normal
-        };
-
-        slider.addEventListener('mouseleave', stopDragging);
-        slider.addEventListener('mouseup', stopDragging);
-
-        slider.addEventListener('mousemove', (e) => {
-            if (!isDown) return;
-            e.preventDefault(); // Impede seleção de texto e arrasto nativo
-
-            const x = e.pageX - slider.offsetLeft;
-            const walk = (x - startX) * 2; // Velocidade do arrasto (2x)
-
-            // Aqui o scroll é aplicado diretamente, sem animação do CSS
-            slider.scrollLeft = scrollLeft - walk;
-        });
+        container.appendChild(section); // Adiciona a seção ao container
+        lucide.createIcons(); // Recria ícones Lucide, se houver
     }
 
     /**
