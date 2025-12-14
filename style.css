@@ -1463,3 +1463,63 @@ input[type="range"].player-seek-bar::-webkit-slider-thumb {
         display: none;
     }
 }
+
+/* --- MARCA D'ÁGUA DO PLAYER (STARLIGHT) --- */
+.player-watermark {
+    position: absolute;
+    /* Essencial para flutuar sobre o vídeo */
+    top: 24px;
+    right: 24px;
+    z-index: 5;
+    /* Garante que fique acima do vídeo, mas abaixo dos controles */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0.4;
+    /* Transparente para não atrapalhar */
+    pointer-events: none;
+    /* O MAIS IMPORTANTE: O clique atravessa a logo */
+    user-select: none;
+    transition: opacity 0.3s ease;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+}
+
+/* Fica mais visível quando passa o mouse */
+#player-view:hover .player-watermark {
+    opacity: 0.8;
+}
+
+.player-watermark img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+.player-watermark span {
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 16px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+
+    /* Gradiente no texto */
+    background: linear-gradient(to right, #a855f7, #ec4899);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 1));
+}
+
+/* Esconde o texto no celular para economizar espaço */
+@media (max-width: 768px) {
+    .player-watermark {
+        top: 16px;
+        right: 50px;
+        opacity: 0.3;
+    }
+
+    .player-watermark span {
+        display: none;
+    }
+}
