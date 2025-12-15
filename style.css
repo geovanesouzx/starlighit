@@ -1557,3 +1557,40 @@ input[type="range"].player-seek-bar::-webkit-slider-thumb {
         height: 20px;
     }
 }
+
+/* --- TOP 10 NUMBER STYLES --- */
+.top10-item {
+    position: relative;
+    margin-left: 20px;
+    /* Espaço para o número não cortar */
+}
+
+.top10-rank {
+    position: absolute;
+    left: -20px;
+    /* Empurra o número para fora do card à esquerda */
+    bottom: -15px;
+    /* Alinha na base */
+    font-size: 100px;
+    font-weight: 900;
+    line-height: 0.8;
+    letter-spacing: -5px;
+    color: #000000;
+    /* Interior preto (ou transparente) */
+    -webkit-text-stroke: 2px #a855f7;
+    /* Borda Roxa (Tema Starlight) */
+    text-stroke: 2px #a855f7;
+    z-index: 1;
+    /* Fica atrás ou na frente? Vamos deixar levemente atrás da borda do card */
+    font-family: 'Impact', 'Inter', sans-serif;
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+/* Efeito ao passar o mouse no card */
+.top10-item:hover .top10-rank {
+    color: #a855f7;
+    /* Preenche de roxo */
+    -webkit-text-stroke: 0px;
+    transform: scale(1.1) translateX(-10px);
+}
