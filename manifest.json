@@ -1,0 +1,23 @@
+{
+  "name": "Starlight Streaming",
+  "short_name": "Starlight",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0c0a09",
+  "theme_color": "#a855f7",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/705/705062.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/705/705062.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

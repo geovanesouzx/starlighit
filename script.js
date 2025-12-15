@@ -4048,3 +4048,37 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 });
+
+// --- REGISTRO DO PWA (SERVICE WORKER) ---
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(registration => {
+                console.log('Starlight PWA registrado com sucesso:', registration.scope);
+            })
+            .catch(error => {
+                console.log('Falha ao registrar PWA:', error);
+            });
+    });
+}
+
+// Lógica para o botão de "Instalar App" (Opcional - Adicione se quiser um botão manual)
+let deferredPrompt;
+const installBtn = document.getElementById('install-app-btn'); // Você precisaria criar esse botão no HTML se quiser usar
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    // Se você tiver um botão de instalar oculto, mostre ele aqui:
+    // if (installBtn) installBtn.classList.remove('hidden');
+});
+
+// Exemplo de função para chamar no clique do botão:
+async function installPWA() {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`Usuário escolheu: ${outcome}`);
+        deferredPrompt = null;
+    }
+}
