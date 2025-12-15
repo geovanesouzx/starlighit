@@ -1052,11 +1052,13 @@ document.addEventListener('DOMContentLoaded', function () {
             // Verifica se tem poster, senão usa GIF
             const posterPath = (item.poster && item.poster.startsWith('http')) ? item.poster : 'https://files.catbox.moe/sytt0s.gif';
 
+            // ATUALIZADO: Card mais largo (260px) com padding na esquerda (100px) para caber o número
             return `
-            <a href="#details/${item.docId}" class="carousel-item w-40 sm:w-52 cursor-pointer group block flex-shrink-0 relative top10-item pl-8 transition-transform hover:scale-105 duration-300">
+            <a href="#details/${item.docId}" class="carousel-item relative group block flex-shrink-0 cursor-pointer transition-transform hover:scale-105 duration-300" style="width: 260px; padding-left: 100px;">
+                
                 <span class="top10-rank">${rank}</span>
                 
-                <div class="liquid-glass-card aspect-[2/3] bg-stone-800 overflow-hidden relative z-10 border border-white/10">
+                <div class="liquid-glass-card aspect-[2/3] bg-stone-800 overflow-hidden relative z-10 border border-white/10 w-full shadow-xl">
                      <div class="glass-filter"></div>
                      <div class="glass-distortion-overlay"></div>
                      <div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.1);"></div>

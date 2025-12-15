@@ -1558,39 +1558,59 @@ input[type="range"].player-seek-bar::-webkit-slider-thumb {
     }
 }
 
-/* --- TOP 10 NUMBER STYLES --- */
-.top10-item {
-    position: relative;
-    margin-left: 20px;
-    /* Espaço para o número não cortar */
-}
+/* --- TOP 10 NUMBER STYLES (Novo Design Grande) --- */
 
 .top10-rank {
     position: absolute;
-    left: -20px;
-    /* Empurra o número para fora do card à esquerda */
+    left: 0;
+    /* Cola na esquerda do container */
     bottom: -15px;
-    /* Alinha na base */
-    font-size: 100px;
+    /* Alinha na base, levemente para baixo */
+    width: 110px;
+    /* Largura fixa para o número */
+    text-align: right;
+    /* Alinha o número à direita perto do card */
+    padding-right: 15px;
+    /* Espaço entre número e imagem */
+
+    /* Tipografia Impactante */
+    font-family: 'Inter', sans-serif;
     font-weight: 900;
+    /* O mais grosso possível */
+    font-size: 140px;
+    /* Tamanho gigante igual da referência */
     line-height: 0.8;
-    letter-spacing: -5px;
-    color: #000000;
-    /* Interior preto (ou transparente) */
-    -webkit-text-stroke: 2px #a855f7;
-    /* Borda Roxa (Tema Starlight) */
-    text-stroke: 2px #a855f7;
-    z-index: 1;
-    /* Fica atrás ou na frente? Vamos deixar levemente atrás da borda do card */
-    font-family: 'Impact', 'Inter', sans-serif;
+    letter-spacing: -8px;
+    /* Junta bem os números (ex: 1 0 vira 10 colado) */
+
+    /* O Gradiente Starlight (Cor do nome do site) */
+    background: linear-gradient(to bottom right, #a855f7, #ec4899);
+    /* Roxo para Rosa */
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    /* Deixa transparente para mostrar o gradiente */
+
+    /* Sombra para destacar do fundo preto */
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.8));
+
+    z-index: 5;
+    /* Fica ao lado do card */
     pointer-events: none;
-    transition: all 0.3s ease;
+    /* O clique passa pelo número */
 }
 
-/* Efeito ao passar o mouse no card */
-.top10-item:hover .top10-rank {
-    color: #a855f7;
-    /* Preenche de roxo */
-    -webkit-text-stroke: 0px;
-    transform: scale(1.1) translateX(-10px);
+/* Ajuste Mobile: Reduz um pouco em telas pequenas para não quebrar layout */
+@media (max-width: 768px) {
+    .carousel-item[style*="width: 260px"] {
+        width: 200px !important;
+        padding-left: 70px !important;
+    }
+
+    .top10-rank {
+        font-size: 100px;
+        width: 80px;
+        bottom: -5px;
+        padding-right: 5px;
+    }
 }
