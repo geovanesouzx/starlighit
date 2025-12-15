@@ -1044,21 +1044,23 @@ document.addEventListener('DOMContentLoaded', function () {
         const recentlyAdded = [...firestoreContent].sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0)).slice(0, 20);
         createCarousel(carouselsContainer, "Adicionado Recentemente", recentlyAdded);
 
-        // --- 3. Gêneros e TOP 10 (Lógica Avançada) ---
+// --- 3. Gêneros e TOP 10 (Lógica Avançada - ESTILO BIG NUMBER) ---
 
-        // 3.1 Funções Auxiliares para o Top 10 (Ficam aqui dentro mesmo)
+        // 3.1 Funções Auxiliares para o Top 10
         const createTop10Card = (item, index) => {
             const rank = index + 1;
-            // Verifica se tem poster, senão usa GIF
             const posterPath = (item.poster && item.poster.startsWith('http')) ? item.poster : 'https://files.catbox.moe/sytt0s.gif';
 
-            // ATUALIZADO: Card mais largo (260px) com padding na esquerda (100px) para caber o número
+            // MUDANÇA AQUI:
+            // 1. w-auto sm:w-[280px]: Aumentamos a largura do container para caber número + poster.
+            // 2. flex items-end: Alinha o número e o poster na parte de baixo.
+            // 3. gap-[-20px]: Faz o poster sobrepor levemente o número (ajuste negativo).
             return `
-            <a href="#details/${item.docId}" class="carousel-item relative group block flex-shrink-0 cursor-pointer transition-transform hover:scale-105 duration-300" style="width: 260px; padding-left: 100px;">
+            <a href="#details/${item.docId}" class="carousel-item relative w-auto sm:w-[280px] flex items-end justify-start cursor-pointer group flex-shrink-0 transition-transform hover:scale-105 duration-300">
                 
-                <span class="top10-rank">${rank}</span>
+                <span class="top10-big-rank">${rank}</span>
                 
-                <div class="liquid-glass-card aspect-[2/3] bg-stone-800 overflow-hidden relative z-10 border border-white/10 w-full shadow-xl">
+                <div class="liquid-glass-card aspect-[2/3] w-36 sm:w-44 bg-stone-800 overflow-hidden relative z-10 border border-white/10 shadow-xl ml-[-10px]">
                      <div class="glass-filter"></div>
                      <div class="glass-distortion-overlay"></div>
                      <div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.1);"></div>
@@ -1079,14 +1081,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         <i data-lucide="trophy" class="w-6 h-6 text-yellow-400"></i> ${title}
                      </h2>
                 </div>
-                <div class="carousel-container relative">
-                    <div class="carousel space-x-0 px-4 sm:px-6 lg:px-8 py-4 overflow-x-auto hide-scrollbar scroll-smooth">
+                <div class="carousel-container relative pb-4">
+                    <div class="carousel space-x-4 px-4 sm:px-6 lg:px-8 py-4 overflow-x-auto hide-scrollbar scroll-smooth items-end">
                         ${data.map((item, index) => createTop10Card(item, index)).join('')}
                     </div>
                 </div>`;
             container.appendChild(section);
         };
-
         // 3.2 Prepara os dados do Top 10 (Baseado na nota ou ordem)
         // Pega os 10 melhores Filmes
         const top10Movies = firestoreContent

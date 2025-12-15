@@ -1558,59 +1558,52 @@ input[type="range"].player-seek-bar::-webkit-slider-thumb {
     }
 }
 
-/* --- TOP 10 NUMBER STYLES (Novo Design Grande) --- */
+/* --- ESTILO NÚMEROS GIGANTES (TOP 10) --- */
 
-.top10-rank {
-    position: absolute;
-    left: 0;
-    /* Cola na esquerda do container */
-    bottom: -15px;
-    /* Alinha na base, levemente para baixo */
-    width: 110px;
-    /* Largura fixa para o número */
-    text-align: right;
-    /* Alinha o número à direita perto do card */
-    padding-right: 15px;
-    /* Espaço entre número e imagem */
-
-    /* Tipografia Impactante */
+.top10-big-rank {
+    /* Tipografia Gigante e Grossa */
     font-family: 'Inter', sans-serif;
+    /* Ou a fonte principal do seu site */
+    font-size: 180px;
+    /* Tamanho massivo como na referência */
     font-weight: 900;
-    /* O mais grosso possível */
-    font-size: 140px;
-    /* Tamanho gigante igual da referência */
-    line-height: 0.8;
-    letter-spacing: -8px;
-    /* Junta bem os números (ex: 1 0 vira 10 colado) */
+    /* O peso máximo (black) */
+    line-height: 0.7;
+    /* Altura de linha apertada para "colar" no chão */
+    letter-spacing: -15px;
+    /* Junta os números (ex: o '1' e o '0' do 10 ficam colados) */
 
-    /* O Gradiente Starlight (Cor do nome do site) */
-    background: linear-gradient(to bottom right, #a855f7, #ec4899);
-    /* Roxo para Rosa */
+    /* Posicionamento */
+    position: relative;
+    z-index: 0;
+    /* Fica atrás do pôster (que tem z-index 10) */
+    bottom: -20px;
+    /* Empurra um pouco para baixo do container */
+    margin-right: -15px;
+    /* Empurra o número para debaixo do pôster à direita */
+
+    /* --- O GRADIENTE DO SITE NO TEXTO --- */
+    /* Define o gradiente roxo para rosa */
+    background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+    /* Aplica o gradiente apenas onde tem texto */
     -webkit-background-clip: text;
     background-clip: text;
+    /* Torna a cor do texto transparente para mostrar o fundo (o gradiente) */
     color: transparent;
-    /* Deixa transparente para mostrar o gradiente */
 
-    /* Sombra para destacar do fundo preto */
-    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.8));
+    /* Sombra opcional para destacar do fundo preto */
+    filter: drop-shadow(2px 4px 6px rgba(0, 0, 0, 0.5));
 
-    z-index: 5;
-    /* Fica ao lado do card */
     pointer-events: none;
-    /* O clique passa pelo número */
+    /* Impede que o mouse interaja com o número */
 }
 
-/* Ajuste Mobile: Reduz um pouco em telas pequenas para não quebrar layout */
-@media (max-width: 768px) {
-    .carousel-item[style*="width: 260px"] {
-        width: 200px !important;
-        padding-left: 70px !important;
-    }
-
-    .top10-rank {
-        font-size: 100px;
-        width: 80px;
-        bottom: -5px;
-        padding-right: 5px;
+/* Ajuste para telas menores (celulares) */
+@media (max-width: 640px) {
+    .top10-big-rank {
+        font-size: 130px;
+        /* Um pouco menor no mobile, mas ainda grande */
+        letter-spacing: -10px;
+        bottom: -10px;
     }
 }
