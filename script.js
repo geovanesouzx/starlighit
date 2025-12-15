@@ -623,28 +623,33 @@ document.addEventListener('DOMContentLoaded', function () {
         attachGlassButtonListeners(); // Reatacha listeners para efeitos visuais
     }
 
+    // Variáveis globais para controlar os ouvintes (Adicione isso antes da função ou use as variáveis globais do topo)
+    let unsubContent = null;
+    let unsubFeatured = null;
+
     /**
-     * Escuta por atualizações na coleção 'content' do Firestore e atualiza a UI.
+     * Escuta por atualizações no Firestore de forma OTIMIZADA (Sem duplicação).
      */
     async function listenToFirestoreContent() {
-        // Escuta a coleção 'content'
-        onSnapshot(collection(db, 'content'), (snapshot) => {
+        // 1. Se já existirem ouvintes ativos, cancela eles antes de criar novos
+        if (unsubContent) unsubContent();
+        if (unsubFeatured) unsubFeatured();
+
+        // 2. Ouvinte Independente para o CONTEÚDO
+        unsubContent = onSnapshot(collection(db, 'content'), (snapshot) => {
             firestoreContent = []; // Limpa o cache local
             snapshot.forEach(doc => {
-                // Adiciona cada item ao cache com seu ID do Firestore
                 firestoreContent.push({ docId: doc.id, ...doc.data() });
             });
+            // Chama a navegação (com debounce, veja passo 2)
+            handleNavigation();
+        });
 
-            // *** A linha abaixo foi REMOVIDA ***
-            // dailyShuffledContent = getDailyShuffledContent(firestoreContent); 
-
-            // Escuta o documento 'featured' na coleção 'config' para saber quais itens destacar
-            onSnapshot(doc(db, 'config', 'featured'), (docSnap) => {
-                // Pega a lista de IDs de destaque, ou um array vazio se não existir
-                featuredItemIds = docSnap.exists() ? (docSnap.data().items || []) : [];
-                // Re-renderiza a tela atual com base nos novos dados
-                handleNavigation(); // O roteador decidirá o que renderizar
-            });
+        // 3. Ouvinte Independente para os DESTAQUES (Separado do content!)
+        unsubFeatured = onSnapshot(doc(db, 'config', 'featured'), (docSnap) => {
+            featuredItemIds = docSnap.exists() ? (docSnap.data().items || []) : [];
+            // Chama a navegação
+            handleNavigation();
         });
     }
     /**
@@ -2009,164 +2014,135 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // --- Roteador Central ---
+    // Variável para controlar o "pulo" da navegação
+    let navDebounceTimer;
+
     /** Função principal que lida com a navegação baseada no hash da URL */
     async function handleNavigation() {
-        const hash = window.location.hash; // Pega o hash atual (ex: #home-view, #details/123)
+        // --- DEBOUNCE: Cancela execução anterior se chamar muito rápido ---
+        clearTimeout(navDebounceTimer);
 
-        // --- NOVA LÓGICA DE INTERCEPTAÇÃO DE "VOLTAR" ---
+        navDebounceTimer = setTimeout(async () => {
+            const hash = window.location.hash;
 
-        // 1. Detecta a primeira navegação da sessão
-        if (isFirstNavigation) {
-            isFirstNavigation = false; // Desativa a flag para que não rode de novo
-            const currentHash = window.location.hash;
-            if (currentHash.startsWith('#details/') || currentHash === '#player') {
-                // Se o usuário Pousou aqui, ativa a flag da sessão
-                sessionStorage.setItem('landedOnDetails', 'true');
-            } else {
-                // Se o usuário pousou na home ou outro lugar, desativa a flag
+            // --- NOVA LÓGICA DE INTERCEPTAÇÃO DE "VOLTAR" (PRESERVADA) ---
+            if (isFirstNavigation) {
+                isFirstNavigation = false;
+                const currentHash = window.location.hash;
+                if (currentHash.startsWith('#details/') || currentHash === '#player') {
+                    sessionStorage.setItem('landedOnDetails', 'true');
+                } else {
+                    sessionStorage.setItem('landedOnDetails', 'false');
+                }
+            }
+
+            if (sessionStorage.getItem('landedOnDetails') === 'true' && (hash === '' || hash === '#')) {
+                sessionStorage.removeItem('landedOnDetails');
+                history.replaceState(null, '', '#home-view');
+                await handleNavigation();
+                return;
+            }
+
+            if (!hash.startsWith('#details/') && hash !== '#player' && hash !== '' && hash !== '#') {
                 sessionStorage.setItem('landedOnDetails', 'false');
             }
-        }
+            // --- FIM DA LÓGICA NOVA ---
 
-        // 2. Intercepta o clique no botão "voltar" do navegador
-        // (Se a flag estiver 'true' E o usuário estiver voltando para a "raiz" do site)
-        if (sessionStorage.getItem('landedOnDetails') === 'true' && (hash === '' || hash === '#')) {
-            // Limpa a flag
-            sessionStorage.removeItem('landedOnDetails');
-            // Usa replaceState para mudar a URL para #home-view SEM adicionar ao histórico
-            history.replaceState(null, '', '#home-view');
-            // Roda a navegação novamente, mas agora com o hash corrigido
-            await handleNavigation();
-            return; // Interrompe a execução atual
-        }
-
-        // 3. Limpa a flag se o usuário navegar para a home manualmente
-        // (Isso desativa a interceptação do "voltar")
-        if (!hash.startsWith('#details/') && hash !== '#player' && hash !== '' && hash !== '#') {
-            sessionStorage.setItem('landedOnDetails', 'false');
-        }
-
-        // --- FIM DA NOVA LÓGICA ---
-
-        // --- Rota de Autenticação ---
-        if (!userId) { // Se o usuário NÃO está logado
-            // Garante que a view de login seja exibida
-            if (hash !== '#login-view') {
-                // Força o hash para #login-view sem adicionar ao histórico
-                history.replaceState(null, '', '#login-view');
-            }
-            showLoginScreen(); // Mostra a tela de login
-            return; // Interrompe a função aqui
-        }
-        // --- Rota de Seleção de Perfil ---
-        if (!currentProfile) { // Se o usuário está logado, MAS NENHUM perfil foi selecionado ainda
-            // Tenta carregar o último perfil usado do localStorage
-            const lastProfileId = localStorage.getItem(`starlight-lastProfile-${userId}`);
-            let autoSelectedProfile = false;
-            if (lastProfileId) {
-                // Carrega os perfis do Firestore APENAS se precisar verificar o último perfil
-                if (!profiles || profiles.length === 0) { // Evita recarregar se já tiver
-                    await loadProfiles(); // loadProfiles() também chama renderProfiles()
+            // --- Rota de Autenticação ---
+            if (!userId) {
+                if (hash !== '#login-view') {
+                    history.replaceState(null, '', '#login-view');
                 }
-                const foundProfile = profiles.find(p => p.id === lastProfileId);
-                if (foundProfile) {
-                    // Se encontrou um perfil válido salvo, seleciona-o automaticamente
-                    selectAndEnterProfile(foundProfile);
-                    autoSelectedProfile = true; // Marca que um perfil foi selecionado
-                    // Não retorna aqui, continua para o roteamento do app
+                showLoginScreen();
+                return;
+            }
+
+            // --- Rota de Seleção de Perfil ---
+            if (!currentProfile) {
+                const lastProfileId = localStorage.getItem(`starlight-lastProfile-${userId}`);
+                let autoSelectedProfile = false;
+                if (lastProfileId) {
+                    if (!profiles || profiles.length === 0) {
+                        await loadProfiles();
+                    }
+                    const foundProfile = profiles.find(p => p.id === lastProfileId);
+                    if (foundProfile) {
+                        selectAndEnterProfile(foundProfile);
+                        autoSelectedProfile = true;
+                        // IMPORTANTE: Retorna aqui pois selectAndEnterProfile vai chamar a navegação de novo
+                        return;
+                    }
+                }
+
+                if (!autoSelectedProfile) {
+                    if (window.location.hash !== '#manage-profile-view') {
+                        history.replaceState(null, '', '#manage-profile-view');
+                    }
+                    showProfileScreen();
+                    return;
                 }
             }
 
-            // Se NENHUM perfil foi selecionado automaticamente
-            if (!autoSelectedProfile) {
-                // Garante que a view de seleção de perfil seja exibida
-                if (hash !== '#manage-profile-view') {
-                    history.replaceState(null, '', '#manage-profile-view');
-                }
-                showProfileScreen(); // Mostra a tela de seleção de perfil
-                return; // Interrompe a função aqui
+            // --- Roteamento do Aplicativo ---
+            if (!searchOverlay.classList.contains('hidden')) {
+                toggleSearchOverlay(false);
             }
-            // Se um perfil foi auto-selecionado, a função continua para o roteamento do app abaixo
-        }
 
-
-        // --- Roteamento do Aplicativo (Usuário Logado e com Perfil Selecionado) ---
-
-        // Garante que overlays especiais (busca) sejam fechados ao navegar
-        if (!searchOverlay.classList.contains('hidden')) {
-            toggleSearchOverlay(false);
-        }
-
-        // Esconde header/footer para views especiais (detalhes, player)
-        if (hash.startsWith('#details/') || hash === '#player') {
-            document.querySelector('header').classList.add('hidden');
-            document.querySelector('footer').classList.add('hidden');
-        } else {
-            // Mostra header/footer para views normais
-            document.querySelector('header').classList.remove('hidden');
-            document.querySelector('footer').classList.remove('hidden');
-        }
-
-        // Garante que views especiais (detalhes, player) sejam escondidas ao navegar para views normais
-        if (!hash.startsWith('#details/')) {
-            detailsView.classList.add('hidden'); // Esconde detalhes
-        }
-        if (hash !== '#player') {
-            if (!playerView.classList.contains('hidden')) {
-                hidePlayer(false, false); // Esconde player (NÃO está trocando de ep)
+            if (hash.startsWith('#details/') || hash === '#player') {
+                document.querySelector('header').classList.add('hidden');
+                document.querySelector('footer').classList.add('hidden');
+            } else {
+                document.querySelector('header').classList.remove('hidden');
+                document.querySelector('footer').classList.remove('hidden');
             }
-        }
 
-        // Esconde todas as views principais antes de mostrar a correta
-        document.querySelectorAll('#view-container > .content-view').forEach(view => view.classList.add('hidden'));
-
-        // --- Lógica de Roteamento ---
-        if (hash.startsWith('#details/')) { // Se for uma rota de detalhes
-            const docId = hash.split('/')[1]; // Extrai o ID do item do hash
-            showDetailsView({ docId }); // Chama a função para renderizar detalhes
-        } else if (hash === '#player') { // Se for a rota do player
-            // O player é mostrado pela função showPlayer(). O roteador apenas garante
-            // que outras views estejam escondidas. Se o usuário recarregar em #player,
-            // não há contexto, então voltamos.
-            if (playerView.classList.contains('hidden')) {
-                history.back(); // Volta para a tela anterior (provavelmente detalhes)
+            if (!hash.startsWith('#details/')) {
+                detailsView.classList.add('hidden');
             }
-        } else { // Navegação para uma view principal (home, series, filmes, etc.)
-            const targetId = hash.substring(1) || 'home-view'; // Pega o ID do hash, ou usa 'home-view' como padrão
-            const targetView = document.getElementById(targetId); // Encontra o elemento da view
-
-            if (targetView && targetView.classList.contains('content-view')) { // Se a view existe e é válida
-                targetView.classList.remove('hidden'); // Mostra a view
-                renderScreenContent(targetId); // Renderiza o conteúdo específico da view
-            } else { // Se a view não existe ou hash é inválido
-                // Fallback para a tela inicial
-                document.getElementById('home-view').classList.remove('hidden');
-                renderScreenContent('home-view');
-                // Corrige o hash na URL se ele era inválido
-                if (window.location.hash !== '#home-view') {
-                    history.replaceState(null, '', '#home-view');
+            if (hash !== '#player') {
+                if (!playerView.classList.contains('hidden')) {
+                    hidePlayer(false, false);
                 }
             }
 
-            // --- Atualiza UI de Navegação ---
-            // Remove 'active' de todos os links
-            document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(l => l.classList.remove('active'));
-            // Adiciona 'active' aos links correspondentes à view atual
-            document.querySelectorAll(`[data-target="${targetId}"]`).forEach(l => l.classList.add('active'));
-            updateMobileNavIndicator(); // Atualiza indicador da nav mobile
+            document.querySelectorAll('#view-container > .content-view').forEach(view => view.classList.add('hidden'));
 
-            // --- Atualiza Background e Rotação do Hero ---
-            // Mostra/Esconde background principal (só visível na home)
-            document.getElementById('main-background').style.opacity = (targetId === 'home-view' && currentHeroItem) ? 1 : 0;
-            // Para a rotação do hero se sair da home
-            if (targetId !== 'home-view' && heroCarouselInterval) {
-                clearInterval(heroCarouselInterval);
-                heroCarouselInterval = null;
+            // --- Lógica de Renderização ---
+            if (hash.startsWith('#details/')) {
+                const docId = hash.split('/')[1];
+                showDetailsView({ docId });
+            } else if (hash === '#player') {
+                if (playerView.classList.contains('hidden')) {
+                    history.back();
+                }
+            } else {
+                const targetId = hash.substring(1) || 'home-view';
+                const targetView = document.getElementById(targetId);
+
+                if (targetView && targetView.classList.contains('content-view')) {
+                    targetView.classList.remove('hidden');
+                    renderScreenContent(targetId);
+                } else {
+                    document.getElementById('home-view').classList.remove('hidden');
+                    renderScreenContent('home-view');
+                    if (window.location.hash !== '#home-view') {
+                        history.replaceState(null, '', '#home-view');
+                    }
+                }
+
+                document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(l => l.classList.remove('active'));
+                document.querySelectorAll(`[data-target="${targetId}"]`).forEach(l => l.classList.add('active'));
+                updateMobileNavIndicator();
+
+                document.getElementById('main-background').style.opacity = (targetId === 'home-view' && currentHeroItem) ? 1 : 0;
+                if (targetId !== 'home-view' && heroCarouselInterval) {
+                    clearInterval(heroCarouselInterval);
+                    heroCarouselInterval = null;
+                }
             }
-        }
-        // Força a checagem do header no final da navegação
-        handleHeaderScroll();
+            handleHeaderScroll();
+
+        }, 50); // <-- O ATRASO MÁGICO DE 50ms QUE EVITA DUPLICAÇÃO
     }
 
     // Adiciona os listeners de navegação do navegador (botão voltar/avançar, mudança de hash)
