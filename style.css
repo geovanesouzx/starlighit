@@ -1558,39 +1558,60 @@ input[type="range"].player-seek-bar::-webkit-slider-thumb {
     }
 }
 
-/* --- TOP 10 NUMBER STYLES --- */
+/* --- NOVO ESTILO TOP 10 (Gradiente Lateral) --- */
+
+/* O container que segura o número e o card lado a lado */
 .top10-item {
-    position: relative;
-    margin-left: 20px;
-    /* Espaço para o número não cortar */
+    align-items: flex-end;
+    /* Alinha o número na base do card */
+    padding-bottom: 20px;
+    /* Espaço extra embaixo para o número gigante */
 }
 
+/* O Número Gigante */
 .top10-rank {
-    position: absolute;
-    left: -20px;
-    /* Empurra o número para fora do card à esquerda */
-    bottom: -15px;
-    /* Alinha na base */
-    font-size: 100px;
+    /* Tamanho e fonte */
+    font-size: 160px;
+    /* Bem grande */
     font-weight: 900;
-    line-height: 0.8;
-    letter-spacing: -5px;
-    color: #000000;
-    /* Interior preto (ou transparente) */
-    -webkit-text-stroke: 2px #a855f7;
-    /* Borda Roxa (Tema Starlight) */
-    text-stroke: 2px #a855f7;
-    z-index: 1;
-    /* Fica atrás ou na frente? Vamos deixar levemente atrás da borda do card */
-    font-family: 'Impact', 'Inter', sans-serif;
+    font-style: italic;
+    line-height: 0.7;
+    /* Altura de linha comprimida */
+    font-family: 'Impact', 'Arial Black', sans-serif;
+
+    /* Posicionamento */
+    margin-right: -25px;
+    /* Aproxima o número do card (sobrepõe levemente a borda) */
+    margin-bottom: -10px;
+    /* Ajuste fino vertical para alinhar a base */
+    z-index: 2;
+    /* Garante que o número fique na frente da borda do card */
+
+    /* O GRADIENTE STARLIGHT NO TEXTO */
+    background: linear-gradient(to bottom right, #a855f7, #ec4899);
+    /* Roxo para Rosa */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-fill-color: transparent;
+
+    /* Sombra suave para destacar do fundo escuro */
+    filter: drop-shadow(2px 4px 6px rgba(0, 0, 0, 0.6));
+
     pointer-events: none;
-    transition: all 0.3s ease;
+    /* O clique passa pelo número e vai pro card */
 }
 
-/* Efeito ao passar o mouse no card */
-.top10-item:hover .top10-rank {
-    color: #a855f7;
-    /* Preenche de roxo */
-    -webkit-text-stroke: 0px;
-    transform: scale(1.1) translateX(-10px);
+/* Ajuste no card para ele não ficar muito largo junto com o número */
+.top10-card-container {
+    width: 140px;
+
+    /* Largura fixa para o card */
+    @media (min-width: 640px) {
+        width: 170px;
+    }
+
+    /* Um pouco maior no mobile */
+    flex-shrink: 0;
+    z-index: 1;
 }
