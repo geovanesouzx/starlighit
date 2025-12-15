@@ -1044,88 +1044,15 @@ document.addEventListener('DOMContentLoaded', function () {
         const recentlyAdded = [...firestoreContent].sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0)).slice(0, 20);
         createCarousel(carouselsContainer, "Adicionado Recentemente", recentlyAdded);
 
-        // --- 3. Gêneros e TOP 10 (Simplificado - Sem Números) ---
-
-        // 3.1 Funções Auxiliares para o Top 10
-        const createTop10Card = (item, index) => {
-            // O rank existe na lógica, mas não vamos exibir visualmente para evitar bugs
-            const rank = index + 1;
-            const posterPath = (item.poster && item.poster.startsWith('http')) ? item.poster : 'https://files.catbox.moe/sytt0s.gif';
-
-            // VOLTAMOS PARA O LAYOUT PADRÃO (Igual aos outros carrosséis)
-            return `
-            <a href="#details/${item.docId}" class="carousel-item w-36 sm:w-48 cursor-pointer group block flex-shrink-0 relative transition-transform hover:scale-105 duration-300">
-                
-                <div class="liquid-glass-card aspect-[2/3] bg-stone-800 overflow-hidden relative z-10 border border-white/10 shadow-xl">
-                     <div class="glass-filter"></div>
-                     <div class="glass-distortion-overlay"></div>
-                     <div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.1);"></div>
-                     <div class="glass-specular"></div>
-                     <div class="glass-content p-0 h-full">
-                         <img src="${posterPath}" alt="Top ${rank}: ${item.title}" loading="lazy" class="w-full h-full object-cover rounded-[inherit]">
-                         
-                         </div>
-                </div>
-            </a>`;
-        };
-
-        const createTop10Carousel = (container, title, data) => {
-            const section = document.createElement('section');
-            section.innerHTML = `
-                <div class="liquid-glass-card inline-block mb-6 rounded-full" style="--bg-color: rgba(30,30,30,0.3);">
-                     <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                     <h2 class="glass-content text-xl sm:text-2xl font-black text-white px-6 py-2 flex items-center gap-2 italic tracking-tighter">
-                        <i data-lucide="trophy" class="w-6 h-6 text-yellow-400"></i> ${title}
-                     </h2>
-                </div>
-                <div class="carousel-container relative">
-                    <div class="carousel space-x-4 px-4 sm:px-6 lg:px-8 py-4 overflow-x-auto hide-scrollbar scroll-smooth">
-                        ${data.map((item, index) => createTop10Card(item, index)).join('')}
-                    </div>
-                </div>`;
-            container.appendChild(section);
-        };
-
-        // 3.2 Prepara os dados do Top 10 (Baseado na nota ou ordem)
-        // Pega os 10 melhores Filmes
-        const top10Movies = firestoreContent
-            .filter(i => i.type === 'movie')
-            .sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0))
-            .slice(0, 10);
-
-        // Pega as 10 melhores Séries
-        const top10Series = firestoreContent
-            .filter(i => i.type === 'tv')
-            .sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0))
-            .slice(0, 10);
-
-        // 3.3 Renderiza os Gêneros e insere os Top 10 no meio
-        // Ordena os gêneros alfabeticamente para termos controle
-        const allGenres = [...new Set(firestoreContent.flatMap(item => item.genres || []))].sort();
-
+        // --- 3. Gêneros ---
+        const allGenres = [...new Set(firestoreContent.flatMap(item => item.genres || []))];
         for (const genre of allGenres) {
             const originalGenreList = firestoreContent.filter(item => item.genres && item.genres.includes(genre));
             const shuffledGenreList = getDailyShuffledList(originalGenreList, genre);
-
             if (shuffledGenreList.length > 0) {
-                // Renderiza o carrossel do Gênero
                 createCarousel(carouselsContainer, genre, shuffledGenreList);
-
-                // --- LÓGICA DE POSICIONAMENTO ---
-
-                // Top 10 Filmes: Entre "Drama" e o próximo
-                if (genre === 'Drama' && top10Movies.length > 0) {
-                    createTop10Carousel(carouselsContainer, "TOP 10 Filmes no Brasil", top10Movies);
-                }
-
-                // Top 10 Séries: Entre "Comédia" e o próximo
-                if (genre === 'Comédia' && top10Series.length > 0) {
-                    createTop10Carousel(carouselsContainer, "TOP 10 Séries no Brasil", top10Series);
-                }
             }
         }
-
-        // Garante que os listeners visuais funcionem nos novos cards
         attachGlassButtonListeners();
         lucide.createIcons();
     }
