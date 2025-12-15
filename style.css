@@ -1558,52 +1558,53 @@ input[type="range"].player-seek-bar::-webkit-slider-thumb {
     }
 }
 
-/* --- ESTILO NÚMEROS GIGANTES (TOP 10) --- */
+/* --- ESTILO NÚMEROS GIGANTES (TOP 10 FIXED) --- */
 
 .top10-big-rank {
-    /* Tipografia Gigante e Grossa */
+    /* Tipografia Monstruosa */
     font-family: 'Inter', sans-serif;
-    /* Ou a fonte principal do seu site */
-    font-size: 180px;
-    /* Tamanho massivo como na referência */
     font-weight: 900;
-    /* O peso máximo (black) */
-    line-height: 0.7;
-    /* Altura de linha apertada para "colar" no chão */
-    letter-spacing: -15px;
-    /* Junta os números (ex: o '1' e o '0' do 10 ficam colados) */
+    /* Extra bold */
+    font-size: 160px;
+    /* Tamanho do número */
+    line-height: 0.8;
+    /* Altura da linha compacta */
+    letter-spacing: -10px;
+    /* Junta os números (ex: 10) */
 
     /* Posicionamento */
     position: relative;
     z-index: 0;
-    /* Fica atrás do pôster (que tem z-index 10) */
-    bottom: -20px;
-    /* Empurra um pouco para baixo do container */
-    margin-right: -15px;
-    /* Empurra o número para debaixo do pôster à direita */
+    /* Fica atrás do poster */
+    margin-bottom: -15px;
+    /* Alinha visualmente a base do número com a base do poster */
 
-    /* --- O GRADIENTE DO SITE NO TEXTO --- */
-    /* Define o gradiente roxo para rosa */
-    background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
-    /* Aplica o gradiente apenas onde tem texto */
+    /* GRADIENTE STARLIGHT (Roxo -> Rosa) */
+    background: linear-gradient(180deg, #a855f7 20%, #ec4899 100%);
     -webkit-background-clip: text;
     background-clip: text;
-    /* Torna a cor do texto transparente para mostrar o fundo (o gradiente) */
     color: transparent;
+    /* Deixa o texto transparente para mostrar o gradiente */
 
-    /* Sombra opcional para destacar do fundo preto */
-    filter: drop-shadow(2px 4px 6px rgba(0, 0, 0, 0.5));
+    /* Sombra para destacar do fundo preto (Borda fake) */
+    filter: drop-shadow(2px 2px 0px rgba(255, 255, 255, 0.15));
 
     pointer-events: none;
-    /* Impede que o mouse interaja com o número */
+    /* Clique atravessa */
+    user-select: none;
 }
 
-/* Ajuste para telas menores (celulares) */
+/* Ajuste para telas menores (Celular) */
 @media (max-width: 640px) {
     .top10-big-rank {
-        font-size: 130px;
-        /* Um pouco menor no mobile, mas ainda grande */
-        letter-spacing: -10px;
-        bottom: -10px;
+        font-size: 110px;
+        /* Um pouco menor no celular */
+        letter-spacing: -6px;
+        margin-bottom: -8px;
+    }
+
+    /* Ajuste do overlap no celular */
+    .carousel-item .liquid-glass-card[class*="ml-[-25px]"] {
+        margin-left: -15px !important;
     }
 }
