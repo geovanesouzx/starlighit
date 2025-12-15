@@ -1044,19 +1044,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const recentlyAdded = [...firestoreContent].sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0)).slice(0, 20);
         createCarousel(carouselsContainer, "Adicionado Recentemente", recentlyAdded);
 
-        // --- 3. Gêneros e TOP 10 (Lógica Avançada - ESTILO BIG NUMBER) ---
-
-        // 3.1 Funções Auxiliares para o Top 10
+        // 3.1 Funções Auxiliares para o Top 10 (ESTILO NETFLIX / BIG NUMBER)
         const createTop10Card = (item, index) => {
             const rank = index + 1;
             const posterPath = (item.poster && item.poster.startsWith('http')) ? item.poster : 'https://files.catbox.moe/sytt0s.gif';
 
             return `
-            <a href="#details/${item.docId}" class="carousel-item group relative flex items-end flex-shrink-0 cursor-pointer transition-transform hover:scale-105 duration-300 pr-4">
+            <a href="#details/${item.docId}" class="carousel-item group relative flex flex-row items-end justify-end flex-shrink-0 cursor-pointer transition-transform hover:scale-105 duration-300 min-w-[240px] sm:min-w-[280px]">
                 
                 <span class="top10-big-rank">${rank}</span>
                 
-                <div class="liquid-glass-card aspect-[2/3] w-36 sm:w-44 bg-stone-800 overflow-hidden relative z-10 border border-white/10 shadow-xl ml-[-25px]">
+                <div class="liquid-glass-card aspect-[2/3] w-32 sm:w-44 bg-stone-800 overflow-hidden relative z-10 border border-white/10 shadow-xl ml-[-20px]">
                      <div class="glass-filter"></div>
                      <div class="glass-distortion-overlay"></div>
                      <div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.1);"></div>
@@ -1077,8 +1075,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         <i data-lucide="trophy" class="w-6 h-6 text-yellow-400"></i> ${title}
                      </h2>
                 </div>
-                <div class="carousel-container relative pb-4">
-                    <div class="carousel space-x-4 px-4 sm:px-6 lg:px-8 py-4 overflow-x-auto hide-scrollbar scroll-smooth items-end">
+                <div class="carousel-container relative pb-2">
+                    <div class="carousel space-x-0 px-4 sm:px-6 lg:px-8 py-4 overflow-x-auto hide-scrollbar scroll-smooth items-end">
                         ${data.map((item, index) => createTop10Card(item, index)).join('')}
                     </div>
                 </div>`;
