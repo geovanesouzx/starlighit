@@ -1044,19 +1044,19 @@ document.addEventListener('DOMContentLoaded', function () {
         const recentlyAdded = [...firestoreContent].sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0)).slice(0, 20);
         createCarousel(carouselsContainer, "Adicionado Recentemente", recentlyAdded);
 
+        // --- 3. Gêneros e TOP 10 (Lógica Avançada) ---
+
         // 3.1 Funções Auxiliares para o Top 10 (Ficam aqui dentro mesmo)
         const createTop10Card = (item, index) => {
             const rank = index + 1;
             // Verifica se tem poster, senão usa GIF
             const posterPath = (item.poster && item.poster.startsWith('http')) ? item.poster : 'https://files.catbox.moe/sytt0s.gif';
 
-            // MUDANÇA: Usamos 'flex items-end' no container principal <a>
-            // e removemos as larguras fixas (w-40) do <a>, passando a controlar a largura na div do card.
             return `
-            <a href="#details/${item.docId}" class="carousel-item top10-item cursor-pointer group flex items-end flex-shrink-0 transition-transform hover:scale-105 duration-300 pl-4">
+            <a href="#details/${item.docId}" class="carousel-item w-40 sm:w-52 cursor-pointer group block flex-shrink-0 relative top10-item pl-8 transition-transform hover:scale-105 duration-300">
                 <span class="top10-rank">${rank}</span>
                 
-                <div class="liquid-glass-card top10-card-container aspect-[2/3] bg-stone-800 overflow-hidden relative border border-white/10 rounded-lg shadow-xl">
+                <div class="liquid-glass-card aspect-[2/3] bg-stone-800 overflow-hidden relative z-10 border border-white/10">
                      <div class="glass-filter"></div>
                      <div class="glass-distortion-overlay"></div>
                      <div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.1);"></div>
