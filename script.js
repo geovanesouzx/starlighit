@@ -1581,7 +1581,22 @@ document.addEventListener('DOMContentLoaded', function () {
             prevEpisodeBtn.classList.add('hidden');
         }
 
-        attachGlassButtonListeners(); // Reatacha listeners visuais
+        // --- CÓDIGO NOVO ADICIONADO AQUI ---
+
+        // 1. Limpa as opções antigas de velocidade para não duplicar
+        const speedContainer = document.getElementById('settings-speed-options');
+        if (speedContainer) {
+            // Remove todos os botões filhos, mantendo apenas o título (h4)
+            while (speedContainer.childNodes.length > 1) {
+                speedContainer.removeChild(speedContainer.lastChild);
+            }
+        }
+
+        // 2. Recria o menu de configurações (Áudio + Velocidade) para este vídeo específico
+        createSettingsOptions();
+
+        // 3. Re-aplica os efeitos de vidro nos novos botões criados
+        attachGlassButtonListeners();
     }
 
     /**
@@ -1905,44 +1920,152 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    /** Cria as opções no painel de configurações do player (velocidade, qualidade) */
+    /** Cria as opções no painel de configurações (Áudio e Velocidade) */
     function createSettingsOptions() {
+        // --- 1. ÁUDIO ---
+        const audioSection = document.getElementById('settings-audio-section');
+        const audioContainer = document.getElementById('settings-audio-options');
+        audioContainer.innerHTML = ''; // Limpa anteriores
+
+        // Define os áudios disponíveis com base no contexto atual
+        // Nota: No futuro Admin, salvaremos como 'url_pt' e 'url_en'. O 'url' padrão serve como fallback.
+        const item = currentPlayerContext.itemData; // Dados do filme
+        // Se for série, pegamos o episódio atual
+        const episode = currentPlayerContext.episodes ? currentPlayerContext.episodes[currentPlayerContext.currentIndex] : null;
+
+        // Objeto fonte de dados (Filme ou Episódio)
+        const sourceData = episode || item;
+
+        const availableAudios = [];
+
+        // Verifica Dublado (PT-BR)
+        if (sourceData.url_pt) {
+            availableAudios.push({ label: 'Português', url: sourceData.url_pt, lang: 'pt' });
+        }
+        // Verifica Legendado/Original (EN)
+        if (sourceData.url_en) {
+            availableAudios.push({ label: 'Inglês', url: sourceData.url_en, lang: 'en' });
+        }
+
+        // Se não tiver campos específicos, usa a URL padrão (identificada como Padrão)
+        if (availableAudios.length === 0 && sourceData.url) {
+            availableAudios.push({ label: 'Padrão', url: sourceData.url, lang: 'default' });
+        }
+        // Caso tenhamos url_pt/en mas a URL principal seja diferente delas, podemos adicionar também
+        else if (sourceData.url && !availableAudios.find(a => a.url === sourceData.url)) {
+            // Decide um nome se não encaixar nos outros
+            availableAudios.push({ label: 'Principal', url: sourceData.url, lang: 'main' });
+        }
+
+        // Se houver mais de 1 opção de áudio, mostra a seção
+        if (availableAudios.length > 1) {
+            audioSection.classList.remove('hidden');
+
+            availableAudios.forEach(audio => {
+                const button = document.createElement('button');
+                button.className = 'settings-option-btn text-sm py-2 px-3 hover:bg-white/10 rounded-md text-left w-full transition-colors flex justify-between items-center';
+
+                // Verifica se é o áudio tocando agora
+                // (Normaliza URLs para evitar erros de http/https ou parâmetros extras)
+                const isCurrent = (currentPlayerContext.videoUrl === audio.url);
+
+                if (isCurrent) {
+                    button.classList.add('text-purple-400', 'font-bold', 'bg-white/5');
+                    button.innerHTML = `${audio.label} <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+                } else {
+                    button.classList.add('text-stone-300');
+                    button.textContent = audio.label;
+                }
+
+                button.onclick = () => {
+                    if (audio.url !== currentPlayerContext.videoUrl) {
+                        changeAudioSource(audio.url);
+                        // Fecha o painel após selecionar
+                        document.getElementById('player-settings-panel').classList.add('hidden');
+                    }
+                };
+                audioContainer.appendChild(button);
+            });
+        } else {
+            // Se só tem 1 áudio, esconde a seção
+            audioSection.classList.add('hidden');
+        }
+
+        // --- 2. VELOCIDADE (Mantém o código existente) ---
         const speedContainer = document.getElementById('settings-speed-options');
-        const qualityContainer = document.getElementById('settings-quality-options');
-        // Só cria se ainda não existirem (evita duplicação)
-        if (speedContainer.childElementCount > 1) return;
+        // Só recria se estiver vazio (exceto título)
+        if (speedContainer.querySelectorAll('button').length === 0) {
+            const speeds = [0.5, 1, 1.5, 2];
+            speeds.forEach(speed => {
+                const button = document.createElement('button');
+                button.className = 'settings-option-btn text-sm py-2 px-3 hover:bg-white/10 rounded-md text-left w-full transition-colors';
+                button.textContent = speed === 1 ? 'Normal' : `${speed}x`;
+                if (speed === 1) button.classList.add('text-purple-400', 'font-bold');
+                else button.classList.add('text-stone-300');
 
-        // Opções de velocidade
-        const speeds = [0.5, 1, 1.5, 2];
-        speeds.forEach(speed => {
-            const button = document.createElement('button');
-            button.className = 'settings-option-btn';
-            button.textContent = `${speed}x`;
-            if (speed === 1) button.classList.add('active'); // Marca 1x como padrão
-            button.onclick = () => { // Ao clicar
-                videoPlayer.playbackRate = speed; // Muda velocidade do vídeo
-                // Atualiza qual botão está ativo
-                speedContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-            };
-            speedContainer.appendChild(button);
-        });
+                button.onclick = () => {
+                    videoPlayer.playbackRate = speed;
+                    speedContainer.querySelectorAll('button').forEach(btn => {
+                        btn.classList.remove('text-purple-400', 'font-bold');
+                        btn.classList.add('text-stone-300');
+                    });
+                    button.classList.remove('text-stone-300');
+                    button.classList.add('text-purple-400', 'font-bold');
+                };
+                speedContainer.appendChild(button);
+            });
+        }
+    }
 
-        // Opções de qualidade (Placeholder - HLS.js pode gerenciar isso dinamicamente)
-        const qualities = ["Auto", "1080p", "720p", "480p"];
-        qualities.forEach(quality => {
-            const button = document.createElement('button');
-            button.className = 'settings-option-btn';
-            button.textContent = quality;
-            if (quality === "Auto") button.classList.add('active'); // Marca Auto como padrão
-            button.onclick = () => { // Ao clicar (ação placeholder)
-                qualityContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                console.log(`Qualidade definida para ${quality}. (Funcionalidade de troca manual não implementada)`);
-                // NOTA: A troca real de qualidade com HLS.js é mais complexa
+    /**
+     * Troca a fonte de áudio/vídeo preservando o tempo atual.
+     * @param {string} newUrl - A nova URL do vídeo.
+     */
+    function changeAudioSource(newUrl) {
+        const currentTime = videoPlayer.currentTime; // Salva o tempo
+        const isPaused = videoPlayer.paused; // Salva o estado (play/pause)
+        const playbackRate = videoPlayer.playbackRate; // Salva a velocidade
+
+        // Atualiza o contexto global
+        currentPlayerContext.videoUrl = newUrl;
+
+        // Mostra loading
+        playerLoadingOverlay.classList.remove('hidden');
+
+        // Lógica de carregamento (HLS vs MP4) - Reutiliza lógica similar ao showPlayer
+        if (Hls.isSupported() && newUrl.includes('.m3u8')) {
+            if (hls) {
+                hls.destroy(); // Destrói instância anterior
+            }
+            hls = new Hls({
+                maxBufferLength: 30,
+                maxBufferSize: 60 * 1000 * 1000,
+            });
+            hls.loadSource(newUrl);
+            hls.attachMedia(videoPlayer);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                videoPlayer.currentTime = currentTime;
+                videoPlayer.playbackRate = playbackRate;
+                if (!isPaused) videoPlayer.play().catch(e => console.error(e));
+                playerLoadingOverlay.classList.add('hidden');
+                createSettingsOptions(); // Recria menu para atualizar o check visual
+            });
+        } else {
+            // MP4 Padrão
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            videoPlayer.src = newUrl;
+            videoPlayer.load();
+            videoPlayer.onloadedmetadata = () => {
+                videoPlayer.currentTime = currentTime;
+                videoPlayer.playbackRate = playbackRate;
+                if (!isPaused) videoPlayer.play().catch(e => console.error(e));
+                playerLoadingOverlay.classList.add('hidden');
+                createSettingsOptions(); // Recria menu
             };
-            qualityContainer.appendChild(button);
-        });
+        }
     }
 
     /** Inicializa a UI do player (define ícones iniciais, adiciona listeners) */
