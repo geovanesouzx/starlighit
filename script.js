@@ -1124,10 +1124,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     /**
-     * Renderiza a tela de detalhes para um item específico.
-     * @param {object} item - Objeto contendo o docId do item.
-     */
-    /**
          * Renderiza a tela de detalhes para um item específico.
          * @param {object} item - Objeto contendo o docId do item.
          */
@@ -1163,7 +1159,6 @@ document.addEventListener('DOMContentLoaded', function () {
         let backgroundUrl = data.backdrop;
         const finalImageUrl = (backgroundUrl && backgroundUrl.startsWith('http')) ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
 
-        // --- AQUI ESTÁ A ALTERAÇÃO PARA O GIF ---
         // Verifica se existe poster e se é um link válido, senão usa o GIF
         const posterUrl = (data.poster && data.poster.startsWith('http')) ? data.poster : 'https://files.catbox.moe/sytt0s.gif';
 
@@ -1189,9 +1184,19 @@ document.addEventListener('DOMContentLoaded', function () {
                             <div id="details-meta" class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300">
                                 </div>
                             <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genres}</div>
+                            
                             <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
                                 <button id="details-watch-btn" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"><svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>Assistir</div></button>
+                                
                                 <button id="details-add-to-list" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"></div></button>
+
+                                <button id="details-report-btn" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3" style="--glass-highlight: rgba(239, 68, 68, 0.3);">
+                                    <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
+                                    <div class="glass-content flex items-center gap-2 text-red-400 hover:text-red-300 transition-colors">
+                                        <i data-lucide="flag" class="w-5 h-5"></i>
+                                        Reportar
+                                    </div>
+                                </button>
                             </div>
                             
                             <h3 class="mt-8 text-lg sm:text-xl font-semibold text-white">Sinopse</h3>
@@ -1215,10 +1220,32 @@ document.addEventListener('DOMContentLoaded', function () {
             `;
         }
 
-        // ... (O resto da função continua com os listeners de botões) ...
-
         // Adiciona listeners aos botões da tela de detalhes
         document.getElementById('back-from-details').addEventListener('click', () => history.back()); // Botão voltar
+
+        // --- LÓGICA DO BOTÃO REPORTAR (INSERIDA AQUI) ---
+        const reportBtn = document.getElementById('details-report-btn');
+        if (reportBtn) {
+            reportBtn.addEventListener('click', () => {
+                const contentName = title; // Pega o título atual
+                window.location.hash = '#report-view'; // Vai para a tela de reportar
+
+                // Preenche o input após a troca de tela
+                setTimeout(() => {
+                    const reportInput = document.getElementById('report-content-name');
+                    const reportDesc = document.getElementById('report-desc');
+                    if (reportInput) {
+                        reportInput.value = contentName;
+                        reportInput.focus();
+                    }
+                    if (reportDesc) reportDesc.value = ''; // Limpa descrição antiga
+                }, 100);
+            });
+            // Ativa o ícone do botão
+            lucide.createIcons({ nodes: [reportBtn.querySelector('i')] });
+        }
+        // ------------------------------------------------
+
         document.getElementById('details-watch-btn').addEventListener('click', () => { // Botão assistir
             if (data.type === 'movie') {
                 // Se for filme, inicia o player com a URL do filme
@@ -1231,13 +1258,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (firstEpisode) {
                     // Prepara o contexto do player com informações da série e episódio
                     const allEpisodesOfSeason = data.seasons[firstSeasonKey].episodes;
-
-                    // Pega o título do episódio, com fallback
                     const epTitle = firstEpisode.title ? ` - ${firstEpisode.title}` : '';
 
                     const context = {
                         videoUrl: firstEpisode.url,
-                        // CORRIGIDO: Adiciona o epTitle
                         title: `${title} - T${firstSeasonKey} E${firstEpisode.episode_number || 1}${epTitle}`,
                         itemData: data,
                         episodes: allEpisodesOfSeason,
@@ -1249,6 +1273,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         });
+
         await updateListButton(document.getElementById('details-add-to-list'), data); // Atualiza botão "Minha Lista"
 
         // Se for uma série, renderiza a seção de temporadas/episódios
@@ -2025,7 +2050,7 @@ document.addEventListener('DOMContentLoaded', function () {
         navDebounceTimer = setTimeout(async () => {
             const hash = window.location.hash;
 
-            // --- NOVA LÓGICA DE INTERCEPTAÇÃO DE "VOLTAR" (PRESERVADA) ---
+            // --- LÓGICA DE INTERCEPTAÇÃO DE "VOLTAR" ---
             if (isFirstNavigation) {
                 isFirstNavigation = false;
                 const currentHash = window.location.hash;
@@ -2046,7 +2071,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!hash.startsWith('#details/') && hash !== '#player' && hash !== '' && hash !== '#') {
                 sessionStorage.setItem('landedOnDetails', 'false');
             }
-            // --- FIM DA LÓGICA NOVA ---
 
             // --- Rota de Autenticação ---
             if (!userId) {
@@ -2069,7 +2093,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (foundProfile) {
                         selectAndEnterProfile(foundProfile);
                         autoSelectedProfile = true;
-                        // IMPORTANTE: Retorna aqui pois selectAndEnterProfile vai chamar a navegação de novo
+                        // Retorna aqui pois selectAndEnterProfile vai chamar a navegação de novo
                         return;
                     }
                 }
@@ -2119,6 +2143,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 const targetId = hash.substring(1) || 'home-view';
                 const targetView = document.getElementById(targetId);
 
+                // --- (PASSO 4) LIMPEZA DO FORMULÁRIO DE REPORT ---
+                // Se a tela de destino NÃO for a de reportar, limpa os campos.
+                // Isso garante que ao voltar para a home ou ir para outro lugar,
+                // o formulário resete para a próxima vez.
+                if (targetId !== 'report-view') {
+                    const reportInput = document.getElementById('report-content-name');
+                    const reportDesc = document.getElementById('report-desc');
+                    if (reportInput) reportInput.value = '';
+                    if (reportDesc) reportDesc.value = '';
+                }
+                // --------------------------------------------------
+
                 if (targetView && targetView.classList.contains('content-view')) {
                     targetView.classList.remove('hidden');
                     renderScreenContent(targetId);
@@ -2135,6 +2171,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 updateMobileNavIndicator();
 
                 document.getElementById('main-background').style.opacity = (targetId === 'home-view' && currentHeroItem) ? 1 : 0;
+
+                // Para o carrossel do Hero se sair da Home
                 if (targetId !== 'home-view' && heroCarouselInterval) {
                     clearInterval(heroCarouselInterval);
                     heroCarouselInterval = null;
@@ -2142,7 +2180,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             handleHeaderScroll();
 
-        }, 50); // <-- O ATRASO MÁGICO DE 50ms QUE EVITA DUPLICAÇÃO
+        }, 50); // Delay de 50ms para evitar duplicação e bugs de navegação
     }
 
     // Adiciona os listeners de navegação do navegador (botão voltar/avançar, mudança de hash)
