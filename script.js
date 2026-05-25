@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', function () {
         volumeMute: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"></path></svg>`,
         fullscreen: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg>`,
         exitFullscreen: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"></path></svg>`,
-        settings: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59 1.69.98l2.49 1c.23.09.49 0 .61.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg>`,
+        settings: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49-.12-.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59 1.69.98l2.49 1c.23.09.49 0 .61.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg>`,
         back: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>`,
         aspectContain: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M2 5h2v14H2V5zm20 0h-2v14h2V5zM6 7h12v10H6V7z"></path></svg>`,
         aspectCover: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 5h16v14H4V5z"></path></svg>`
@@ -716,7 +716,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             let context = {};
 
                             if (item.type === 'movie') {
-                                context = { videoUrl: item.url, title: item.title || item.name, itemData: item, startTime: data.currentTime };
+                                context = { videoUrl: item.url, altUrl: item.altUrl || "", title: item.title || item.name, itemData: item, startTime: data.currentTime };
                             } else if (item.type === 'tv' && data.episode) {
                                 let allEpisodes = [];
                                 if (item.seasons && item.seasons[data.episode.season_number]) {
@@ -728,6 +728,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                                 context = {
                                     videoUrl: data.episode.url,
+                                    altUrl: data.episode.altUrl || "",
                                     title: `${item.title || item.name} - T${data.episode.season_number} E${data.episode.episode_number}${epTitle}`,
                                     itemData: item, episodes: allEpisodes, currentIndex: safeIndex, startTime: data.currentTime
                                 };
@@ -813,6 +814,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 card.playerContext = {
                     videoUrl: ep.url,
+                    altUrl: ep.altUrl || "",
                     title: `${serieTitle} - T${data.seasonNum} E${ep.episode_number} - ${epTitle}`,
                     itemData: serie,
                     episodes: serie.seasons[data.seasonNum].episodes,
@@ -1036,7 +1038,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         document.getElementById('details-watch-btn').addEventListener('click', () => {
             if (data.type === 'movie') {
-                showPlayer({ videoUrl: data.url, title: title, itemData: data });
+                showPlayer({ videoUrl: data.url, altUrl: data.altUrl || "", title: title, itemData: data });
             } else if (data.type === 'tv' && data.seasons) {
                 const firstSeasonKey = Object.keys(data.seasons).sort((a, b) => parseInt(a) - parseInt(b))[0];
                 const firstEpisode = data.seasons[firstSeasonKey]?.episodes?.[0];
@@ -1047,6 +1049,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     const context = {
                         videoUrl: firstEpisode.url,
+                        altUrl: firstEpisode.altUrl || "",
                         title: `${title} - T${firstSeasonKey} E${firstEpisode.episode_number || 1}${epTitle}`,
                         itemData: data,
                         episodes: allEpisodesOfSeason,
@@ -1122,7 +1125,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     ? (ep.still_path.startsWith('/') ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : ep.still_path)
                     : 'https://files.catbox.moe/sytt0s.gif';
 
-                const isComingSoon = !ep.url || ep.isComingSoon === true;
+                const hasAnyUrl = (ep.url && ep.url.trim() !== '') || (ep.altUrl && ep.altUrl.trim() !== '');
+                const isComingSoon = !hasAnyUrl || ep.isComingSoon === true;
                 const opacityClass = isComingSoon ? 'opacity-60' : '';
                 const cursorClass = isComingSoon ? 'cursor-not-allowed' : 'cursor-pointer group';
 
@@ -1204,6 +1208,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const context = {
                     videoUrl: episode.url,
+                    altUrl: episode.altUrl || "",
                     title: `${data.title || data.name} - T${seasonKey} E${episode.episode_number || episodeIndex + 1}${epTitle}`,
                     itemData: data,
                     episodes: allEpisodesOfSeason,
@@ -1247,6 +1252,110 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
+    function switchVideoSource(newUrl) {
+        if (!newUrl || newUrl === 'none') return;
+        const currentTime = videoPlayer.currentTime;
+        const wasPlaying = !videoPlayer.paused;
+        const currentSpeed = videoPlayer.playbackRate;
+
+        if (playerLoadingOverlay) {
+            playerLoadingOverlay.classList.remove('hidden');
+        }
+
+        if (hls) {
+            hls.destroy();
+            hls = null;
+        }
+        videoPlayer.removeAttribute('src');
+        videoPlayer.load();
+
+        let urlToLoad = newUrl;
+        try {
+            const urlObject = new URL(urlToLoad);
+            if (urlObject.hostname.includes('api.anivideo.net') && urlObject.pathname.includes('videohls.php')) {
+                const videoSrc = urlObject.searchParams.get('d');
+                if (videoSrc) urlToLoad = videoSrc;
+            }
+        } catch (e) {}
+
+        if (Hls.isSupported() && urlToLoad.includes('.m3u8')) {
+            hls = new Hls({ maxBufferLength: 30, maxBufferSize: 60 * 1000 * 1000, startLevel: -1 });
+            hls.loadSource(urlToLoad);
+            hls.attachMedia(videoPlayer);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                videoPlayer.currentTime = currentTime;
+                videoPlayer.playbackRate = currentSpeed;
+                if (wasPlaying) videoPlayer.play().catch(e => console.error(e));
+            });
+        } else {
+            videoPlayer.src = urlToLoad;
+            videoPlayer.addEventListener('loadedmetadata', () => {
+                videoPlayer.currentTime = currentTime;
+                videoPlayer.playbackRate = currentSpeed;
+                if (wasPlaying) videoPlayer.play().catch(e => console.error(e));
+            }, { once: true });
+        }
+    }
+
+    function updateAudioSettings() {
+        let audioContainer = document.getElementById('settings-audio-options');
+        if (!audioContainer) {
+            audioContainer = document.createElement('div');
+            audioContainer.id = 'settings-audio-options';
+            audioContainer.className = 'mt-2 border-b border-white/10 pb-2 mb-2';
+            
+            const qualityContainer = document.getElementById('settings-quality-options');
+            if(qualityContainer && qualityContainer.parentNode) {
+                qualityContainer.parentNode.insertBefore(audioContainer, qualityContainer);
+            } else {
+                document.getElementById('settings-speed-options').parentNode.prepend(audioContainer);
+            }
+        }
+
+        audioContainer.innerHTML = '<h4 class="text-xs text-gray-300 px-3 pt-1 pb-2">Áudio e Legendas</h4>';
+
+        const hasDefault = currentPlayerContext.videoUrl && currentPlayerContext.videoUrl !== 'none' && currentPlayerContext.videoUrl.trim() !== '';
+        const hasAlt = currentPlayerContext.altUrl && currentPlayerContext.altUrl !== 'none' && currentPlayerContext.altUrl.trim() !== '';
+
+        if (!hasDefault && !hasAlt) {
+            audioContainer.style.display = 'none';
+            return;
+        }
+        audioContainer.style.display = 'block';
+
+        if (hasDefault) {
+            const btnDefault = document.createElement('button');
+            btnDefault.className = 'settings-option-btn';
+            btnDefault.textContent = 'Padrão (Dublado)';
+            if (!currentPlayerContext.useAltAudio) btnDefault.classList.add('active');
+            btnDefault.onclick = () => {
+                if (currentPlayerContext.useAltAudio) {
+                    currentPlayerContext.useAltAudio = false;
+                    switchVideoSource(currentPlayerContext.videoUrl);
+                    audioContainer.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                    btnDefault.classList.add('active');
+                }
+            };
+            audioContainer.appendChild(btnDefault);
+        }
+
+        if (hasAlt) {
+            const btnAlt = document.createElement('button');
+            btnAlt.className = 'settings-option-btn';
+            btnAlt.textContent = 'Alternativo (Legendado)';
+            if (currentPlayerContext.useAltAudio) btnAlt.classList.add('active');
+            btnAlt.onclick = () => {
+                if (!currentPlayerContext.useAltAudio) {
+                    currentPlayerContext.useAltAudio = true;
+                    switchVideoSource(currentPlayerContext.altUrl);
+                    audioContainer.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                    btnAlt.classList.add('active');
+                }
+            };
+            audioContainer.appendChild(btnAlt);
+        }
+    }
+
     async function showPlayer(context) {
         hidePlayer(false, true);
         await new Promise(resolve => setTimeout(resolve, 50));
@@ -1267,6 +1376,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         currentPlayerContext = { ...context, key, id: itemData.docId, itemData };
 
+        const hasDefault = context.videoUrl && context.videoUrl !== 'none' && context.videoUrl.trim() !== '';
+        const hasAlt = context.altUrl && context.altUrl !== 'none' && context.altUrl.trim() !== '';
+        currentPlayerContext.useAltAudio = !hasDefault && hasAlt;
+        
+        updateAudioSettings();
+
         if (window.location.hash !== '#player') {
             history.pushState({ view: 'player' }, '', '#player');
         }
@@ -1275,7 +1390,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.style.overflow = 'hidden';
         playerTitle.textContent = context.title;
 
-        let urlToLoad = context.videoUrl;
+        let urlToLoad = currentPlayerContext.useAltAudio ? context.altUrl : context.videoUrl;
+        
         try {
             const urlObject = new URL(urlToLoad);
             if (urlObject.hostname.includes('api.anivideo.net') && urlObject.pathname.includes('videohls.php')) {
@@ -1528,7 +1644,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 ...currentPlayerContext,
                 currentIndex: newIndex,
                 title: `${currentPlayerContext.itemData.title || currentPlayerContext.itemData.name} - T${episode.season_number} E${episode.episode_number}${epTitle}`,
-                videoUrl: episode.url
+                videoUrl: episode.url,
+                altUrl: episode.altUrl || ""
             };
             showPlayer(newContext);
         }
