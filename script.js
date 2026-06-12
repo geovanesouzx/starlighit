@@ -543,7 +543,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Atualiza os textos e informações
             document.getElementById('hero-category').textContent = 'EM DESTAQUE';
-            document.getElementById('hero-title').textContent = item.title || item.name;
+            const heroTitleEl = document.getElementById('hero-title');
+            if (item.logo) {
+                // Se o item tiver o campo 'logo' no banco, injeta a imagem com tamanhos responsivos
+                heroTitleEl.innerHTML = `<img src="${item.logo}" alt="${item.title || item.name}" class="max-w-[200px] sm:max-w-[300px] md:max-w-[400px] max-h-[150px] object-contain drop-shadow-lg">`;
+            } else {
+                // Se não tiver a logo, mantém o texto em texto normal
+                heroTitleEl.textContent = item.title || item.name;
+            }
             // Limita a sinopse a 200 caracteres
             document.getElementById('hero-overview').textContent = item.synopsis.length > 200 ? item.synopsis.substring(0, 200) + '...' : item.synopsis;
             const releaseYear = item.year; // Ano de lançamento
@@ -1162,6 +1169,13 @@ document.addEventListener('DOMContentLoaded', function () {
         // Verifica se existe poster e se é um link válido, senão usa o GIF
         const posterUrl = (data.poster && data.poster.startsWith('http')) ? data.poster : 'https://files.catbox.moe/sytt0s.gif';
 
+        // -------- NOVO CÓDIGO AQUI --------
+        // Verifica se tem logo para exibir imagem, senão exibe o h1 com texto
+        const titleHTML = data.logo
+            ? `<img src="${data.logo}" alt="${title}" class="max-w-[200px] sm:max-w-[300px] md:max-w-[450px] max-h-[150px] mx-auto md:mx-0 object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">`
+            : `<h1 class="text-3xl md:text-5xl lg:text-6xl font-black text-white break-words" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.7);">${title}</h1>`;
+        // -----------------------------------
+
         // Define o HTML da tela de detalhes
         detailsView.innerHTML = `
             <div class="fixed inset-0 z-[-1] bg-cover bg-center bg-no-repeat" style="background-image: url('${finalImageUrl}');">
@@ -1179,7 +1193,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="flex-shrink-0 w-48 sm:w-56 md:w-64 mx-auto md:mx-0">
                             <img src="${posterUrl}" alt="${title}" class="rounded-lg shadow-2xl w-full aspect-[2/3] object-cover bg-stone-800">
                         </div>
-                        <div class="flex-1 mt-6 md:mt-0 text-center md:text-left w-full"> <h1 class="text-3xl md:text-5xl lg:text-6xl font-black text-white break-words" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.7);">${title}</h1>
+                        
+                                                <div class="flex-1 mt-6 md:mt-0 text-center md:text-left w-full flex flex-col items-center md:items-start justify-center"> 
+                            ${titleHTML}
                             
                             <div id="details-meta" class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300">
                                 </div>
