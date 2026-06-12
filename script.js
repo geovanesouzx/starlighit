@@ -20,39 +20,35 @@ import {
     deleteDoc,
     query,
     where,
-    orderBy,
-    limit,
-    startAfter,
+    orderBy, // READICIONADO PARA ORDENAR NOVIDADES E COMENTÁRIOS
+    limit,   // Para paginação de comentários (opcional)
+    startAfter, // Para paginação de comentários (opcional)
     onSnapshot,
     serverTimestamp,
     arrayUnion,
     arrayRemove,
-    increment
+    increment // Para contadores de likes/replies
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', function () {
     lucide.createIcons();
 
     const FALLBACK_IMAGE = 'https://files.catbox.moe/sytt0s.gif';
-    
-    // NOME DA SUA COLEÇÃO NO FIRESTORE ONDE ESTÃO OS ANIMES
-    // Se no seu banco a coleção se chama "animes", mude a palavra 'content' abaixo para 'animes'
-    const CONTENT_COLLECTION = 'content'; 
 
     // Define um hash padrão se nenhum existir e não for #player
     if (!window.location.hash || window.location.hash === '#player') {
-        history.replaceState(null, '', window.location.pathname + window.location.search);
-        window.location.hash = '#home-view';
+        history.replaceState(null, '', window.location.pathname + window.location.search); // Limpa #player
+        window.location.hash = '#home-view'; // Define um padrão inicial
     }
 
-    // --- NOVA Configuração do Firebase (Mango Anime) ---
+    // --- Configuração do Firebase ---
     const firebaseConfig = {
-        apiKey: "AIzaSyDLGgSoNwLy_f6FRG3jHmlNJ5AIb9MC7fs",
-        authDomain: "mango-anime.firebaseapp.com",
-        projectId: "mango-anime",
-        storageBucket: "mango-anime.firebasestorage.app",
-        messagingSenderId: "269303739791",
-        appId: "1:269303739791:web:bee162ff744b83e41187fa"
+        apiKey: "AIzaSyA791i8R8Bmrn3toFxFltZ40TU7PUavev8", // Substitua pela sua chave real se necessário
+        authDomain: "starlight-max.firebaseapp.com",
+        projectId: "starlight-max",
+        storageBucket: "starlight-max.appspot.com",
+        messagingSenderId: "120477177511",
+        appId: "1:120477177511:web:5a75a2dd6d8089c829ed82"
     };
 
     // Inicializar Firebase
@@ -61,14 +57,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const db = getFirestore(app);
     const googleProvider = new GoogleAuthProvider();
 
-    let isFirstNavigation = true;
+    let isFirstNavigation = true; // ADICIONADO AQUI
 
     let userId = null;
-    let userEmail = null;
-    let userDisplayName = null;
+    let userEmail = null; // Guardar email para referência
+    let userDisplayName = null; // Guardar nome para comentários/respostas
 
-    // Constantes da API TMDB
-    const API_KEY = '5954890d9e9b723ff3032f2ec429fec3';
+    // Constantes da API TMDB (Exemplo - use suas chaves reais)
+    const API_KEY = '5954890d9e9b723ff3032f2ec429fec3'; // Chave de exemplo
     const API_URL = 'https://api.themoviedb.org/3';
     const IMG_URL_POSTER = 'https://image.tmdb.org/t/p/w500';
     const IMG_URL_BACKGROUND = 'https://image.tmdb.org/t/p/original';
@@ -85,15 +81,16 @@ document.addEventListener('DOMContentLoaded', function () {
     let heroCarouselInterval;
     let featuredItemIds = [];
 
-    let hls = null;
-    let notifications = [];
+    let hls = null; // Instância do HLS.js
+    let notifications = []; // Cache de notificações
     let lastNotificationCheck = localStorage.getItem('starlight-lastNotificationCheck') || 0;
     let dismissedNotifications = JSON.parse(localStorage.getItem('starlight-dismissedNotifications')) || [];
 
-    let firestoreContent = [];
-    let pendingRequests = [];
-    let newsItemsCache = [];
-    let unsubscribeNewsListener = null;
+    let firestoreContent = []; // Cache do conteúdo principal
+    let pendingRequests = []; // Cache de pedidos pendentes
+    let newsItemsCache = []; // Cache para novidades
+    // let dailyShuffledContent = []; // <-- REMOVA ESTA LINHA
+    let unsubscribeNewsListener = null; // Para parar de ouvir novidades ao deslogar
 
     // Elementos DOM frequentemente usados
     const loginView = document.getElementById('login-view');
@@ -105,7 +102,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const closeSearchBtn = document.getElementById('close-search-btn');
     const notificationBtn = document.getElementById('notification-btn');
     const notificationPanel = document.getElementById('notification-panel');
-    let debounceTimer;
+    let debounceTimer; // Timer para debounce de busca
     const playerLoadingOverlay = document.getElementById('player-loading-overlay');
 
     // Elementos do Player
@@ -127,8 +124,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const settingsBtn = document.getElementById('player-settings-btn');
     const settingsPanel = document.getElementById('player-settings-panel');
     const playerBackBtn = document.getElementById('player-back-btn');
-    const aspectRatioBtn = document.getElementById('player-aspect-ratio-btn');
-    let currentAspectRatio = 'contain';
+    const aspectRatioBtn = document.getElementById('player-aspect-ratio-btn'); // NOVO
+    let currentAspectRatio = 'contain'; // NOVO: 'contain' ou 'cover'
 
     // Elementos de Gerenciamento de Perfil
     const manageProfileView = document.getElementById('manage-profile-view');
@@ -145,13 +142,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const confirmMessage = document.getElementById('confirm-message');
     const confirmOkBtn = document.getElementById('confirm-ok-btn');
     const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
-    let confirmCallback = null;
+    let confirmCallback = null; // Função a ser chamada ao confirmar
 
     // Estado de Gerenciamento de Perfil
-    let profiles = [];
-    let currentProfile = null;
-    let isEditMode = false;
-    let avatarsCache = null;
+    let profiles = []; // Lista de perfis do usuário
+    let currentProfile = null; // Perfil atualmente selecionado
+    let isEditMode = false; // Modo de edição de perfis ativo?
+    let avatarsCache = null; // Cache para guardar os avatares do banco
 
     // Ícones SVG para os controles do player
     const ICONS = {
@@ -165,101 +162,156 @@ document.addEventListener('DOMContentLoaded', function () {
         volumeMute: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"></path></svg>`,
         fullscreen: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg>`,
         exitFullscreen: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"></path></svg>`,
-        settings: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49-.12-.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59 1.69.98l2.49 1c.23.09.49 0 .61.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg>`,
+        settings: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49.42l.38-2.65c.61-.25 1.17-.59 1.69.98l2.49 1c.23.09.49 0 .61.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg>`,
         back: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>`,
         aspectContain: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M2 5h2v14H2V5zm20 0h-2v14h2V5zM6 7h12v10H6V7z"></path></svg>`,
         aspectCover: `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 5h16v14H4V5z"></path></svg>`
     };
 
+    // HTML para o spinner de carregamento
     const glassSpinnerHTML = `<div class="glass-spinner-wrapper min-h-screen"><div class="glass-spinner"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content"><div class="spinner-ring"></div><div class="spinner-core"></div></div></div></div>`;
 
+    /**
+     * Exibe uma notificação toast temporária na tela.
+     * @param {string} message - A mensagem a ser exibida.
+     * @param {boolean} [isError=false] - Se true, estiliza como erro.
+     */
     function showToast(message, isError = false) {
         const toast = document.getElementById('notification-toast');
         if (!toast) return;
         toast.textContent = message;
-        toast.style.backgroundColor = isError ? 'rgba(239, 68, 68, 0.7)' : 'rgba(34, 197, 94, 0.7)';
+        toast.style.backgroundColor = isError ? 'rgba(239, 68, 68, 0.7)' : 'rgba(34, 197, 94, 0.7)'; // Vermelho para erro, verde para sucesso
         toast.classList.remove('hidden', 'opacity-0');
         toast.classList.add('opacity-100');
+        // Esconde após 3 segundos
         setTimeout(() => {
             toast.classList.remove('opacity-100');
             toast.classList.add('opacity-0');
-            setTimeout(() => toast.classList.add('hidden'), 300);
+            setTimeout(() => toast.classList.add('hidden'), 300); // Garante que 'hidden' seja adicionado após a transição
         }, 3000);
     }
 
+    // --- Funções de Dados do Firestore ---
+
+    /**
+     * Busca a lista de itens salvos ("Minha Lista") do perfil atual no Firestore.
+     * @returns {Promise<Array>} - Uma promessa que resolve com a lista de itens.
+     */
     async function getMyList() {
-        if (!userId || !currentProfile?.id) return [];
+        if (!userId || !currentProfile?.id) return []; // Retorna vazio se não houver usuário ou perfil
         const myListCol = collection(db, 'users', userId, 'profiles', currentProfile.id, 'my-list');
         const snapshot = await getDocs(myListCol);
-        return snapshot.docs.map(doc => doc.data());
+        return snapshot.docs.map(doc => doc.data()); // Mapeia os documentos para seus dados
     }
 
+    /**
+     * Verifica se um item específico está na "Minha Lista" do perfil atual.
+     * @param {string|number} itemId - O ID do item a ser verificado.
+     * @returns {Promise<boolean>} - True se o item estiver na lista, false caso contrário.
+     */
     async function checkIfInList(itemId) {
         if (!userId || !currentProfile?.id) return false;
         const docRef = doc(db, 'users', userId, 'profiles', currentProfile.id, 'my-list', String(itemId));
         const docSnap = await getDoc(docRef);
-        return docSnap.exists();
+        return docSnap.exists(); // Retorna true se o documento existir
     }
 
+    /**
+     * Adiciona ou remove um item da "Minha Lista" e atualiza os botões correspondentes.
+     * @param {object} item - O objeto do item (filme ou série).
+     */
     async function handleListAction(item) {
         if (!item || !userId || !currentProfile?.id) return;
-        const itemId = String(item.docId || item.id);
+        const itemId = String(item.docId || item.id); // Usa docId se disponível (do Firestore), senão id (do TMDB)
         const docRef = doc(db, 'users', userId, 'profiles', currentProfile.id, 'my-list', itemId);
         const isInList = await checkIfInList(itemId);
 
         if (isInList) {
-            await deleteDoc(docRef);
+            await deleteDoc(docRef); // Remove se já estiver na lista
         } else {
+            // Adiciona se não estiver, garantindo que 'media_type' esteja presente
             const itemToAdd = { ...item, media_type: item.media_type || (item.title ? 'movie' : 'tv') };
             await setDoc(docRef, itemToAdd);
         }
 
-        updateListButtons(item);
+        updateListButtons(item); // Atualiza a aparência dos botões relacionados
+        // Se a view "Minha Lista" estiver ativa, recarrega seu conteúdo
         if (window.location.hash === '#mylist-view') {
             populateMyList();
         }
     }
 
+    /**
+     * Função wrapper para adicionar/remover item da lista (chamada por botões).
+     * @param {object} item - O objeto do item.
+     */
     async function toggleMyListItem(item) {
         await handleListAction(item);
     }
 
+    /**
+     * Atualiza a aparência dos botões "Minha Lista" (no hero e nos detalhes)
+     * se o item correspondente for modificado.
+     * @param {object} item - O item que foi adicionado/removido.
+     */
     function updateListButtons(item) {
+        // Verifica se o item modificado é o que está no hero
         if (currentHeroItem?.docId === item.docId) {
             updateListButton(document.getElementById('hero-add-to-list'), currentHeroItem);
         }
+        // Verifica se o item modificado é o que está na tela de detalhes
         if (currentDetailsItem?.docId === item.docId) {
             const detailsButton = document.getElementById('details-add-to-list');
             if (detailsButton) updateListButton(detailsButton, currentDetailsItem);
         }
     }
 
+    /**
+     * Busca todo o progresso de visualização salvo para o perfil atual.
+     * @returns {Promise<object>} - Um objeto onde as chaves são IDs de progresso e os valores são os dados de progresso.
+     */
     async function getProgressStorage() {
         if (!userId || !currentProfile?.id) return {};
         const progressCol = collection(db, 'users', userId, 'profiles', currentProfile.id, 'watch-progress');
         const snapshot = await getDocs(progressCol);
         const progressData = {};
         snapshot.forEach(doc => {
-            progressData[doc.id] = doc.data();
+            progressData[doc.id] = doc.data(); // Monta o objeto de progresso
         });
         return progressData;
     }
 
+    /**
+     * Salva o progresso atual do vídeo no Firestore.
+     * Executada periodicamente durante a reprodução.
+     */
     async function savePlayerProgress() {
+        // Não salva se não houver duração, chave de contexto, usuário ou perfil
         if (!videoPlayer.duration || !currentPlayerContext.key || !userId || !currentProfile?.id) return;
 
         const progressData = {
-            currentTime: videoPlayer.currentTime,
-            duration: videoPlayer.duration,
-            lastWatched: Date.now(),
-            item: currentPlayerContext.itemData,
+            currentTime: videoPlayer.currentTime, // Tempo atual
+            duration: videoPlayer.duration,       // Duração total
+            lastWatched: Date.now(),            // Timestamp da última atualização
+            item: currentPlayerContext.itemData, // Dados do filme/série geral
+            // Dados do episódio específico (se for uma série)
             episode: currentPlayerContext.episodes ? currentPlayerContext.episodes[currentPlayerContext.currentIndex] : null,
         };
 
+        // Referência do documento de progresso (ex: 'users/uid/profiles/pid/watch-progress/movie-123')
         const docRef = doc(db, 'users', userId, 'profiles', currentProfile.id, 'watch-progress', currentPlayerContext.key);
-        await setDoc(docRef, progressData, { merge: true });
+        // Salva (ou atualiza se já existir) os dados no Firestore
+        await setDoc(docRef, progressData, { merge: true }); // 'merge: true' evita sobrescrever dados não enviados
     }
 
+    // --- Funções de Criação de UI ---
+
+    /**
+     * Busca dados da API do TMDB.
+     * @param {string} endpoint - O endpoint da API (ex: 'movie/popular').
+     * @param {string} [params=''] - Parâmetros adicionais da query string.
+     * @returns {Promise<object|null>} - Os dados da API ou null em caso de erro.
+     */
     async function fetchFromTMDB(endpoint, params = '') {
         const url = `${API_URL}/${endpoint}?api_key=${API_KEY}&language=${LANGUAGE}&${params}`;
         try {
@@ -268,16 +320,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.error(`HTTP error! status: ${response.status} for URL: ${url}`);
                 return null;
             }
-            return (await response.json());
+            return (await response.json()); // Retorna os dados JSON
         } catch (error) {
             console.error("Erro ao buscar dados do TMDB:", error);
             return null;
         }
     }
 
+    /**
+     * Cria e adiciona um carrossel de conteúdo a um container.
+     * @param {HTMLElement} container - O elemento onde o carrossel será adicionado.
+     * @param {string} title - O título do carrossel.
+     * @param {Array} data - Array de itens (filmes/séries) a serem exibidos.
+     */
     function createCarousel(container, title, data) {
-        if (!container || !data || data.length === 0) return;
-        const section = document.createElement('section');
+        if (!container || !data || data.length === 0) return; // Não faz nada se não houver dados
+        const section = document.createElement('section'); // Cria a seção do carrossel
+        // Define o HTML interno da seção
         section.innerHTML = `
             <div class="liquid-glass-card inline-block mb-6 rounded-full" style="--bg-color: rgba(30,30,30,0.3);">
                  <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
@@ -288,14 +347,22 @@ document.addEventListener('DOMContentLoaded', function () {
                     ${data.map(item => createContentCard(item)).join('')}
                 </div>
             </div>`;
-        container.appendChild(section);
-        lucide.createIcons();
+        container.appendChild(section); // Adiciona a seção ao container
+        lucide.createIcons(); // Recria ícones Lucide, se houver
     }
 
+    /**
+     * Retorna uma versão embaralhada de uma lista específica (ex: um gênero),
+     * com cache de 24h no localStorage, usando uma chave única.
+     * @param {Array} originalList - O array a ser embaralhado (ex: todos os filmes de "Animação").
+     * @param {string} cacheKey - Uma chave única para este cache (ex: "Animação").
+     * @returns {Array} - O array embaralhado (novo ou do cache).
+     */
     function getDailyShuffledList(originalList, cacheKey) {
+        // Define chaves únicas para esta lista específica
         const CACHE_KEY_PREFIX = 'starlight-shuffled-list-';
         const TIMESTAMP_KEY_PREFIX = 'starlight-shuffle-timestamp-';
-        const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+        const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000; // 24 horas em milissegundos
 
         const finalCacheKey = CACHE_KEY_PREFIX + cacheKey;
         const finalTimestampKey = TIMESTAMP_KEY_PREFIX + cacheKey;
@@ -304,24 +371,32 @@ document.addEventListener('DOMContentLoaded', function () {
         const storedTimestamp = localStorage.getItem(finalTimestampKey);
         const storedContentJSON = localStorage.getItem(finalCacheKey);
 
+        // Verifica se o timestamp é válido e se não expirou
         if (storedTimestamp && storedContentJSON && (now - storedTimestamp < TWENTY_FOUR_HOURS)) {
             try {
                 const cachedContent = JSON.parse(storedContentJSON);
+                // Validação: Se o cache tiver um número diferente de itens, está desatualizado.
                 if (cachedContent.length === originalList.length) {
-                    return cachedContent;
+                    // console.log(`Usando cache de 24h para: ${cacheKey}`); // (Opcional: para debug)
+                    return cachedContent; // Retorna o cache
                 }
             } catch (e) {
                 console.error(`Erro ao ler cache JSON para ${cacheKey}. Gerando novo.`, e);
             }
         }
 
-        const newShuffledList = [...originalList];
+        // Se chegou aqui, o cache não existe, expirou, ou falhou
+        // console.log(`Gerando novo cache de 24h para: ${cacheKey}`); // (Opcional: para debug)
+
+        // Cria uma cópia e embaralha (Algoritmo Fisher-Yates)
+        const newShuffledList = [...originalList]; // Copia o array
 
         for (let i = newShuffledList.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [newShuffledList[i], newShuffledList[j]] = [newShuffledList[j], newShuffledList[i]];
         }
 
+        // Salva o novo conteúdo e o timestamp no localStorage
         try {
             localStorage.setItem(finalCacheKey, JSON.stringify(newShuffledList));
             localStorage.setItem(finalTimestampKey, now.toString());
@@ -331,16 +406,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
         return newShuffledList;
     }
-
+    /**
+      * Cria o HTML para um card de conteúdo.
+      * Agora suporta barra de progresso se item.progressPercent existir.
+      */
     function createContentCard(item) {
-        if (!item) return '';
+        if (!item) return ''; // Removi a checagem estrita !item.poster para o GIF aparecer se estiver vazio
 
+        // LÓGICA ALTERADA AQUI:
         const posterPath = (item.poster && item.poster.startsWith('http')) ? item.poster : FALLBACK_IMAGE;
 
+        // ... o resto da função continua igual ...
         const progressBarHTML = item.progressPercent
             ? `<div class="cw-progress-track"><div class="cw-progress-fill" style="width: ${item.progressPercent}%"></div></div>`
             : '';
 
+        // Informação extra (ex: T1:E3) para séries no Continuar Assistindo
         const episodeInfoHTML = item.episodeInfo
             ? `<div class="absolute bottom-2 left-2 right-2 text-[10px] font-bold text-white bg-black/60 px-2 py-1 rounded backdrop-blur-sm truncate z-10">${item.episodeInfo}</div>`
             : '';
@@ -360,12 +441,18 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
         </a>`;
     };
-
+    /**
+     * Cria o HTML para um card de conteúdo em grid (usado em Séries, Filmes, Minha Lista).
+     * @param {object} item - O objeto do item.
+     * @returns {string} - O HTML do card.
+     */
     function createGridCard(item) {
-        if (!item) return '';
+        if (!item) return ''; // Removi a checagem estrita
 
+        // LÓGICA ALTERADA AQUI:
         const posterPath = (item.poster && item.poster.startsWith('http')) ? item.poster : FALLBACK_IMAGE;
 
+        // Inclui o título abaixo da imagem
         return `
         <a href="#details/${item.docId}" class="group block cursor-pointer">
             <div class="liquid-glass-card aspect-[2/3] bg-stone-800">
@@ -381,174 +468,235 @@ document.addEventListener('DOMContentLoaded', function () {
         </a>`;
     };
 
-    async function displayContentRating(item, container) {
-        if (!item || !container || !item.rating) return;
-        const certification = item.rating;
+    // --- Funções de População de Dados ---
 
+    /**
+     * Exibe a classificação indicativa do conteúdo.
+     * @param {object} item - O objeto do item.
+     * @param {HTMLElement} container - O elemento onde a classificação será adicionada.
+     */
+    async function displayContentRating(item, container) {
+        if (!item || !container || !item.rating) return; // Sai se não houver dados necessários
+        const certification = item.rating; // Pega a classificação (ex: '14', 'Livre')
+
+        // Mapeia a classificação para classes CSS de cor
         const ratingClassMap = {
             'Livre': 'rating-L', '10': 'rating-10', '12': 'rating-12',
             '14': 'rating-14', '16': 'rating-16', '18': 'rating-18',
         };
 
-        const ratingClass = ratingClassMap[certification] || '';
-        if (!ratingClass) return;
+        const ratingClass = ratingClassMap[certification] || ''; // Obtém a classe CSS
+        if (!ratingClass) return; // Sai se a classificação não for reconhecida
 
+        // Cria o elemento da caixa de classificação
         const ratingElement = document.createElement('div');
-        ratingElement.className = 'glass-container rating-box ' + ratingClass;
+        ratingElement.className = 'glass-container rating-box ' + ratingClass; // Adiciona as classes
+        // Define o HTML interno com o efeito de vidro e o texto da classificação
         ratingElement.innerHTML = `
             <div class="glass-filter"></div>
             <div class="glass-overlay"></div>
             <div class="glass-specular"></div>
             <div class="glass-content">${certification === 'Livre' ? 'L' : certification}</div>
         `;
-        container.prepend(ratingElement);
+        container.prepend(ratingElement); // Adiciona no início do container
     }
 
+    /**
+     * Inicia a rotação automática do conteúdo em destaque na tela inicial.
+     */
     function startHeroRotation() {
-        if (heroCarouselInterval) clearInterval(heroCarouselInterval);
+        if (heroCarouselInterval) clearInterval(heroCarouselInterval); // Limpa intervalo anterior
+        // Filtra os itens do Firestore que estão marcados como destaque
         const featuredItems = featuredItemIds.map(id => firestoreContent.find(item => item.docId === id)).filter(Boolean);
-        if (featuredItems.length <= 1) return;
+        if (featuredItems.length <= 1) return; // Não rotaciona se houver 1 ou nenhum item
 
-        let currentFeaturedIndex = 0;
+        let currentFeaturedIndex = 0; // Índice do item atual
 
+        // Define um intervalo para trocar o item em destaque a cada 8 segundos
         heroCarouselInterval = setInterval(() => {
-            currentFeaturedIndex = (currentFeaturedIndex + 1) % featuredItems.length;
-            updateHero(featuredItems[currentFeaturedIndex]);
+            currentFeaturedIndex = (currentFeaturedIndex + 1) % featuredItems.length; // Avança o índice circularmente
+            updateHero(featuredItems[currentFeaturedIndex]); // Atualiza a seção hero
         }, 8000);
     }
 
+    /**
+     * Atualiza a seção "hero" (destaque principal) com os dados de um item.
+     * @param {object} item - O item a ser exibido.
+     */
     async function updateHero(item) {
-        if (!item) return;
+        if (!item) return; // Sai se o item for inválido
 
         const heroContentWrapper = document.getElementById('hero-content-wrapper');
         const mainBackground = document.getElementById('main-background');
 
+        // Inicia a transição de fade-out
         heroContentWrapper.classList.add('hero-fade-out');
         mainBackground.style.opacity = 0;
 
+        // Aguarda a animação de fade-out antes de atualizar o conteúdo
         setTimeout(async () => {
-            currentHeroItem = item;
-            const backgroundUrl = item.backdrop;
+            currentHeroItem = item; // Define o item atual do hero
+            const backgroundUrl = item.backdrop; // URL do backdrop
 
+            // Define a imagem de fundo principal
             mainBackground.style.backgroundImage = `url('${backgroundUrl}')`;
 
+            // Atualiza os textos e informações
             document.getElementById('hero-category').textContent = 'EM DESTAQUE';
             document.getElementById('hero-title').textContent = item.title || item.name;
+            // Limita a sinopse a 200 caracteres
             document.getElementById('hero-overview').textContent = item.synopsis.length > 200 ? item.synopsis.substring(0, 200) + '...' : item.synopsis;
-            const releaseYear = item.year;
+            const releaseYear = item.year; // Ano de lançamento
 
+            // Atualiza a seção de metadados (classificação, ano)
             const metaContainer = document.getElementById('hero-meta');
-            metaContainer.innerHTML = ``;
-            await displayContentRating(item, metaContainer);
-            metaContainer.innerHTML += `<span>${releaseYear}</span>`;
+            metaContainer.innerHTML = ``; // Limpa o conteúdo anterior
+            await displayContentRating(item, metaContainer); // Adiciona a classificação
+            metaContainer.innerHTML += `<span>${releaseYear}</span>`; // Adiciona o ano
 
+            // Atualiza o botão "Minha Lista"
             await updateListButton(document.getElementById('hero-add-to-list'), item);
-            
+            // NOVO: Adiciona listener para o botão "Mais Detalhes"
             const detailsBtn = document.getElementById('hero-details-btn');
             if (detailsBtn) {
+                // Remove listener antigo para evitar duplicação (boa prática)
                 if (detailsBtn.clickHandler) {
                     detailsBtn.removeEventListener('click', detailsBtn.clickHandler);
                 }
+                // Define o novo click handler
                 detailsBtn.clickHandler = () => {
                     if (currentHeroItem && currentHeroItem.docId) {
+                        // Navega para a tela de detalhes usando o hash
                         window.location.hash = `#details/${currentHeroItem.docId}`;
                     }
                 };
                 detailsBtn.addEventListener('click', detailsBtn.clickHandler);
 
+                // Recria o ícone 'info' do Lucide que adicionamos no HTML
                 const icon = detailsBtn.querySelector('i[data-lucide]');
                 if (icon) {
                     lucide.createIcons({ nodes: [icon] });
                 }
             }
 
+            // Inicia a transição de fade-in
             mainBackground.style.opacity = 1;
             heroContentWrapper.style.opacity = 1;
             heroContentWrapper.classList.remove('hero-fade-out');
-        }, 500);
+        }, 500); // Tempo correspondente à duração da animação CSS
     }
 
+    /**
+     * Atualiza a aparência (ícone e texto) de um botão "Minha Lista".
+     * @param {HTMLElement} button - O elemento do botão.
+     * @param {object} item - O item associado ao botão.
+     */
     async function updateListButton(button, item) {
-        if (!button || !item) return;
-        const itemId = String(item.docId || item.id);
-        const isInList = await checkIfInList(itemId);
-        const contentDiv = button.querySelector('.glass-content');
-        
+        if (!button || !item) return; // Sai se botão ou item forem inválidos
+        const itemId = String(item.docId || item.id); // Pega o ID
+        const isInList = await checkIfInList(itemId); // Verifica se está na lista
+        const contentDiv = button.querySelector('.glass-content'); // Container do conteúdo do botão
+        // Define o ícone e texto com base se está ou não na lista
         contentDiv.innerHTML = isInList
-            ? `<svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Na Lista</span>`
-            : `<svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg><span>Minha Lista</span>`;
-        
+            ? `<svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span>Na Lista</span>` // Ícone de check
+            : `<svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg><span>Minha Lista</span>`; // Ícone de mais
+        // Remove o listener de clique antigo para evitar duplicação
         if (button.clickHandler) {
             button.removeEventListener('click', button.clickHandler);
         }
+        // Adiciona o novo listener de clique que chama a função de toggle
         button.clickHandler = () => toggleMyListItem(item);
         button.addEventListener('click', button.clickHandler);
     }
 
+    /**
+     * Popula a seção "Minha Lista" com os itens salvos do usuário.
+     */
     async function populateMyList() {
-        const list = await getMyList();
-        const container = document.getElementById('my-list-grid');
+        const list = await getMyList(); // Busca a lista do Firestore
+        const container = document.getElementById('my-list-grid'); // Container da grid
         if (!container) return;
+        // Define o HTML da grid: mensagem se vazia, ou cards dos itens
         container.innerHTML = list.length === 0
             ? '<p class="col-span-full text-center text-gray-400">Sua lista está vazia.</p>'
             : list.map(item => createGridCard(item)).join('');
-        attachGlassButtonListeners();
+        attachGlassButtonListeners(); // Reatacha listeners para efeitos visuais
     }
 
+    // Variáveis globais para controlar os ouvintes (Adicione isso antes da função ou use as variáveis globais do topo)
     let unsubContent = null;
     let unsubFeatured = null;
 
+    /**
+     * Escuta por atualizações no Firestore de forma OTIMIZADA (Sem duplicação).
+     */
     async function listenToFirestoreContent() {
+        // 1. Se já existirem ouvintes ativos, cancela eles antes de criar novos
         if (unsubContent) unsubContent();
         if (unsubFeatured) unsubFeatured();
 
-        // Faz a leitura da sua base de dados no Firebase.
-        // Utiliza a variável CONTENT_COLLECTION que definimos lá no topo (padrão: 'content')
-        unsubContent = onSnapshot(collection(db, CONTENT_COLLECTION), (snapshot) => {
-            firestoreContent = [];
+        // 2. Ouvinte Independente para o CONTEÚDO
+        unsubContent = onSnapshot(collection(db, 'content'), (snapshot) => {
+            firestoreContent = []; // Limpa o cache local
             snapshot.forEach(doc => {
                 firestoreContent.push({ docId: doc.id, ...doc.data() });
             });
+            // Chama a navegação (com debounce, veja passo 2)
             handleNavigation();
         });
 
+        // 3. Ouvinte Independente para os DESTAQUES (Separado do content!)
         unsubFeatured = onSnapshot(doc(db, 'config', 'featured'), (docSnap) => {
             featuredItemIds = docSnap.exists() ? (docSnap.data().items || []) : [];
+            // Chama a navegação
             handleNavigation();
         });
     }
-
+    /**
+        * Verifica se há pedidos atendidos - VERSÃO CORRIGIDA (Sem empilhamento)
+        * Design: Matte Dark (Clean)
+        */
     async function checkFulfilledRequests() {
         if (!userId) return;
 
+        // TRAVA DE SEGURANÇA 1:
+        // Se já existe um modal de aviso aberto na tela, PARE aqui.
+        // Isso impede que eles se empilhem um em cima do outro.
         if (document.querySelector('.req-modal-active')) return;
 
         const q = query(collection(db, "pedidos"), where("status", "==", "completed"));
         const snapshot = await getDocs(q);
 
+        // Usamos um loop 'for...of' para permitir break/return fácil se necessário, 
+        // mas o forEach também funciona se controlarmos a criação do DOM.
         let foundOne = false;
 
         snapshot.forEach(docSnap => {
-            if (foundOne) return;
+            if (foundOne) return; // Só mostra 1 por vez para não poluir
 
             const req = docSnap.data();
             const userRequestObj = req.requesters ? req.requesters.find(r => r.userId === userId) : null;
 
             if (userRequestObj) {
-                foundOne = true;
+                foundOne = true; // Marca que achou para não abrir outros no mesmo loop
 
                 const modal = document.createElement('div');
+                // Adicionamos a classe 'req-modal-active' para a trava de segurança funcionar
                 modal.className = 'req-modal-active fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/95 animate-fade-in transition-all duration-200';
 
                 const poster = req.posterUrl || 'https://placehold.co/300x450?text=IMG';
 
                 modal.innerHTML = `
                     <div class="relative w-full max-w-xl bg-[#0f0f0f] border border-white/10 rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100">
+                        
                         <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 to-pink-600"></div>
+
                         <div class="p-6 md:p-8 flex flex-col md:flex-row gap-6 items-start">
+                            
                             <div class="w-full md:w-32 flex-shrink-0">
                                 <img src="${poster}" class="w-full rounded-lg shadow-lg border border-white/5 aspect-[2/3] object-cover bg-stone-800">
                             </div>
+
                             <div class="flex-1 w-full">
                                 <div class="flex items-center gap-2 mb-2">
                                     <div class="bg-purple-500/10 text-purple-400 p-1.5 rounded-md">
@@ -556,17 +704,21 @@ document.addEventListener('DOMContentLoaded', function () {
                                     </div>
                                     <span class="text-xs font-bold text-stone-400 uppercase tracking-wider">Pedido Atendido</span>
                                 </div>
+
                                 <h2 class="text-2xl font-bold text-white leading-tight mb-2">
                                     ${req.title}
                                 </h2>
+                                
                                 <p class="text-stone-400 text-sm mb-6 leading-relaxed">
                                     Este conteúdo já foi adicionado ao catálogo e está pronto para assistir.
                                 </p>
+
                                 <div class="flex flex-col gap-3">
                                     <a href="#details/${req.contentId}" class="action-watch-btn w-full py-3 px-4 rounded-lg bg-stone-100 hover:bg-white text-black font-bold text-sm flex items-center justify-center gap-2 transition-colors">
                                         <i data-lucide="play" class="w-4 h-4 fill-current"></i>
                                         Assistir Agora
                                     </a>
+                                    
                                     <button class="dismiss-req-btn w-full py-3 px-4 rounded-lg bg-transparent border border-white/10 hover:bg-white/5 text-stone-400 hover:text-white font-medium text-sm transition-colors">
                                         Fechar
                                     </button>
@@ -576,15 +728,23 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                 `;
 
+                // --- Lógica de Dispensar ---
                 const dismiss = async () => {
+                    // TRAVA DE SEGURANÇA 2: Bloqueia cliques imediatos para evitar duplo clique
                     modal.style.pointerEvents = 'none';
+
+                    // Animação de saída visual imediata
                     modal.classList.remove('animate-fade-in');
                     modal.classList.add('opacity-0', 'scale-95');
+
+                    // Remove do HTML
                     setTimeout(() => modal.remove(), 200);
 
+                    // Atualiza o banco de dados em segundo plano
                     try {
                         const currentRequesters = req.requesters || [];
                         const updatedRequesters = currentRequesters.filter(r => r.userId !== userId);
+
                         await updateDoc(doc(db, 'pedidos', docSnap.id), {
                             requesters: updatedRequesters
                         });
@@ -605,17 +765,23 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 100);
     }
 
+    /**
+        * Popula a tela inicial com carrosséis.
+        * - Tema atualizado para Roxo/Rosa (Starlight)
+        */
     async function populateAllViews() {
         const carouselsContainer = document.getElementById('home-carousels-container');
         if (!carouselsContainer) return;
         carouselsContainer.innerHTML = '';
 
+        // --- 0. VERIFICA PEDIDOS ATENDIDOS ---
         if (userId && currentProfile) {
             if (typeof checkFulfilledRequests === 'function') {
                 checkFulfilledRequests();
             }
         }
 
+        // --- 1. CONTINUAR ASSISTINDO (VISUAL STARLIGHT) ---
         if (userId && currentProfile) {
             try {
                 const progressRef = collection(db, 'users', userId, 'profiles', currentProfile.id, 'watch-progress');
@@ -646,6 +812,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (continueWatchingItems.length > 0) {
                     const section = document.createElement('section');
+                    // Título com ícone Roxo
                     section.innerHTML = `
                         <div class="liquid-glass-card inline-block mb-6 rounded-full" style="--bg-color: rgba(30,30,30,0.3);">
                              <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
@@ -662,6 +829,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     continueWatchingItems.forEach(data => {
                         const item = data.item;
 
+                        // Lógica de Imagem (Cena ou Poster)
                         let displayImage = item.poster;
                         if (item.type === 'tv' && data.episode && data.episode.still_path) {
                             if (data.episode.still_path.startsWith('http')) { displayImage = data.episode.still_path; }
@@ -672,6 +840,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             displayImage = `https://placehold.co/400x225/1c1917/FFFFFF?text=${item.title || 'Sem Imagem'}`;
                         }
 
+                        // Badge Roxo/Rosa
                         const epInfo = data.episode
                             ? `<div class="absolute top-2 right-2 text-[10px] font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 px-2 py-1 rounded backdrop-blur-md shadow-lg z-20 border border-white/10">T${data.episode.season_number} E${data.episode.episode_number}</div>`
                             : '';
@@ -680,6 +849,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         card.className = 'carousel-item w-60 sm:w-72 cursor-pointer group block flex-shrink-0 relative cw-card-trigger';
                         card.playerData = data;
 
+                        // Card HTML com Barra de Progresso atualizada para Roxo/Rosa
                         card.innerHTML = `
                             <div class="liquid-glass-card aspect-video bg-stone-800 overflow-hidden relative transition-transform duration-300 group-hover:scale-105 border border-white/5">
                                  <div class="glass-filter"></div><div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.2);"></div><div class="glass-specular"></div>
@@ -716,7 +886,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             let context = {};
 
                             if (item.type === 'movie') {
-                                context = { videoUrl: item.url, altUrl: item.altUrl || "", title: item.title || item.name, itemData: item, startTime: data.currentTime };
+                                context = { videoUrl: item.url, title: item.title || item.name, itemData: item, startTime: data.currentTime };
                             } else if (item.type === 'tv' && data.episode) {
                                 let allEpisodes = [];
                                 if (item.seasons && item.seasons[data.episode.season_number]) {
@@ -728,7 +898,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                                 context = {
                                     videoUrl: data.episode.url,
-                                    altUrl: data.episode.altUrl || "",
                                     title: `${item.title || item.name} - T${data.episode.season_number} E${data.episode.episode_number}${epTitle}`,
                                     itemData: item, episodes: allEpisodes, currentIndex: safeIndex, startTime: data.currentTime
                                 };
@@ -741,10 +910,12 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) { console.error("Erro ao carregar Continuar Assistindo:", error); }
         }
 
+        // --- 1.5 NOVO: ÚLTIMOS EPISÓDIOS (CORRIGIDO: Prioriza data de exibição) ---
         const allSeries = firestoreContent.filter(item => item.type === 'tv' && item.seasons);
         const latestEpisodesList = [];
 
         allSeries.forEach(serie => {
+            // Ordena as temporadas (da maior para a menor)
             const seasonKeys = Object.keys(serie.seasons).map(k => parseInt(k)).sort((a, b) => b - a);
 
             if (seasonKeys.length > 0) {
@@ -752,19 +923,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 const season = serie.seasons[lastSeasonKey];
 
                 if (season && season.episodes && season.episodes.length > 0) {
+                    // Pega o último episódio da lista
                     const lastEpisode = season.episodes[season.episodes.length - 1];
 
+                    // --- LÓGICA DE DATA REFINADA ---
                     let sortDate = 0;
 
+                    // 1. Tenta a data de exibição do episódio específico (formato YYYY-MM-DD)
                     if (lastEpisode.air_date) {
                         sortDate = new Date(lastEpisode.air_date).getTime();
                     }
+                    // 2. Se falhar, tenta o campo 'last_air_date' da série (padrão TMDB)
                     else if (serie.last_air_date) {
                         sortDate = new Date(serie.last_air_date).getTime();
                     }
+                    // 3. Se falhar, tenta a data de atualização do documento (se você tiver implementado 'updatedAt')
                     else if (serie.updatedAt) {
                         sortDate = serie.updatedAt.toMillis ? serie.updatedAt.toMillis() : 0;
                     }
+                    // 4. Último recurso: data de criação da série
                     else {
                         sortDate = (serie.addedAt?.toMillis() || 0);
                     }
@@ -779,8 +956,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
+        // Ordena pela data calculada (do mais recente para o mais antigo)
         latestEpisodesList.sort((a, b) => b.sortDate - a.sortDate);
 
+        // Pega os top 15
         const topLatestEpisodes = latestEpisodesList.slice(0, 15);
 
         if (topLatestEpisodes.length > 0) {
@@ -802,6 +981,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const ep = data.episodeData;
                 const serie = data.serieData;
 
+                // Imagem: Prioriza still do episódio, depois backdrop da série
                 let imagePath = ep.still_path
                     ? (ep.still_path.startsWith('http') ? ep.still_path : `https://image.tmdb.org/t/p/w500${ep.still_path}`)
                     : (serie.backdrop || serie.poster || 'https://files.catbox.moe/sytt0s.gif');
@@ -814,7 +994,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 card.playerContext = {
                     videoUrl: ep.url,
-                    altUrl: ep.altUrl || "",
                     title: `${serieTitle} - T${data.seasonNum} E${ep.episode_number} - ${epTitle}`,
                     itemData: serie,
                     episodes: serie.seasons[data.seasonNum].episodes,
@@ -861,9 +1040,11 @@ document.addEventListener('DOMContentLoaded', function () {
             carouselsContainer.appendChild(section);
         }
 
+        // --- 2. Conteúdo Padrão ---
         const recentlyAdded = [...firestoreContent].sort((a, b) => (b.addedAt?.toMillis() || 0) - (a.addedAt?.toMillis() || 0)).slice(0, 20);
         createCarousel(carouselsContainer, "Adicionado Recentemente", recentlyAdded);
 
+        // --- 3. Gêneros ---
         const allGenres = [...new Set(firestoreContent.flatMap(item => item.genres || []))];
         for (const genre of allGenres) {
             const originalGenreList = firestoreContent.filter(item => item.genres && item.genres.includes(genre));
@@ -875,76 +1056,95 @@ document.addEventListener('DOMContentLoaded', function () {
         attachGlassButtonListeners();
         lucide.createIcons();
     }
+    // --- Navegação e Gerenciamento de Views ---
 
+    // Listener para cliques nos links de navegação (desktop e mobile)
     const navLinks = document.querySelectorAll('.nav-item, .mobile-nav-item');
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const targetId = link.getAttribute('data-target');
-            if (!targetId) return;
+            e.preventDefault(); // Impede a navegação padrão do link
+            const targetId = link.getAttribute('data-target'); // Pega o ID da view alvo
+            if (!targetId) return; // Sai se não houver alvo
 
+            // Muda o hash da URL. O listener 'hashchange' cuidará da lógica de mostrar/esconder.
             if (window.location.hash !== `#${targetId}`) {
                 window.location.hash = targetId;
             }
         });
     });
 
+    /**
+     * Renderiza o conteúdo específico de uma tela principal (Home, Séries, Filmes, etc.).
+     * @param {string} screenId - O ID da tela a ser renderizada.
+     * @param {boolean} [forceReload=false] - Se true, força o recarregamento (não usado atualmente).
+     */
     function renderScreenContent(screenId, forceReload = false) {
         const screenElement = document.getElementById(screenId);
-        if (!screenElement) return;
+        if (!screenElement) return; // Sai se a tela não for encontrada
 
+        // Lógica de renderização específica para cada tela
         if (screenId === 'home-view') {
+            // Pega os itens em destaque e atualiza o hero
             const featuredItems = featuredItemIds.map(id => firestoreContent.find(item => item.docId === id)).filter(Boolean);
             if (featuredItems.length > 0) {
-                updateHero(featuredItems[0]);
-                startHeroRotation();
+                updateHero(featuredItems[0]); // Mostra o primeiro item
+                startHeroRotation(); // Inicia a rotação
             }
-            populateAllViews();
+            populateAllViews(); // Popula os carrosséis da home
         } else if (screenId === 'series-view') {
             const grid = document.getElementById('series-grid');
-            const series = firestoreContent.filter(item => item.type === 'tv');
-            grid.innerHTML = series.map(createGridCard).join('');
+            const series = firestoreContent.filter(item => item.type === 'tv'); // Filtra apenas séries
+            grid.innerHTML = series.map(createGridCard).join(''); // Cria a grid de séries
         } else if (screenId === 'movies-view') {
             const grid = document.getElementById('movies-grid');
-            const movies = firestoreContent.filter(item => item.type === 'movie');
-            grid.innerHTML = movies.map(createGridCard).join('');
+            const movies = firestoreContent.filter(item => item.type === 'movie'); // Filtra apenas filmes
+            grid.innerHTML = movies.map(createGridCard).join(''); // Cria a grid de filmes
         } else if (screenId === 'mylist-view') {
-            populateMyList();
+            populateMyList(); // Popula a grid da "Minha Lista"
         } else if (screenId === 'requests-view') {
-            renderPendingRequests();
+            renderPendingRequests(); // Renderiza os pedidos pendentes
         } else if (screenId === 'news-view') {
-            renderNewsFeed();
+            renderNewsFeed(); // NOVO: Renderiza o feed de novidades
         } else if (screenId === 'report-view') {
-            lucide.createIcons();
+            lucide.createIcons(); // Garante que os ícones do formulário apareçam
         }
 
-        lucide.createIcons();
-        attachGlassButtonListeners();
+        lucide.createIcons(); // Recria ícones gerais
+        attachGlassButtonListeners(); // Reatacha listeners visuais
     }
 
+    // Listener global para cliques em links de detalhes (cards de conteúdo)
     document.body.addEventListener('click', (e) => {
-        const anchor = e.target.closest('a');
+        const anchor = e.target.closest('a'); // Encontra o link pai mais próximo
+        // Se for um link de detalhes
         if (anchor && anchor.hash.startsWith('#details/')) {
-            e.preventDefault();
-            window.location.hash = anchor.hash;
+            e.preventDefault(); // Impede a navegação padrão
+            window.location.hash = anchor.hash; // Muda o hash para acionar o roteador
         }
     });
 
+    /**
+         * Renderiza a tela de detalhes para um item específico.
+         * @param {object} item - Objeto contendo o docId do item.
+         */
     async function showDetailsView(item) {
+        // Esconde header/footer
         document.querySelector('header').classList.add('hidden');
         document.querySelector('footer').classList.add('hidden');
 
-        detailsView.classList.remove('hidden');
-        detailsView.innerHTML = '<div class="spinner mx-auto mt-20"></div>';
-        window.scrollTo(0, 0);
+        detailsView.classList.remove('hidden'); // Mostra a view de detalhes
+        detailsView.innerHTML = '<div class="spinner mx-auto mt-20"></div>'; // Mostra spinner
+        window.scrollTo(0, 0); // Rola para o topo
 
+        // Busca os dados do item no cache local do Firestore
         const data = firestoreContent.find(i => i.docId === item.docId);
-        if (!data) {
+        if (!data) { // Se não encontrar, mostra erro
             detailsView.innerHTML = '<p class="text-center text-red-400">Conteúdo não encontrado.</p>';
             return;
         }
 
-        currentDetailsItem = data;
+        currentDetailsItem = data; // Define o item atual dos detalhes
+        // Extrai informações do item
         const title = data.title || data.name;
         const releaseYear = data.year || '';
         const genres = data.genres ? data.genres.map(g => `<span class="bg-white/10 text-xs font-semibold px-2 py-1 rounded-full text-white">${g}</span>`).join('') : '';
@@ -955,11 +1155,14 @@ document.addEventListener('DOMContentLoaded', function () {
             duration = `${Object.keys(data.seasons).length} Temporada(s)`;
         }
 
+        // Define URLs de imagem com fallback
         let backgroundUrl = data.backdrop;
-        const finalImageUrl = (backgroundUrl && backgroundUrl.startsWith('http')) ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Mango+Anime';
+        const finalImageUrl = (backgroundUrl && backgroundUrl.startsWith('http')) ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
 
+        // Verifica se existe poster e se é um link válido, senão usa o GIF
         const posterUrl = (data.poster && data.poster.startsWith('http')) ? data.poster : 'https://files.catbox.moe/sytt0s.gif';
 
+        // Define o HTML da tela de detalhes
         detailsView.innerHTML = `
             <div class="fixed inset-0 z-[-1] bg-cover bg-center bg-no-repeat" style="background-image: url('${finalImageUrl}');">
                  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
@@ -1006,23 +1209,28 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
         `;
 
+        // Popula a seção de metadados
         const detailsMetaContainer = detailsView.querySelector('#details-meta');
         if (detailsMetaContainer) {
-            displayContentRating(data, detailsMetaContainer);
+            displayContentRating(data, detailsMetaContainer); // Adiciona classificação
+            // Adiciona ano e duração
             detailsMetaContainer.innerHTML += `
                 ${releaseYear ? `<span>${releaseYear}</span>` : ''}
                 ${duration ? `<span>•</span><span>${duration}</span>` : ''}
             `;
         }
 
-        document.getElementById('back-from-details').addEventListener('click', () => history.back());
+        // Adiciona listeners aos botões da tela de detalhes
+        document.getElementById('back-from-details').addEventListener('click', () => history.back()); // Botão voltar
 
+        // --- LÓGICA DO BOTÃO REPORTAR (INSERIDA AQUI) ---
         const reportBtn = document.getElementById('details-report-btn');
         if (reportBtn) {
             reportBtn.addEventListener('click', () => {
-                const contentName = title;
-                window.location.hash = '#report-view';
+                const contentName = title; // Pega o título atual
+                window.location.hash = '#report-view'; // Vai para a tela de reportar
 
+                // Preenche o input após a troca de tela
                 setTimeout(() => {
                     const reportInput = document.getElementById('report-content-name');
                     const reportDesc = document.getElementById('report-desc');
@@ -1030,59 +1238,70 @@ document.addEventListener('DOMContentLoaded', function () {
                         reportInput.value = contentName;
                         reportInput.focus();
                     }
-                    if (reportDesc) reportDesc.value = '';
+                    if (reportDesc) reportDesc.value = ''; // Limpa descrição antiga
                 }, 100);
             });
+            // Ativa o ícone do botão
             lucide.createIcons({ nodes: [reportBtn.querySelector('i')] });
         }
+        // ------------------------------------------------
 
-        document.getElementById('details-watch-btn').addEventListener('click', () => {
+        document.getElementById('details-watch-btn').addEventListener('click', () => { // Botão assistir
             if (data.type === 'movie') {
-                showPlayer({ videoUrl: data.url, altUrl: data.altUrl || "", title: title, itemData: data });
+                // Se for filme, inicia o player com a URL do filme
+                showPlayer({ videoUrl: data.url, title: title, itemData: data });
             } else if (data.type === 'tv' && data.seasons) {
+                // Se for série, encontra o primeiro episódio da primeira temporada
                 const firstSeasonKey = Object.keys(data.seasons).sort((a, b) => parseInt(a) - parseInt(b))[0];
                 const firstEpisode = data.seasons[firstSeasonKey]?.episodes?.[0];
 
                 if (firstEpisode) {
+                    // Prepara o contexto do player com informações da série e episódio
                     const allEpisodesOfSeason = data.seasons[firstSeasonKey].episodes;
                     const epTitle = firstEpisode.title ? ` - ${firstEpisode.title}` : '';
 
                     const context = {
                         videoUrl: firstEpisode.url,
-                        altUrl: firstEpisode.altUrl || "",
                         title: `${title} - T${firstSeasonKey} E${firstEpisode.episode_number || 1}${epTitle}`,
                         itemData: data,
                         episodes: allEpisodesOfSeason,
-                        currentIndex: 0
+                        currentIndex: 0 // Começa no primeiro episódio
                     };
-                    showPlayer(context);
+                    showPlayer(context); // Inicia o player
                 } else {
-                    showToast("Nenhum episódio encontrado.", true);
+                    showToast("Nenhum episódio encontrado.", true); // Mensagem de erro
                 }
             }
         });
 
-        await updateListButton(document.getElementById('details-add-to-list'), data);
+        await updateListButton(document.getElementById('details-add-to-list'), data); // Atualiza botão "Minha Lista"
 
+        // Se for uma série, renderiza a seção de temporadas/episódios
         if (data.type === 'tv' && data.seasons) {
             renderTvDetails(data);
         }
-        attachGlassButtonListeners();
+        attachGlassButtonListeners(); // Reatacha listeners visuais
     }
-
+    /**
+         * Renderiza a seção de temporadas e episódios para uma série na tela de detalhes.
+         * @param {object} data - Os dados da série.
+         */
     function renderTvDetails(data) {
         const container = document.getElementById('tv-content-details');
         if (!container) return;
 
+        // Pega as chaves das temporadas (números) e ordena
         const seasonKeys = Object.keys(data.seasons).sort((a, b) => parseInt(a) - parseInt(b));
         if (seasonKeys.length === 0) {
             container.innerHTML = '<p class="text-stone-400">Nenhuma temporada encontrada.</p>';
             return;
         }
 
+        // Tenta pegar a última temporada selecionada do localStorage, ou usa a primeira
         const savedSeason = localStorage.getItem(`starlight-selected-season-${data.docId}`);
         const firstSeasonKey = (savedSeason && data.seasons[savedSeason]) ? savedSeason : seasonKeys[0];
 
+        // Cria o HTML do seletor
         container.innerHTML = `
             <div class="custom-select-container relative w-full md:w-64 mb-6">
                 <button id="season-selector-button" class="glass-container glass-button rounded-lg w-full text-left">
@@ -1107,6 +1326,7 @@ document.addEventListener('DOMContentLoaded', function () {
         `;
         lucide.createIcons();
 
+        // Renderiza a lista de episódios
         const renderEpisodes = (seasonKey) => {
             const season = data.seasons[seasonKey];
             const episodes = season?.episodes;
@@ -1121,15 +1341,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 const epTitle = ep.title || `Episódio ${ep.episode_number || index + 1}`;
                 const epOverview = ep.overview || 'Sem descrição.';
 
+                // --- AQUI ESTÁ A MUDANÇA PARA O GIF NOS EPISÓDIOS ---
                 const stillPath = ep.still_path
                     ? (ep.still_path.startsWith('/') ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : ep.still_path)
                     : 'https://files.catbox.moe/sytt0s.gif';
 
-                const hasAnyUrl = (ep.url && ep.url.trim() !== '') || (ep.altUrl && ep.altUrl.trim() !== '');
-                const isComingSoon = !hasAnyUrl || ep.isComingSoon === true;
+                // --- LÓGICA DE EM BREVE ---
+                const isComingSoon = !ep.url || ep.isComingSoon === true;
+
+                // Estilos condicionais
                 const opacityClass = isComingSoon ? 'opacity-60' : '';
                 const cursorClass = isComingSoon ? 'cursor-not-allowed' : 'cursor-pointer group';
 
+                // Overlay da imagem (Play ou Badge EM BREVE)
                 const overlayHTML = isComingSoon
                     ? `<div class="absolute inset-0 bg-black/50 flex items-center justify-center rounded-md border border-white/10">
                          <span class="text-[10px] font-bold text-white bg-stone-800 px-2 py-1 rounded tracking-wider">EM BREVE</span>
@@ -1138,6 +1362,7 @@ document.addEventListener('DOMContentLoaded', function () {
                          <i data-lucide="play-circle" class="w-8 h-8 text-white"></i>
                        </div>`;
 
+                // Badge de texto para mobile/lista
                 const textBadge = isComingSoon
                     ? `<span class="ml-2 text-[10px] text-stone-400 border border-stone-600 px-1.5 py-0.5 rounded">Em Breve</span>`
                     : '';
@@ -1168,6 +1393,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         renderEpisodes(firstSeasonKey);
 
+        // Listeners do seletor
         const seasonSelectorBtn = document.getElementById('season-selector-button');
         const seasonOptions = document.getElementById('season-options');
 
@@ -1188,16 +1414,20 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
+        // Listener de clique no episódio (COM PROTEÇÃO)
         document.getElementById('episode-list-container').addEventListener('click', (e) => {
             const episodeItem = e.target.closest('.episode-item');
 
             if (episodeItem) {
+                // --- PROTEÇÃO ---
+                // Verifica se é "Em Breve" lendo o atributo que definimos acima
                 const isComingSoon = episodeItem.getAttribute('data-coming-soon') === 'true';
 
                 if (isComingSoon) {
                     showToast("Este episódio estará disponível em breve!", true);
-                    return;
+                    return; // PARA TUDO AQUI. Não tenta tocar.
                 }
+                // ----------------
 
                 const seasonKey = episodeItem.dataset.season;
                 const episodeIndex = parseInt(episodeItem.dataset.index, 10);
@@ -1208,7 +1438,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const context = {
                     videoUrl: episode.url,
-                    altUrl: episode.altUrl || "",
                     title: `${data.title || data.name} - T${seasonKey} E${episode.episode_number || episodeIndex + 1}${epTitle}`,
                     itemData: data,
                     episodes: allEpisodesOfSeason,
@@ -1219,221 +1448,146 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /** Efeito visual: Atualiza gradiente especular ao mover o mouse sobre elementos 'glass' */
     function handleMouseMove(e) { const rect = this.getBoundingClientRect(); const x = e.clientX - rect.left; const y = e.clientY - rect.top; const specular = this.querySelector('.glass-specular'); if (specular) specular.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 30%, rgba(255,255,255,0) 60%)`; }
+    /** Efeito visual: Remove gradiente especular ao tirar o mouse */
     function handleMouseLeave() { const specular = this.querySelector('.glass-specular'); if (specular) specular.style.background = 'none'; }
-    function attachGlassButtonListeners() { document.querySelectorAll('.glass-button, .liquid-glass-card, .player-control-btn, .glass-container[style*="--bg-color"], .glass-form, .news-card, .comment-card, .reply-card').forEach(element => { if (!element.hasGlassListener) { element.addEventListener('mousemove', handleMouseMove); element.addEventListener('mouseleave', handleMouseLeave); element.hasGlassListener = true; } }); }
+    /** Adiciona listeners para os efeitos visuais 'glass' a todos os elementos relevantes */
+    function attachGlassButtonListeners() { document.querySelectorAll('.glass-button, .liquid-glass-card, .player-control-btn, .glass-container[style*="--bg-color"], .glass-form, .news-card, .comment-card, .reply-card').forEach(element => { if (!element.hasGlassListener) { element.addEventListener('mousemove', handleMouseMove); element.addEventListener('mouseleave', handleMouseLeave); element.hasGlassListener = true; } }); } // 'hasGlassListener' evita adicionar múltiplos listeners
+    /** Atualiza a posição e tamanho do indicador da navegação mobile */
     function updateMobileNavIndicator() { const indicator = document.getElementById('mobile-nav-indicator'); const activeItem = document.querySelector('#mobile-nav .mobile-nav-item.active'); if (indicator && activeItem) { const left = activeItem.offsetLeft; const width = activeItem.offsetWidth; indicator.style.width = `${width}px`; indicator.style.transform = `translateX(${left}px)`; } }
+    /** Mostra ou esconde o overlay de busca */
     function toggleSearchOverlay(show) { if (show) { searchOverlay.classList.remove('hidden'); searchInput.focus(); document.body.style.overflow = 'hidden'; } else { searchOverlay.classList.add('hidden'); searchInput.value = ''; searchResultsContainer.innerHTML = ''; document.body.style.overflow = 'auto'; } }
 
+    /**
+     * Realiza a busca no CATÁLOGO LOCAL (firestoreContent) e exibe os resultados.
+     */
     function performSearch(query) {
         if (query.length < 2) {
             searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Digite pelo menos 2 caracteres.</p>`;
             return;
         }
 
+        // Garante que firestoreContent está disponível
         if (!firestoreContent || firestoreContent.length === 0) {
             searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">O catálogo está carregando. Tente novamente em alguns segundos.</p>`;
             return;
         }
 
         const lowerCaseQuery = query.toLowerCase();
+        // Filtra o array firestoreContent local
         const results = firestoreContent.filter(item => {
             const title = (item.title || item.name || '').toLowerCase();
             return title.includes(lowerCaseQuery);
         });
 
         if (results.length > 0) {
+            // Usa createGridCard para exibir os resultados na grid
+            // createGridCard usa 'item.docId' para criar o link correto
             searchResultsContainer.innerHTML = results.map(item => createGridCard(item)).join('');
         } else {
             searchResultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum resultado para "${query}" em nosso catálogo.</p>`;
         }
 
+        // Re-anexa listeners para os cards de vidro recém-criados
         attachGlassButtonListeners();
     }
 
 
-    function switchVideoSource(newUrl) {
-        if (!newUrl || newUrl === 'none') return;
-        const currentTime = videoPlayer.currentTime;
-        const wasPlaying = !videoPlayer.paused;
-        const currentSpeed = videoPlayer.playbackRate;
+    // --- Funções do Player ---
 
-        if (playerLoadingOverlay) {
-            playerLoadingOverlay.classList.remove('hidden');
-        }
-
-        if (hls) {
-            hls.destroy();
-            hls = null;
-        }
-        videoPlayer.removeAttribute('src');
-        videoPlayer.load();
-
-        let urlToLoad = newUrl;
-        try {
-            const urlObject = new URL(urlToLoad);
-            if (urlObject.hostname.includes('api.anivideo.net') && urlObject.pathname.includes('videohls.php')) {
-                const videoSrc = urlObject.searchParams.get('d');
-                if (videoSrc) urlToLoad = videoSrc;
-            }
-        } catch (e) {}
-
-        if (Hls.isSupported() && urlToLoad.includes('.m3u8')) {
-            hls = new Hls({ maxBufferLength: 30, maxBufferSize: 60 * 1000 * 1000, startLevel: -1 });
-            hls.loadSource(urlToLoad);
-            hls.attachMedia(videoPlayer);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                videoPlayer.currentTime = currentTime;
-                videoPlayer.playbackRate = currentSpeed;
-                if (wasPlaying) videoPlayer.play().catch(e => console.error(e));
-            });
-        } else {
-            videoPlayer.src = urlToLoad;
-            videoPlayer.addEventListener('loadedmetadata', () => {
-                videoPlayer.currentTime = currentTime;
-                videoPlayer.playbackRate = currentSpeed;
-                if (wasPlaying) videoPlayer.play().catch(e => console.error(e));
-            }, { once: true });
-        }
-    }
-
-    function updateAudioSettings() {
-        let audioContainer = document.getElementById('settings-audio-options');
-        if (!audioContainer) {
-            audioContainer = document.createElement('div');
-            audioContainer.id = 'settings-audio-options';
-            audioContainer.className = 'mt-2 border-b border-white/10 pb-2 mb-2';
-            
-            const qualityContainer = document.getElementById('settings-quality-options');
-            if(qualityContainer && qualityContainer.parentNode) {
-                qualityContainer.parentNode.insertBefore(audioContainer, qualityContainer);
-            } else {
-                document.getElementById('settings-speed-options').parentNode.prepend(audioContainer);
-            }
-        }
-
-        audioContainer.innerHTML = '<h4 class="text-xs text-gray-300 px-3 pt-1 pb-2">Áudio e Legendas</h4>';
-
-        const hasDefault = currentPlayerContext.videoUrl && currentPlayerContext.videoUrl !== 'none' && currentPlayerContext.videoUrl.trim() !== '';
-        const hasAlt = currentPlayerContext.altUrl && currentPlayerContext.altUrl !== 'none' && currentPlayerContext.altUrl.trim() !== '';
-
-        if (!hasDefault && !hasAlt) {
-            audioContainer.style.display = 'none';
-            return;
-        }
-        audioContainer.style.display = 'block';
-
-        if (hasDefault) {
-            const btnDefault = document.createElement('button');
-            btnDefault.className = 'settings-option-btn';
-            btnDefault.textContent = 'Padrão (Dublado)';
-            if (!currentPlayerContext.useAltAudio) btnDefault.classList.add('active');
-            btnDefault.onclick = () => {
-                if (currentPlayerContext.useAltAudio) {
-                    currentPlayerContext.useAltAudio = false;
-                    switchVideoSource(currentPlayerContext.videoUrl);
-                    audioContainer.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-                    btnDefault.classList.add('active');
-                }
-            };
-            audioContainer.appendChild(btnDefault);
-        }
-
-        if (hasAlt) {
-            const btnAlt = document.createElement('button');
-            btnAlt.className = 'settings-option-btn';
-            btnAlt.textContent = 'Alternativo (Legendado)';
-            if (currentPlayerContext.useAltAudio) btnAlt.classList.add('active');
-            btnAlt.onclick = () => {
-                if (!currentPlayerContext.useAltAudio) {
-                    currentPlayerContext.useAltAudio = true;
-                    switchVideoSource(currentPlayerContext.altUrl);
-                    audioContainer.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-                    btnAlt.classList.add('active');
-                }
-            };
-            audioContainer.appendChild(btnAlt);
-        }
-    }
-
+    /**
+     * Mostra e configura o player de vídeo.
+     * @param {object} context - Informações sobre o vídeo a ser reproduzido.
+     */
     async function showPlayer(context) {
-        hidePlayer(false, true);
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // 1. Reset completo do player antes de iniciar um novo
+        hidePlayer(false, true); // Limpa estado anterior, marca como 'isChangingEpisode'
+        await new Promise(resolve => setTimeout(resolve, 50)); // Pequeno delay
 
-        let key;
-        let itemData = context.itemData;
-        if (!itemData) {
+        let key; // Chave única para salvar o progresso (ex: 'movie-123', 'tv-456-s1-e2')
+        let itemData = context.itemData; // Dados gerais do item
+        if (!itemData) { // Erro se não houver dados do item
             console.error("showPlayer called without itemData in context.");
             return;
         }
 
-        if (context.episodes) {
+        // Define a chave com base se é filme ou episódio de série
+        if (context.episodes) { // É uma série
             const episode = context.episodes[context.currentIndex];
             key = `tv-${itemData.docId}-s${episode.season_number}-e${episode.episode_number}`;
-        } else {
+        } else { // É um filme
             key = `movie-${itemData.docId}`;
         }
 
+        // Define o contexto atual do player
         currentPlayerContext = { ...context, key, id: itemData.docId, itemData };
 
-        const hasDefault = context.videoUrl && context.videoUrl !== 'none' && context.videoUrl.trim() !== '';
-        const hasAlt = context.altUrl && context.altUrl !== 'none' && context.altUrl.trim() !== '';
-        currentPlayerContext.useAltAudio = !hasDefault && hasAlt;
-        
-        updateAudioSettings();
-
+        // Adiciona #player ao histórico do navegador se ainda não estiver lá
         if (window.location.hash !== '#player') {
             history.pushState({ view: 'player' }, '', '#player');
         }
 
+        // Mostra a view do player e esconde a barra de rolagem do body
         playerView.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
-        playerTitle.textContent = context.title;
+        playerTitle.textContent = context.title; // Define o título no player
 
-        let urlToLoad = currentPlayerContext.useAltAudio ? context.altUrl : context.videoUrl;
-        
+        // Processa a URL do vídeo (caso especial para api.anivideo.net)
+        let urlToLoad = context.videoUrl;
         try {
             const urlObject = new URL(urlToLoad);
             if (urlObject.hostname.includes('api.anivideo.net') && urlObject.pathname.includes('videohls.php')) {
                 const videoSrc = urlObject.searchParams.get('d');
                 if (videoSrc) {
-                    urlToLoad = videoSrc;
+                    urlToLoad = videoSrc; // Usa a URL extraída do parâmetro 'd'
                 }
             }
-        } catch (e) {}
-
-        if (Hls.isSupported() && urlToLoad.includes('.m3u8')) {
-            hls = new Hls({
-                maxBufferLength: 30,
-                maxBufferSize: 60 * 1000 * 1000,
-                startLevel: -1
-            });
-            hls.loadSource(urlToLoad);
-            hls.attachMedia(videoPlayer);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                if (context.startTime && context.startTime > 5) {
-                    videoPlayer.currentTime = context.startTime;
-                }
-                videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo HLS:", e));
-            });
-        } else {
-            videoPlayer.src = urlToLoad;
-            videoPlayer.addEventListener('loadedmetadata', () => {
-                if (context.startTime && context.startTime > 5) {
-                    videoPlayer.currentTime = context.startTime;
-                }
-                videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo:", e));
-            }, { once: true });
+        } catch (e) {
+            // URL inválida, usa a original
         }
 
-        if (window.innerWidth < 768) {
-            if (!document.fullscreenElement) {
+        // Configura HLS.js se for um stream .m3u8 e o navegador suportar
+        if (Hls.isSupported() && urlToLoad.includes('.m3u8')) {
+            // MUDANÇA: Adiciona configuração de buffer para tentar reduzir travamentos
+            hls = new Hls({
+                maxBufferLength: 30,    // Segundos de buffer
+                maxBufferSize: 60 * 1000 * 1000, // 60MB de buffer
+                startLevel: -1           // Começa na qualidade automática
+            });
+            hls.loadSource(urlToLoad); // Carrega a fonte
+            hls.attachMedia(videoPlayer); // Anexa ao elemento <video>
+            hls.on(Hls.Events.MANIFEST_PARSED, () => { // Quando o manifesto HLS for carregado
+                // Se houver um tempo inicial definido (ex: continuar assistindo), pula para ele
+                if (context.startTime && context.startTime > 5) { // Só pula se for maior que 5s
+                    videoPlayer.currentTime = context.startTime;
+                }
+                videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo HLS:", e)); // Tenta iniciar a reprodução
+            });
+        } else { // Se não for HLS ou não for suportado, usa a tag <video> nativa
+            videoPlayer.src = urlToLoad; // Define a fonte do vídeo
+            videoPlayer.addEventListener('loadedmetadata', () => { // Quando os metadados do vídeo carregarem
+                if (context.startTime && context.startTime > 5) {
+                    videoPlayer.currentTime = context.startTime; // Pula se necessário
+                }
+                videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo:", e)); // Tenta iniciar
+            }, { once: true }); // Executa este listener apenas uma vez
+        }
+
+        // 2. Lógica de orientação e tela cheia para mobile
+        if (window.innerWidth < 768) { // Se for tela pequena (considerado mobile)
+            // MUDANÇA: Lógica ajustada para (re)tentar bloquear a orientação
+            if (!document.fullscreenElement) { // Só tenta entrar em fullscreen se já não estiver
                 try {
                     await playerView.requestFullscreen();
                 } catch (err) {
                     console.error("Não foi possível ativar tela cheia:", err);
                 }
             }
+            // Tenta (re)travar a orientação.
+            // Se foi um clique (nextBtn), funciona.
+            // Se foi 'ended', pode falhar, mas como não demos unlock,
+            // a orientação anterior (landscape) deve ser mantida.
             try {
                 if (screen.orientation && typeof screen.orientation.lock === 'function') {
                     await screen.orientation.lock('landscape');
@@ -1443,6 +1597,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
+        // Mostra/Esconde botões de episódio anterior/próximo
         if (context.episodes && context.episodes.length > 1) {
             nextEpisodeBtn.classList.remove('hidden');
             prevEpisodeBtn.classList.remove('hidden');
@@ -1451,55 +1606,77 @@ document.addEventListener('DOMContentLoaded', function () {
             prevEpisodeBtn.classList.add('hidden');
         }
 
-        attachGlassButtonListeners();
+        attachGlassButtonListeners(); // Reatacha listeners visuais
     }
 
-    async function hidePlayer(updateHistory = true, isChangingEpisode = false) {
+    /**
+     * Esconde o player de vídeo e limpa seu estado.
+     * @param {boolean} [updateHistory=true] - Se true, salva o progresso e volta no histórico.
+     * @param {boolean} [isChangingEpisode=false] - Se true, não desbloqueia a orientação (mobile).
+     */
+    async function hidePlayer(updateHistory = true, isChangingEpisode = false) { // MUDANÇA: Adicionado isChangingEpisode
+        // Salva o progresso se updateHistory for true e houver um contexto válido
         if (updateHistory && currentPlayerContext.key) {
             await savePlayerProgress();
         }
 
-        videoPlayer.pause();
+        videoPlayer.pause(); // Pausa o vídeo
 
+        // Destrói a instância do HLS.js se existir
         if (hls) {
             hls.destroy();
             hls = null;
         }
+        // Remove o atributo 'src' e chama 'load()' para parar completamente o download do vídeo
         videoPlayer.removeAttribute('src');
         videoPlayer.load();
 
-        playerView.classList.add('hidden');
-        playerLoadingOverlay.classList.add('hidden');
-        document.body.style.overflow = 'auto';
-        currentPlayerContext = {};
-
+        playerView.classList.add('hidden'); // Esconde a view do player
+        playerLoadingOverlay.classList.add('hidden'); // <--- ADICIONE A LINHA AQUI
+        document.body.style.overflow = 'auto'; // Restaura a rolagem do body
+        currentPlayerContext = {}; // Limpa o contexto do player
+        // 3. Sai da tela cheia e desbloqueia a orientação
+        // MUDANÇA: Só executa se NÃO estiver trocando de episódio
         if (!isChangingEpisode) {
             if (document.fullscreenElement) {
                 document.exitFullscreen().catch(err => console.error("Erro ao sair da tela cheia:", err));
             }
             if (screen.orientation && typeof screen.orientation.unlock === 'function') {
-                screen.orientation.unlock();
+                screen.orientation.unlock(); // Desbloqueia a orientação da tela
             }
         }
 
+        // MUDANÇA: Reseta o aspect ratio para o padrão
         videoPlayer.style.objectFit = 'contain';
         currentAspectRatio = 'contain';
         if (aspectRatioBtn) aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectContain;
+
+        // NÃO chama history.back() aqui. O roteador (`handleNavigation`) fará isso
+        // quando o evento 'popstate' for disparado pelo clique no botão voltar do navegador.
     }
 
+    /**
+     * Formata segundos para o formato HH:MM:SS ou MM:SS.
+     * @param {number} timeInSeconds - Tempo em segundos.
+     * @returns {string} - Tempo formatado.
+     */
     function formatTime(timeInSeconds) {
-        if (isNaN(timeInSeconds) || timeInSeconds < 0) { return "00:00"; }
+        if (isNaN(timeInSeconds) || timeInSeconds < 0) { return "00:00"; } // Retorna '00:00' para valores inválidos
         const hours = Math.floor(timeInSeconds / 3600);
         const minutes = Math.floor((timeInSeconds % 3600) / 60);
         const seconds = Math.floor(timeInSeconds % 60);
+        // Garante que minutos e segundos tenham dois dígitos (ex: 05)
         const formattedMinutes = String(minutes).padStart(2, '0');
         const formattedSeconds = String(seconds).padStart(2, '0');
+        // Inclui horas apenas se for maior que 0
         return hours > 0 ? `${hours}:${formattedMinutes}:${formattedSeconds}` : `${formattedMinutes}:${formattedSeconds}`;
     }
 
+    /** Alterna entre play e pause no vídeo */
     function togglePlay() {
         if (videoPlayer.paused) {
             videoPlayer.play().catch(error => {
+                // Ignora erro 'AbortError' que pode ocorrer ao trocar de vídeo rapidamente
                 if (error.name !== 'AbortError') { console.error("Video play error:", error); }
             });
         } else {
@@ -1507,26 +1684,34 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    /** Manipula cliques na área do vídeo em dispositivos móveis */
     function handleMobilePlayerClick() {
+        // 1. Limpa qualquer timeout anterior para esconder os controles
         clearTimeout(controlsTimeout);
+
+        // 2. Apenas MOSTRA os controles
         playerView.classList.add('controls-active');
 
+        // 3. Define um novo timeout para esconder os controles (somente se o vídeo estiver tocando)
         if (!videoPlayer.paused) {
             controlsTimeout = setTimeout(() => {
                 playerView.classList.remove('controls-active');
-            }, 3000);
+            }, 3000); // 3 segundos
         }
     }
 
+
+    /** Manipula cliques na área do vídeo em desktop */
     function handlePlayerClick() {
-        clearTimeout(controlsTimeout);
+        clearTimeout(controlsTimeout); // Limpa timeout
 
         if (!playerView.classList.contains('controls-active')) {
-            playerView.classList.add('controls-active');
+            playerView.classList.add('controls-active'); // Se escondidos, apenas mostra
         } else {
-            togglePlay();
+            togglePlay(); // Se controles visíveis, alterna play/pause
         }
 
+        // Reseta o timeout para esconder controles (somente se estiver tocando)
         if (!videoPlayer.paused) {
             controlsTimeout = setTimeout(() => {
                 playerView.classList.remove('controls-active');
@@ -1534,66 +1719,81 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+
+    /** Adiciona listeners de evento ao elemento <video> */
     function addPlayerEventListeners() {
+        // Remove listeners antigos antes de adicionar novos para evitar duplicidade
+        // Garantir que a referência da função é a mesma
         const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
         if (isTouchDevice) {
-            videoPlayer.removeEventListener('click', handlePlayerClick);
-            videoPlayer.removeEventListener('click', handleMobilePlayerClick);
-            videoPlayer.addEventListener('click', handleMobilePlayerClick);
+            videoPlayer.removeEventListener('click', handlePlayerClick); // Remove listener desktop se existir
+            videoPlayer.removeEventListener('click', handleMobilePlayerClick); // Remove listener mobile antigo
+            videoPlayer.addEventListener('click', handleMobilePlayerClick); // Adiciona listener mobile correto
         } else {
-            videoPlayer.removeEventListener('click', handleMobilePlayerClick);
-            videoPlayer.removeEventListener('click', handlePlayerClick);
-            videoPlayer.addEventListener('click', handlePlayerClick);
+            videoPlayer.removeEventListener('click', handleMobilePlayerClick); // Remove listener mobile se existir
+            videoPlayer.removeEventListener('click', handlePlayerClick); // Remove listener desktop antigo
+            videoPlayer.addEventListener('click', handlePlayerClick); // Adiciona listener desktop correto
         }
 
+        // Esconde o loading overlay QUANDO o vídeo começar a tocar
         videoPlayer.addEventListener('playing', () => {
             if (playerLoadingOverlay) {
                 playerLoadingOverlay.classList.add('hidden');
             }
         });
 
+        // MOSTRA o loading overlay se o vídeo parar para bufferizar
         videoPlayer.addEventListener('waiting', () => {
             if (playerLoadingOverlay) {
                 playerLoadingOverlay.classList.remove('hidden');
             }
         });
 
+        // Listener para o evento 'play'
         videoPlayer.addEventListener('play', () => {
             playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.pause;
-            clearTimeout(controlsTimeout);
+            clearTimeout(controlsTimeout); // Limpa timeout ao dar play
+            // Agenda para esconder controles se estiverem visíveis
             if (playerView.classList.contains('controls-active')) {
                 controlsTimeout = setTimeout(() => {
                     playerView.classList.remove('controls-active');
                 }, 3000);
             }
         });
+        // Listener para o evento 'pause'
         videoPlayer.addEventListener('pause', () => {
             playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
-            clearTimeout(controlsTimeout);
+            clearTimeout(controlsTimeout); // Cancela o timeout ao pausar
+            // Garante que os controles fiquem visíveis ao pausar manualmente
             if (!videoPlayer.ended) {
                 playerView.classList.add('controls-active');
             }
         });
 
+        // Quando o vídeo/episódio termina
         videoPlayer.addEventListener('ended', () => {
+            // Se for série e houver próximo episódio, avança
             if (currentPlayerContext.episodes && currentPlayerContext.currentIndex < currentPlayerContext.episodes.length - 1) {
-                changeEpisode(1);
+                changeEpisode(1); // Vai para o próximo
             } else {
+                // Senão, apenas mostra o ícone de play e mantém controles visíveis
                 playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
-                playerView.classList.add('controls-active');
-                clearTimeout(controlsTimeout);
+                playerView.classList.add('controls-active'); // Garante que controles fiquem visíveis no final
+                clearTimeout(controlsTimeout); // Cancela qualquer timeout pendente
             }
         });
 
+        // Atualiza a barra de progresso e salva progresso periodicamente
         videoPlayer.addEventListener('timeupdate', () => {
-            if (isNaN(videoPlayer.currentTime)) return;
-            seekBar.value = videoPlayer.currentTime;
-            if (videoPlayer.duration) {
+            if (isNaN(videoPlayer.currentTime)) return; // Ignora se currentTime for NaN
+            seekBar.value = videoPlayer.currentTime; // Atualiza valor do slider
+            if (videoPlayer.duration) { // Atualiza a barra visual
                 const progressPercent = (videoPlayer.currentTime / videoPlayer.duration) * 100;
                 seekProgressBar.style.width = `${progressPercent}%`;
             }
-            currentTimeEl.textContent = formatTime(videoPlayer.currentTime);
+            currentTimeEl.textContent = formatTime(videoPlayer.currentTime); // Atualiza tempo atual formatado
 
+            // Salva progresso a cada 5 segundos
             const now = Date.now();
             if (now - lastProgressSaveTime > 5000) {
                 savePlayerProgress();
@@ -1601,24 +1801,30 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
+        // Quando metadados carregam (obtém duração)
         videoPlayer.addEventListener('loadedmetadata', () => {
-            if (isNaN(videoPlayer.duration)) return;
-            seekBar.max = videoPlayer.duration;
-            durationEl.textContent = formatTime(videoPlayer.duration);
+            if (isNaN(videoPlayer.duration)) return; // Ignora se duration for NaN
+            seekBar.max = videoPlayer.duration; // Define o máximo do slider
+            durationEl.textContent = formatTime(videoPlayer.duration); // Mostra duração total formatada
         });
 
+        // Atualiza ícone de volume e valor do slider de volume
         videoPlayer.addEventListener('volumechange', () => {
             volumeSlider.value = videoPlayer.volume;
             volumeBtn.querySelector('.glass-content').innerHTML = (videoPlayer.muted || videoPlayer.volume === 0) ? ICONS.volumeMute : ICONS.volumeHigh;
         });
+
+        // --- Listener de clique já está sendo adicionado no início da função ---
     }
 
-    seekBar.addEventListener('input', () => { videoPlayer.currentTime = seekBar.value; });
-    volumeSlider.addEventListener('input', (e) => { videoPlayer.volume = e.target.value; videoPlayer.muted = e.target.value == 0; });
-    volumeBtn.addEventListener('click', () => { videoPlayer.muted = !videoPlayer.muted; });
-    rewindBtn.addEventListener('click', () => { videoPlayer.currentTime -= 10; });
-    forwardBtn.addEventListener('click', () => { videoPlayer.currentTime += 10; });
+    // --- Listeners dos Controles do Player ---
+    seekBar.addEventListener('input', () => { videoPlayer.currentTime = seekBar.value; }); // Pular ao arrastar barra
+    volumeSlider.addEventListener('input', (e) => { videoPlayer.volume = e.target.value; videoPlayer.muted = e.target.value == 0; }); // Ajustar volume
+    volumeBtn.addEventListener('click', () => { videoPlayer.muted = !videoPlayer.muted; }); // Mutar/Desmutar
+    rewindBtn.addEventListener('click', () => { videoPlayer.currentTime -= 10; }); // Voltar 10s
+    forwardBtn.addEventListener('click', () => { videoPlayer.currentTime += 10; }); // Avançar 10s
 
+    // NOVO: Listener do botão de Aspect Ratio
     aspectRatioBtn.addEventListener('click', () => {
         if (currentAspectRatio === 'contain') {
             currentAspectRatio = 'cover';
@@ -1633,51 +1839,69 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    /**
+      * Muda para o episódio anterior ou próximo.
+      * @param {number} direction - 1 para próximo, -1 para anterior.
+      */
     function changeEpisode(direction) {
-        if (!currentPlayerContext.episodes) return;
-        const newIndex = currentPlayerContext.currentIndex + direction;
+        if (!currentPlayerContext.episodes) return; // Sai se não for série
+        const newIndex = currentPlayerContext.currentIndex + direction; // Calcula novo índice
+        // Verifica se o novo índice é válido
         if (newIndex >= 0 && newIndex < currentPlayerContext.episodes.length) {
-            const episode = currentPlayerContext.episodes[newIndex];
+            const episode = currentPlayerContext.episodes[newIndex]; // Pega dados do novo episódio
+            // Pega o título do episódio, com fallback
             const epTitle = episode.title ? ` - ${episode.title}` : '';
 
+            // Cria novo contexto com índice atualizado e novo título
             const newContext = {
                 ...currentPlayerContext,
                 currentIndex: newIndex,
+                // CORREÇÃO: Usa (itemData.title || itemData.name) e adiciona o epTitle
                 title: `${currentPlayerContext.itemData.title || currentPlayerContext.itemData.name} - T${episode.season_number} E${episode.episode_number}${epTitle}`,
-                videoUrl: episode.url,
-                altUrl: episode.altUrl || ""
+                videoUrl: episode.url // IMPORTANTE: Atualizar a URL do vídeo
             };
-            showPlayer(newContext);
+            showPlayer(newContext); // Mostra o player com o novo episódio
         }
     }
 
+    // Listeners para botões de episódio
     nextEpisodeBtn.addEventListener('click', () => changeEpisode(1));
     prevEpisodeBtn.addEventListener('click', () => changeEpisode(-1));
 
+    // Listener para botão de tela cheia
     fullscreenBtn.addEventListener('click', () => {
-        if (!document.fullscreenElement) {
+        if (!document.fullscreenElement) { // Se não estiver em tela cheia
             playerView.requestFullscreen().catch(err => console.error(`Erro ao entrar em tela cheia: ${err.message}`));
-        } else {
-            document.exitFullscreen();
+        } else { // Se já estiver
+            document.exitFullscreen(); // Sai da tela cheia
         }
     });
 
+    // Listener para mudanças no estado de tela cheia (ex: pressionar ESC)
     document.addEventListener('fullscreenchange', () => {
-        const isFullscreen = !!document.fullscreenElement;
+        const isFullscreen = !!document.fullscreenElement; // Verifica se está em tela cheia
+        // Atualiza o ícone do botão
         fullscreenBtn.querySelector('.glass-content').innerHTML = isFullscreen ? ICONS.exitFullscreen : ICONS.fullscreen;
 
+        // Se saiu da tela cheia E o player ainda deveria estar visível
         if (!isFullscreen && !playerView.classList.contains('hidden')) {
+            // Força a volta no histórico (provavelmente para a tela de detalhes)
             history.back();
         }
     });
 
+    // Listener botão play/pause principal
     playPauseBtn.addEventListener('click', togglePlay);
-    playerBackBtn.addEventListener('click', () => history.back());
+    // Listener botão voltar do player
+    playerBackBtn.addEventListener('click', () => history.back()); // Usa histórico do navegador
 
+    // Listener para mostrar controles ao mover o mouse sobre o player (desktop)
     playerView.addEventListener('mousemove', () => {
+        // MUDANÇA: Não executar esta lógica em mobile
         if (window.innerWidth >= 768) {
-            playerView.classList.add('controls-active');
-            clearTimeout(controlsTimeout);
+            playerView.classList.add('controls-active'); // Mostra controles
+            clearTimeout(controlsTimeout); // Limpa timeout anterior
+            // Define novo timeout para esconder (se não estiver pausado)
             if (!videoPlayer.paused) {
                 controlsTimeout = setTimeout(() => {
                     playerView.classList.remove('controls-active');
@@ -1686,56 +1910,69 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Listener para botão de configurações (abre/fecha painel)
     settingsBtn.addEventListener('click', (e) => { e.stopPropagation(); settingsPanel.classList.toggle('hidden'); });
 
+    // Listener global para fechar painéis (configurações, notificações, seletor de temporada) ao clicar fora
     document.addEventListener('click', (e) => {
+        // Fecha painel de configurações
         if (!settingsPanel.classList.contains('hidden') && !settingsBtn.contains(e.target) && !settingsPanel.contains(e.target)) { settingsPanel.classList.add('hidden'); }
+        // Fecha painel de notificações
         if (!notificationPanel.classList.contains('hidden') && !notificationPanel.contains(e.target) && !notificationBtn.contains(e.target)) {
             notificationPanel.classList.remove('animate-fade-in-down');
             notificationPanel.classList.add('animate-fade-out-up');
-            setTimeout(() => notificationPanel.classList.add('hidden'), 250);
+            setTimeout(() => notificationPanel.classList.add('hidden'), 250); // Adiciona 'hidden' após animação
         }
+        // Fecha seletor de temporada
         const openSelectPanel = document.querySelector('#season-options:not(.hidden)');
         if (openSelectPanel && !openSelectPanel.closest('.custom-select-container').contains(e.target)) {
-            document.getElementById('season-selector-button')?.click();
+            document.getElementById('season-selector-button')?.click(); // Simula clique no botão para fechar
         }
     });
 
+    /** Cria as opções no painel de configurações do player (velocidade, qualidade) */
     function createSettingsOptions() {
         const speedContainer = document.getElementById('settings-speed-options');
         const qualityContainer = document.getElementById('settings-quality-options');
+        // Só cria se ainda não existirem (evita duplicação)
         if (speedContainer.childElementCount > 1) return;
 
+        // Opções de velocidade
         const speeds = [0.5, 1, 1.5, 2];
         speeds.forEach(speed => {
             const button = document.createElement('button');
             button.className = 'settings-option-btn';
             button.textContent = `${speed}x`;
-            if (speed === 1) button.classList.add('active');
-            button.onclick = () => {
-                videoPlayer.playbackRate = speed;
+            if (speed === 1) button.classList.add('active'); // Marca 1x como padrão
+            button.onclick = () => { // Ao clicar
+                videoPlayer.playbackRate = speed; // Muda velocidade do vídeo
+                // Atualiza qual botão está ativo
                 speedContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
                 button.classList.add('active');
             };
             speedContainer.appendChild(button);
         });
 
+        // Opções de qualidade (Placeholder - HLS.js pode gerenciar isso dinamicamente)
         const qualities = ["Auto", "1080p", "720p", "480p"];
         qualities.forEach(quality => {
             const button = document.createElement('button');
             button.className = 'settings-option-btn';
             button.textContent = quality;
-            if (quality === "Auto") button.classList.add('active');
-            button.onclick = () => {
+            if (quality === "Auto") button.classList.add('active'); // Marca Auto como padrão
+            button.onclick = () => { // Ao clicar (ação placeholder)
                 qualityContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
                 button.classList.add('active');
                 console.log(`Qualidade definida para ${quality}. (Funcionalidade de troca manual não implementada)`);
+                // NOTA: A troca real de qualidade com HLS.js é mais complexa
             };
             qualityContainer.appendChild(button);
         });
     }
 
+    /** Inicializa a UI do player (define ícones iniciais, adiciona listeners) */
     function initializePlayerUI() {
+        // Define os ícones SVG para cada botão
         playPauseBtn.querySelector('.glass-content').innerHTML = ICONS.play;
         rewindBtn.querySelector('.glass-content').innerHTML = ICONS.rewind10;
         forwardBtn.querySelector('.glass-content').innerHTML = ICONS.fastForward10;
@@ -1745,37 +1982,44 @@ document.addEventListener('DOMContentLoaded', function () {
         fullscreenBtn.querySelector('.glass-content').innerHTML = ICONS.fullscreen;
         settingsBtn.querySelector('.glass-content').innerHTML = ICONS.settings;
         playerBackBtn.querySelector('.glass-content').innerHTML = ICONS.back;
-        aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectContain;
-        createSettingsOptions();
-        addPlayerEventListeners();
+        aspectRatioBtn.querySelector('.glass-content').innerHTML = ICONS.aspectContain; // NOVO
+        createSettingsOptions(); // Cria opções de velocidade/qualidade
+        addPlayerEventListeners(); // Adiciona listeners ao <video>
     }
 
-    searchIconBtn.addEventListener('click', () => toggleSearchOverlay(true));
-    closeSearchBtn.addEventListener('click', () => toggleSearchOverlay(false));
-    document.getElementById('search-overlay-bg').addEventListener('click', () => toggleSearchOverlay(false));
+    // --- Listeners Gerais da UI (Busca, Notificações) ---
+    searchIconBtn.addEventListener('click', () => toggleSearchOverlay(true)); // Abrir busca (desktop)
+    closeSearchBtn.addEventListener('click', () => toggleSearchOverlay(false)); // Fechar busca
+    document.getElementById('search-overlay-bg').addEventListener('click', () => toggleSearchOverlay(false)); // Fechar ao clicar no fundo
 
+    // Listener de busca com debounce
     searchInput.addEventListener('input', () => {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-            performSearch(searchInput.value);
-        }, 400);
+            performSearch(searchInput.value); // Chama a função de busca
+        }, 400); // 400ms de debounce
     });
 
+
+    // Botão de busca mobile
     const mobileSearchBtn = document.getElementById('mobile-search-btn');
     if (mobileSearchBtn) {
         mobileSearchBtn.addEventListener('click', (e) => {
             e.preventDefault();
+            // Marca o botão como ativo na nav mobile
             document.querySelectorAll('.mobile-nav-item').forEach(item => item.classList.remove('active'));
             mobileSearchBtn.classList.add('active');
             updateMobileNavIndicator();
-            toggleSearchOverlay(true);
+            toggleSearchOverlay(true); // Abre o overlay de busca
         });
     }
 
+    // Botão de notificações
     notificationBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        renderNotifications();
+        e.stopPropagation(); // Impede que o clique feche o painel imediatamente
+        renderNotifications(); // Renderiza o conteúdo das notificações
         const isHidden = notificationPanel.classList.contains('hidden');
+        // Animação de abrir/fechar
         if (isHidden) {
             notificationPanel.classList.remove('hidden', 'animate-fade-out-up');
             notificationPanel.classList.add('animate-fade-in-down');
@@ -1785,22 +2029,28 @@ document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => notificationPanel.classList.add('hidden'), 250);
         }
 
+        // Marca notificações como lidas (atualiza timestamp da última verificação)
         if (notifications.length > 0 && notifications[0].createdAt) {
+            // Pega o timestamp da notificação mais recente
             const latestTimestamp = notifications[0].createdAt.toMillis ? notifications[0].createdAt.toMillis() : new Date(notifications[0].createdAt).getTime();
-            lastNotificationCheck = latestTimestamp;
-            localStorage.setItem('starlight-lastNotificationCheck', latestTimestamp);
-            updateNotificationBell();
+            lastNotificationCheck = latestTimestamp; // Atualiza variável local
+            localStorage.setItem('starlight-lastNotificationCheck', latestTimestamp); // Salva no localStorage
+            updateNotificationBell(); // Atualiza indicador visual (ponto vermelho)
         }
     });
 
+    // Variável para controlar o "pulo" da navegação
     let navDebounceTimer;
 
+    /** Função principal que lida com a navegação baseada no hash da URL */
     async function handleNavigation() {
+        // --- DEBOUNCE: Cancela execução anterior se chamar muito rápido ---
         clearTimeout(navDebounceTimer);
 
         navDebounceTimer = setTimeout(async () => {
             const hash = window.location.hash;
 
+            // --- LÓGICA DE INTERCEPTAÇÃO DE "VOLTAR" ---
             if (isFirstNavigation) {
                 isFirstNavigation = false;
                 const currentHash = window.location.hash;
@@ -1822,6 +2072,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 sessionStorage.setItem('landedOnDetails', 'false');
             }
 
+            // --- Rota de Autenticação ---
             if (!userId) {
                 if (hash !== '#login-view') {
                     history.replaceState(null, '', '#login-view');
@@ -1830,6 +2081,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            // --- Rota de Seleção de Perfil ---
             if (!currentProfile) {
                 const lastProfileId = localStorage.getItem(`starlight-lastProfile-${userId}`);
                 let autoSelectedProfile = false;
@@ -1841,6 +2093,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (foundProfile) {
                         selectAndEnterProfile(foundProfile);
                         autoSelectedProfile = true;
+                        // Retorna aqui pois selectAndEnterProfile vai chamar a navegação de novo
                         return;
                     }
                 }
@@ -1854,6 +2107,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
+            // --- Roteamento do Aplicativo ---
             if (!searchOverlay.classList.contains('hidden')) {
                 toggleSearchOverlay(false);
             }
@@ -1877,6 +2131,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             document.querySelectorAll('#view-container > .content-view').forEach(view => view.classList.add('hidden'));
 
+            // --- Lógica de Renderização ---
             if (hash.startsWith('#details/')) {
                 const docId = hash.split('/')[1];
                 showDetailsView({ docId });
@@ -1888,12 +2143,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 const targetId = hash.substring(1) || 'home-view';
                 const targetView = document.getElementById(targetId);
 
+                // --- (PASSO 4) LIMPEZA DO FORMULÁRIO DE REPORT ---
+                // Se a tela de destino NÃO for a de reportar, limpa os campos.
+                // Isso garante que ao voltar para a home ou ir para outro lugar,
+                // o formulário resete para a próxima vez.
                 if (targetId !== 'report-view') {
                     const reportInput = document.getElementById('report-content-name');
                     const reportDesc = document.getElementById('report-desc');
                     if (reportInput) reportInput.value = '';
                     if (reportDesc) reportDesc.value = '';
                 }
+                // --------------------------------------------------
 
                 if (targetView && targetView.classList.contains('content-view')) {
                     targetView.classList.remove('hidden');
@@ -1912,6 +2172,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 document.getElementById('main-background').style.opacity = (targetId === 'home-view' && currentHeroItem) ? 1 : 0;
 
+                // Para o carrossel do Hero se sair da Home
                 if (targetId !== 'home-view' && heroCarouselInterval) {
                     clearInterval(heroCarouselInterval);
                     heroCarouselInterval = null;
@@ -1919,30 +2180,37 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             handleHeaderScroll();
 
-        }, 50);
+        }, 50); // Delay de 50ms para evitar duplicação e bugs de navegação
     }
 
+    // Adiciona os listeners de navegação do navegador (botão voltar/avançar, mudança de hash)
     window.addEventListener('popstate', handleNavigation);
+    // window.addEventListener('hashchange', handleNavigation); // Não precisamos mais do hashchange, popstate cobre tudo
 
+    // --- Lógica de Notificações ---
     function listenForNotifications() {
-        const q = query(collection(db, "notifications"));
+        const q = query(collection(db, "notifications")); // Query sem orderBy
         onSnapshot(q, (snapshot) => {
             notifications = [];
             snapshot.forEach((doc) => {
                 notifications.push({ id: doc.id, ...doc.data() });
             });
+            // Ordena no cliente
             notifications.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-            updateNotificationBell();
+            updateNotificationBell(); // Atualiza indicador
         });
     }
 
     function updateNotificationBell() {
+        // Verifica se há notificações não lidas e não dispensadas
         const hasNew = notifications.some(n => {
             const notifTime = n.createdAt ? (n.createdAt.toMillis ? n.createdAt.toMillis() : new Date(n.createdAt).getTime()) : 0;
             const isNew = notifTime > lastNotificationCheck;
+            // Novidades podem ser dispensadas
             const isDismissed = n.type === 'Novidade' && dismissedNotifications.includes(n.id);
             return isNew && !isDismissed;
         });
+        // Adiciona/remove classe para mostrar o indicador visual
         notificationBtn.classList.toggle('has-new', hasNew);
     }
 
@@ -1950,12 +2218,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const avisosContainer = document.getElementById('notifications-avisos');
         const novidadesContainer = document.getElementById('notifications-novidades');
 
+        // Filtra notificações por tipo
         const avisos = notifications.filter(n => n.type === 'Aviso');
+        // Filtra novidades não dispensadas
         const novidades = notifications.filter(n => n.type === 'Novidade' && !dismissedNotifications.includes(n.id));
 
+        // Função para criar o HTML de um item de notificação
         const createNotifHTML = (notif, isDismissable) => {
+            // Adiciona botão de dispensar apenas se for 'Novidade'
             const dismissBtn = isDismissable ? `<button class="remove-notification-btn text-stone-500 hover:text-white" data-notif-id="${notif.id}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>` : '';
 
+            // **FIX:** Adiciona data attribute com dados do link
             let linkDataAttr = '';
             if (notif.link) {
                 linkDataAttr = `data-link-type="${notif.link.type}" data-link-value="${notif.link.url || notif.link.docId}"`;
@@ -1971,47 +2244,73 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>`;
         };
 
+        // Popula os containers das abas
         avisosContainer.innerHTML = avisos.length > 0 ? avisos.map(n => createNotifHTML(n, false)).join('') : '<p class="text-stone-400 text-center p-4">Nenhum aviso.</p>';
         novidadesContainer.innerHTML = novidades.length > 0 ? novidades.map(n => createNotifHTML(n, true)).join('') : '<p class="text-stone-400 text-center p-4">Nenhuma novidade.</p>';
     }
 
+    // Listener para o painel de notificações (troca de abas, dispensar, **FIX: click no item**)
     notificationPanel.addEventListener('click', (e) => {
+        // Troca de abas
         const tab = e.target.closest('.notification-tab');
         if (tab) {
             notificationPanel.querySelectorAll('.notification-tab').forEach(t => t.classList.remove('active'));
             notificationPanel.querySelectorAll('.notification-content').forEach(c => c.classList.remove('active'));
             tab.classList.add('active');
             document.getElementById(`notifications-${tab.dataset.tab}`).classList.add('active');
-            return;
+            return; // Impede que o clique na aba acione o clique no item
         }
 
+        // Dispensar notificação (tipo Novidade)
         const removeBtn = e.target.closest('.remove-notification-btn');
         if (removeBtn) {
             const notifId = removeBtn.dataset.notifId;
             if (!dismissedNotifications.includes(notifId)) {
-                dismissedNotifications.push(notifId);
-                localStorage.setItem('starlight-dismissedNotifications', JSON.stringify(dismissedNotifications));
-                updateNotificationBell();
+                dismissedNotifications.push(notifId); // Adiciona ao array de dispensadas
+                localStorage.setItem('starlight-dismissedNotifications', JSON.stringify(dismissedNotifications)); // Salva no localStorage
+                updateNotificationBell(); // Atualiza indicador
             }
-            removeBtn.closest('.notification-item').remove();
-            return;
+            removeBtn.closest('.notification-item').remove(); // Remove o item da UI
+            return; // Impede que o clique no botão acione o clique no item
         }
 
+        // **FIX: Clique no item da notificação para navegação**
         const notificationItem = e.target.closest('.notification-item[data-link-type]');
         if (notificationItem) {
             const linkType = notificationItem.dataset.linkType;
             const linkValue = notificationItem.dataset.linkValue;
 
             if (linkType === 'internal' && linkValue) {
-                window.location.hash = `#details/${linkValue}`;
+                window.location.hash = `#details/${linkValue}`; // Navega para detalhes
             } else if (linkType === 'external' && linkValue) {
-                window.open(linkValue, '_blank');
+                window.open(linkValue, '_blank'); // Abre link externo
             }
+            // Fecha o painel após clicar
             notificationPanel.classList.remove('animate-fade-in-down');
             notificationPanel.classList.add('animate-fade-out-up');
             setTimeout(() => notificationPanel.classList.add('hidden'), 250);
         }
     });
+
+
+    // --- Lógica de Pedidos --- (sem alterações significativas)
+    function listenToRequests() {
+        const q = query(collection(db, "pedidos"), where("status", "==", "pending"));
+        onSnapshot(q, (snapshot) => {
+            pendingRequests = [];
+            snapshot.forEach((doc) => {
+                pendingRequests.push({ id: doc.id, ...doc.data() });
+            });
+            // Ordena no cliente
+            pendingRequests.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+            // Re-renderiza se a view de pedidos estiver ativa
+            if (window.location.hash === '#requests-view') {
+                renderPendingRequests();
+            }
+        }, (error) => {
+            console.error("Erro ao escutar pedidos: ", error);
+        });
+    }
 
     async function handleVote(requestId) {
         if (!userId || !currentProfile) {
@@ -2020,34 +2319,38 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         const docRef = doc(db, 'pedidos', requestId);
         const voteButton = document.querySelector(`.vote-btn[data-request-id="${requestId}"]`);
-        if (voteButton) voteButton.disabled = true;
+        if (voteButton) voteButton.disabled = true; // Desabilita botão temporariamente
 
         try {
-            const docSnap = await getDoc(docRef);
-            if (!docSnap.exists()) {
+            const docSnap = await getDoc(docRef); // Pega o estado atual do pedido
+            if (!docSnap.exists()) { // Se o pedido foi removido
                 showToast("Este pedido não existe mais.", true);
                 return;
             }
 
             const requestData = docSnap.data();
-            const requesters = requestData.requesters || [];
+            const requesters = requestData.requesters || []; // Array de quem pediu/votou
 
+            // Verifica se o usuário atual já votou
             const userHasVoted = requesters.some(r => r.userId === userId);
 
-            if (userHasVoted) {
+            if (userHasVoted) { // SE JÁ VOTOU -> REMOVER O VOTO
+                // Filtra a lista para criar uma nova SEM o usuário atual
                 const newRequesters = requesters.filter(r => r.userId !== userId);
 
                 if (newRequesters.length === 0) {
+                    // Se a lista ficou vazia, apaga o pedido inteiro do banco
                     await deleteDoc(docRef);
                     showToast('Pedido excluído (sem votos).');
                 } else {
+                    // Se ainda tem votos, apenas atualiza a lista
                     await updateDoc(docRef, {
                         requesters: newRequesters
                     });
                     showToast('Voto removido.');
                 }
 
-            } else {
+            } else { // SE NÃO VOTOU -> ADICIONAR O VOTO
                 const userVote = { userId: userId, userName: currentProfile.name };
                 await updateDoc(docRef, {
                     requesters: arrayUnion(userVote)
@@ -2058,26 +2361,31 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error("Erro ao processar voto:", error);
             showToast("Ocorreu um erro ao processar seu voto.", true);
         } finally {
+            // Reabilita o botão se ele ainda existir na tela
             if (voteButton && document.body.contains(voteButton)) {
                 voteButton.disabled = false;
             }
         }
     }
 
+
     function renderPendingRequests() {
         const container = document.getElementById('pending-requests-container');
         if (!container) return;
-        if (pendingRequests.length === 0) {
+        if (pendingRequests.length === 0) { // Mensagem se não houver pedidos
             container.innerHTML = '<p class="col-span-full text-center text-gray-400">Nenhum pedido em aberto no momento.</p>';
             return;
         }
 
+        // Cria o HTML para cada pedido pendente
         container.innerHTML = pendingRequests.map(request => {
+            // --- ALTERAÇÃO AQUI: Verifica se tem URL válida, senão usa o GIF ---
             const posterPath = (request.posterUrl && request.posterUrl.startsWith('http'))
                 ? request.posterUrl
                 : 'https://files.catbox.moe/sytt0s.gif';
 
-            const requesterCount = (request.requesters || []).length;
+            const requesterCount = (request.requesters || []).length; // Contagem de votos
+            // Verifica se o usuário atual já votou neste pedido
             const userHasVoted = userId && (request.requesters || []).some(r => r.userId === userId);
 
             return `
@@ -2098,7 +2406,7 @@ document.addEventListener('DOMContentLoaded', function () {
                          <div class="glass-overlay"></div>
                          <div class="glass-specular"></div>
                          <div class="glass-content flex justify-center items-center gap-2 p-2 text-sm">
-                             ${userHasVoted
+                             ${userHasVoted /* Muda texto e ícone do botão com base no voto */
                     ? '<i data-lucide="minus-circle" class="w-4 h-4"></i> Remover Voto'
                     : '<i data-lucide="plus-circle" class="w-4 h-4"></i> Apoiar Pedido'
                 }
@@ -2107,86 +2415,111 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
             `;
         }).join('');
-        attachGlassButtonListeners();
-        lucide.createIcons();
+        attachGlassButtonListeners(); // Reatacha listeners visuais
+        lucide.createIcons(); // Recria ícones
     }
+    // --- Lógica de Gerenciamento de Perfil ---
+    /** Carrega os perfis do usuário logado do Firestore */
     async function loadProfiles() {
-        if (!userId) return;
-        const profilesCol = collection(db, 'users', userId, 'profiles');
-        const snapshot = await getDocs(profilesCol);
+        if (!userId) return; // Sai se não houver usuário
+        const profilesCol = collection(db, 'users', userId, 'profiles'); // Referência da coleção
+        const snapshot = await getDocs(profilesCol); // Busca os documentos
+        // Mapeia os documentos para objetos de perfil, incluindo o ID do documento
         profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderProfiles();
+        renderProfiles(); // Renderiza os perfis na tela
     }
 
+    /** Renderiza os cards de perfil na tela de seleção/gerenciamento */
     function renderProfiles() {
-        profilesGrid.innerHTML = '';
+        profilesGrid.innerHTML = ''; // Limpa a grid
+        // Cria um card para cada perfil existente
         profiles.forEach((profile) => {
             const profileCard = document.createElement('div');
-            profileCard.className = 'cursor-pointer group';
-            profileCard.dataset.id = profile.id;
+            profileCard.className = 'cursor-pointer group'; // Estilos e grupo para hover
+            profileCard.dataset.id = profile.id; // Armazena o ID do perfil no elemento
+            // HTML do card de perfil
             profileCard.innerHTML = `
                 <div class="relative w-full aspect-square liquid-glass-card">
                      <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
                      <div class="glass-content p-0">
                          <img src="${profile.avatar}" alt="${profile.name}" class="w-full h-full object-cover rounded-[inherit]">
-                         <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${isEditMode ? '!opacity-100' : ''}">
+                         <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${isEditMode ? '!opacity-100' : ''}"> <!-- Overlay com ícone de edição -->
                              <svg class="w-12 h-12 text-white ${isEditMode ? '' : 'hidden'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z"></path></svg>
                          </div>
                      </div>
                 </div>
-                <p class="text-center text-lg text-gray-300 group-hover:text-white mt-3 transition-colors">${profile.name}</p>
+                <p class="text-center text-lg text-gray-300 group-hover:text-white mt-3 transition-colors">${profile.name}</p> <!-- Nome do perfil -->
             `;
+            // Listener de clique no card
             profileCard.addEventListener('click', () => {
-                if (isEditMode) {
-                    showProfileModal(profile.id);
-                } else {
-                    selectAndEnterProfile(profile);
+                if (isEditMode) { // Se estiver no modo de edição
+                    showProfileModal(profile.id); // Abre o modal para editar este perfil
+                } else { // Se estiver no modo de seleção
+                    selectAndEnterProfile(profile); // Seleciona este perfil e entra no app
                 }
             });
-            profilesGrid.appendChild(profileCard);
+            profilesGrid.appendChild(profileCard); // Adiciona o card à grid
         });
 
+        // Adiciona o card "Adicionar Perfil" se houver menos de 4 perfis
         if (profiles.length < 4) {
             const addProfileCard = document.createElement('div');
             addProfileCard.className = 'cursor-pointer group';
+            // HTML do card de adicionar
             addProfileCard.innerHTML = `
                 <div class="relative w-full aspect-square liquid-glass-card flex items-center justify-center">
                     <div class="glass-filter"></div><div class="glass-distortion-overlay"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
                     <div class="glass-content flex items-center justify-center">
-                        <svg class="w-16 h-16 text-gray-400 group-hover:text-white transition-colors" style="transform: translateY(2px);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v12M6 12h12"></path></svg>
+                        <svg class="w-16 h-16 text-gray-400 group-hover:text-white transition-colors" style="transform: translateY(2px);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v12M6 12h12"></path></svg> <!-- Ícone de mais -->
                     </div>
                 </div>
                 <p class="text-center text-lg text-gray-300 group-hover:text-white mt-3 transition-colors">Adicionar Perfil</p>
             `;
+            // Listener para abrir o modal de adicionar perfil
             addProfileCard.addEventListener('click', () => showProfileModal());
             profilesGrid.appendChild(addProfileCard);
         }
-        attachGlassButtonListeners();
+        attachGlassButtonListeners(); // Reatacha listeners visuais
     }
 
+    /**
+     * Define o perfil selecionado, atualiza o header e navega para a home.
+     * @param {object} profile - O objeto do perfil selecionado.
+     */
     async function selectAndEnterProfile(profile) {
-        currentProfile = profile;
-        userDisplayName = profile.name;
+        currentProfile = profile; // Define o perfil globalmente
+        userDisplayName = profile.name; // Guarda o nome do perfil selecionado
 
+        // **NOVO:** Salva o ID do perfil selecionado no localStorage
         localStorage.setItem(`starlight-lastProfile-${userId}`, profile.id);
 
+        // Atualiza o botão de perfil no header com o avatar
         const avatarImg = new Image();
         avatarImg.src = currentProfile.avatar;
         avatarImg.className = 'w-full h-full object-cover rounded-full';
-        headerProfileBtn.innerHTML = '';
+        headerProfileBtn.innerHTML = ''; // Limpa conteúdo anterior
         headerProfileBtn.appendChild(avatarImg);
 
+        // Inicia o carregamento do conteúdo do Firestore (necessário após selecionar perfil)
         listenToFirestoreContent();
-        listenToRequests();
-        listenForNews();
+        listenToRequests(); // Escuta pedidos após selecionar perfil
+        listenForNews(); // Escuta novidades após selecionar perfil
 
+        // NOVO: Força a navegação para a tela de início,
+        // MAS SÓ SE o usuário estiver vindo da tela de perfil/login.
         const currentHash = window.location.hash;
         if (currentHash === '#manage-profile-view' || currentHash === '#login-view' || currentHash === '') {
             window.location.hash = 'home-view';
         }
+        // Se o hash já for #details/..., #series, etc., não fazemos nada.
+        // O handleNavigation() que é chamado no onAuthStateChanged vai cuidar de carregar a página certa.
     }
 
+    /**
+     * Busca avatares do Firestore e agrupa por categoria
+     */
     async function loadAvatarsFromFirestore() {
+        // Verifica se o cache existe e não está vazio
         if (avatarsCache && Object.keys(avatarsCache).length > 0) {
             return avatarsCache;
         }
@@ -2197,6 +2530,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const groups = {};
 
             if (snapshot.empty) {
+                // Fallback caso não tenha nada no banco ainda
                 groups['Padrão'] = [
                     'https://pbs.twimg.com/media/EcGdw6xXsAMkqGF?format=jpg&name=large',
                     'https://pbs.twimg.com/media/FMs8_KeWYAAtoS3.jpg',
@@ -2210,37 +2544,47 @@ document.addEventListener('DOMContentLoaded', function () {
                     groups[cat].push(data.url);
                 });
             }
-            avatarsCache = groups;
+            avatarsCache = groups; // Salva no cache
             return groups;
         } catch (error) {
             console.error("Erro ao carregar avatares:", error);
+            // Retorna um fallback simples em caso de erro (ex: falta de permissão)
             return {
                 'Erro': ['https://placehold.co/100x100?text=Erro']
             };
         }
     }
 
+    /**
+         * Mostra o modal para adicionar ou editar um perfil (Versão Categorizada)
+         */
     async function showProfileModal(profileId = null) {
+        // Elementos do modal
         const modalTitle = document.getElementById('modal-title');
         const nameInput = document.getElementById('profile-name-input');
         const idInput = document.getElementById('profile-id-input');
         const deleteBtn = document.getElementById('delete-profile-btn');
         const avatarContainer = document.getElementById('avatar-options');
 
-        profileModal.classList.remove('hidden');
+        profileModal.classList.remove('hidden'); // Mostra o modal imediatamente
 
+        // Mostra loading enquanto carrega as imagens
         avatarContainer.innerHTML = '<div class="spinner mx-auto my-8"></div>';
 
+        // Carrega os avatares (do cache ou do banco)
         const groupedAvatars = await loadAvatarsFromFirestore();
 
-        avatarContainer.innerHTML = '';
+        avatarContainer.innerHTML = ''; // Limpa o spinner
 
+        // Renderiza cada categoria
         for (const [category, urls] of Object.entries(groupedAvatars)) {
+            // 1. Título da Categoria
             const catTitle = document.createElement('h4');
             catTitle.className = 'w-full text-stone-400 text-xs font-bold uppercase tracking-wider mb-3 mt-6 border-b border-white/10 pb-1 first:mt-0';
             catTitle.textContent = category;
             avatarContainer.appendChild(catTitle);
 
+            // 2. Grid de Imagens desta categoria
             const grid = document.createElement('div');
             grid.className = 'flex flex-wrap justify-center sm:justify-start gap-4 mb-2';
 
@@ -2251,6 +2595,7 @@ document.addEventListener('DOMContentLoaded', function () {
             avatarContainer.appendChild(grid);
         }
 
+        // Lógica de Edição vs Novo
         if (profileId) {
             modalTitle.textContent = 'Editar Perfil';
             const profile = profiles.find(p => p.id === profileId);
@@ -2259,6 +2604,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 idInput.value = profile.id;
                 deleteBtn.classList.remove('hidden');
 
+                // Marca o avatar atual (procura em todas as categorias geradas)
                 const currentAvatarImg = avatarContainer.querySelector(`img[data-avatar="${profile.avatar}"]`);
                 if (currentAvatarImg) currentAvatarImg.classList.add('!border-pink-500', 'ring-2', 'ring-purple-500', 'scale-110', 'shadow-[0_0_15px_rgba(236,72,153,0.5)]');
             }
@@ -2269,192 +2615,220 @@ document.addEventListener('DOMContentLoaded', function () {
             deleteBtn.classList.add('hidden');
         }
     }
+    // Listener para seleção de avatar no modal (ATUALIZADO COM TEMA STARLIGHT)
     avatarOptionsContainer.addEventListener('click', e => {
-        if (e.target.tagName === 'IMG') {
+        if (e.target.tagName === 'IMG') { // Se clicou em uma imagem de avatar
+            // Remove seleção de todos os avatares
             avatarOptionsContainer.querySelectorAll('img').forEach(img =>
                 img.classList.remove('!border-pink-500', 'ring-2', 'ring-purple-500', 'scale-110', 'shadow-[0_0_15px_rgba(236,72,153,0.5)]')
             );
+            // Marca o avatar clicado como selecionado (Rosa + Roxo + Brilho)
             e.target.classList.add('!border-pink-500', 'ring-2', 'ring-purple-500', 'scale-110', 'shadow-[0_0_15px_rgba(236,72,153,0.5)]');
         }
     });
 
+    // Listener para o botão "Salvar" do modal de perfil
     document.getElementById('save-profile-btn').addEventListener('click', async () => {
-        const name = document.getElementById('profile-name-input').value.trim();
-        const selectedAvatar = document.querySelector('#avatar-options .scale-110')?.dataset.avatar;
-        const profileId = document.getElementById('profile-id-input').value;
+        const name = document.getElementById('profile-name-input').value.trim(); // Pega o nome
+        const selectedAvatar = document.querySelector('#avatar-options .scale-110')?.dataset.avatar; // Pega o avatar selecionado
+        const profileId = document.getElementById('profile-id-input').value; // Pega o ID (se estiver editando)
 
+        // Validação simples
         if (!name || !selectedAvatar) {
             showToast('Por favor, preencha o nome e selecione um avatar.', true);
             return;
         }
-        if (!userId) {
+        if (!userId) { // Verifica se o usuário ainda está logado
             showToast('Erro de autenticação. Por favor, recarregue a página.', true);
             return;
         }
 
-        const profileData = { name, avatar: selectedAvatar };
+        const profileData = { name, avatar: selectedAvatar }; // Dados a serem salvos
 
         try {
-            if (profileId) {
+            if (profileId) { // Se tem ID, atualiza o perfil existente
                 const docRef = doc(db, 'users', userId, 'profiles', profileId);
                 await updateDoc(docRef, profileData);
                 showToast('Perfil atualizado com sucesso!');
-            } else {
+            } else { // Se não tem ID, adiciona um novo perfil
                 const colRef = collection(db, 'users', userId, 'profiles');
                 await addDoc(colRef, profileData);
                 showToast('Perfil criado com sucesso!');
             }
-            await loadProfiles();
-            profileModal.classList.add('hidden');
+            await loadProfiles(); // Recarrega a lista de perfis da UI
+            profileModal.classList.add('hidden'); // Esconde o modal
         } catch (error) {
             console.error("Erro ao salvar perfil: ", error);
             showToast('Não foi possível salvar o perfil.', true);
         }
     });
 
+    // Listener para o botão "Cancelar" do modal de perfil
     document.getElementById('cancel-profile-btn').addEventListener('click', () => profileModal.classList.add('hidden'));
 
+    // Listener para o botão "Excluir" do modal de perfil
     document.getElementById('delete-profile-btn').addEventListener('click', async () => {
-        const profileId = document.getElementById('profile-id-input').value;
-        if (profileId && profiles.length > 1) {
+        const profileId = document.getElementById('profile-id-input').value; // Pega o ID do perfil
+        if (profileId && profiles.length > 1) { // Só permite excluir se houver mais de um perfil
+            // Mostra modal de confirmação customizado
             showConfirmationModal(
-                'Excluir Perfil',
-                'Tem certeza que deseja excluir este perfil? Esta ação não pode ser desfeita.',
-                async () => {
+                'Excluir Perfil', // Título
+                'Tem certeza que deseja excluir este perfil? Esta ação não pode ser desfeita.', // Mensagem
+                async () => { // Função a ser executada se o usuário confirmar
                     try {
-                        const docRef = doc(db, 'users', userId, 'profiles', profileId);
-                        await deleteDoc(docRef);
+                        const docRef = doc(db, 'users', userId, 'profiles', profileId); // Referência do perfil
+                        await deleteDoc(docRef); // Exclui do Firestore
                         showToast('Perfil excluído.');
-                        await loadProfiles();
-                        profileModal.classList.add('hidden');
+                        await loadProfiles(); // Recarrega a lista de perfis da UI
+                        profileModal.classList.add('hidden'); // Esconde o modal
                     } catch (error) {
                         console.error("Erro ao excluir perfil: ", error);
                         showToast('Não foi possível excluir o perfil.', true);
                     }
                 }
             );
-        } else {
+        } else { // Se for o único perfil
             showToast('Não é possível excluir o único perfil.', true);
         }
     });
 
+    // Listener para o botão "Gerenciar Perfis" / "Concluído"
     manageProfilesBtn.addEventListener('click', () => {
-        isEditMode = !isEditMode;
+        isEditMode = !isEditMode; // Alterna o modo de edição
+        // Atualiza texto do botão e título da página
         manageProfilesBtn.querySelector('.glass-content').textContent = isEditMode ? 'Concluído' : 'Gerenciar Perfis';
         document.getElementById('profile-main-title').textContent = isEditMode ? 'Gerenciar Perfis' : 'Quem está assistindo?';
-        renderProfiles();
+        renderProfiles(); // Re-renderiza os perfis para mostrar/esconder o ícone de edição
     });
 
+    // Listener para o botão de perfil no header (leva para a tela de gerenciamento)
     headerProfileBtn.addEventListener('click', () => {
+        // Reseta o estado de edição e força a seleção de perfil ao mudar o hash
         isEditMode = false;
         manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
         document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
-        currentProfile = null;
-        localStorage.removeItem(`starlight-lastProfile-${userId}`);
-        window.location.hash = 'manage-profile-view';
+        currentProfile = null; // **IMPORTANTE:** Limpa o perfil atual para forçar seleção
+        localStorage.removeItem(`starlight-lastProfile-${userId}`); // Limpa o perfil salvo
+        window.location.hash = 'manage-profile-view'; // Navega para a tela de gerenciamento
     });
 
+    // --- Lógica de Autenticação e Troca de Formulário (Login/Registro) ---
     const switchToRegister = document.querySelector('.switch-to-register');
     const switchToLogin = document.querySelector('.switch-to-login');
     const loginFormContainer = document.querySelector('.form-container.login');
     const registerFormContainer = document.querySelector('.form-container.register');
 
+    // Trocar para formulário de registro
     switchToRegister.addEventListener('click', (e) => {
         e.preventDefault();
         loginFormContainer.classList.remove('active');
         registerFormContainer.classList.add('active');
     });
+    // Trocar para formulário de login
     switchToLogin.addEventListener('click', (e) => {
         e.preventDefault();
         registerFormContainer.classList.remove('active');
         loginFormContainer.classList.add('active');
     });
 
+    // Submit do formulário de login
     document.getElementById('login-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
         signInWithEmailAndPassword(auth, email, password)
-            .catch((error) => {
+            .catch((error) => { // Trata erros de login
                 console.error("Erro de login:", error);
                 showToast(`Erro: ${error.message}`, true);
             });
     });
 
+    // Submit do formulário de registro
     document.getElementById('register-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const email = document.getElementById('register-email').value;
         const password = document.getElementById('register-password').value;
         createUserWithEmailAndPassword(auth, email, password)
             .then(async (userCredential) => {
+                // **NOVO:** Cria um perfil padrão após registro bem-sucedido
                 const user = userCredential.user;
                 if (user) {
                     const colRef = collection(db, 'users', user.uid, 'profiles');
-                    await addDoc(colRef, { name: "Usuário", avatar: 'https://pbs.twimg.com/media/EcGdw6xXsAMkqGF?format=jpg&name=large' });
+                    await addDoc(colRef, { name: "Usuário", avatar: AVATARS[0] }); // Cria perfil inicial
+                    // Não precisa fazer mais nada aqui, o onAuthStateChanged vai lidar com a navegação
                 }
             })
-            .catch((error) => {
+            .catch((error) => { // Trata erros de registro
                 console.error("Erro de registro:", error);
                 showToast(`Erro: ${error.message}`, true);
             });
     });
 
+    // Login com Google
     document.getElementById('google-signin-btn').addEventListener('click', () => {
         signInWithPopup(auth, googleProvider)
             .then(async (result) => {
+                // **NOVO:** Verifica se é o primeiro login com Google e cria perfil se necessário
                 const user = result.user;
                 if (user) {
                     const profilesCol = collection(db, 'users', user.uid, 'profiles');
                     const snapshot = await getDocs(profilesCol);
-                    if (snapshot.empty) {
-                        await addDoc(profilesCol, { name: user.displayName || "Usuário", avatar: user.photoURL || 'https://pbs.twimg.com/media/EcGdw6xXsAMkqGF?format=jpg&name=large' });
+                    if (snapshot.empty) { // Se não existem perfis, cria um
+                        await addDoc(profilesCol, { name: user.displayName || "Usuário", avatar: user.photoURL || AVATARS[0] });
                     }
+                    // onAuthStateChanged cuidará da navegação
                 }
             })
-            .catch((error) => {
+            .catch((error) => { // Trata erros de login com Google
                 console.error("Erro de login com Google:", error);
                 showToast(`Erro: ${error.message}`, true);
             });
     });
 
+    // Logout
     logoutBtn.addEventListener('click', () => {
-        const currentUserId = userId;
+        const currentUserId = userId; // Guarda o userId antes do logout
         signOut(auth).then(() => {
+            // **NOVO:** Limpa o perfil salvo no localStorage ao sair
             if (currentUserId) {
                 localStorage.removeItem(`starlight-lastProfile-${currentUserId}`);
             }
+            // Para o listener de novidades se estiver ativo
             if (unsubscribeNewsListener) {
                 unsubscribeNewsListener();
                 unsubscribeNewsListener = null;
             }
-        }).catch((error) => {
+            // O onAuthStateChanged vai detectar a mudança e redirecionar para o login
+        }).catch((error) => { // Trata erros de logout
             console.error("Erro ao sair:", error);
             showToast(`Erro: ${error.message}`, true);
         });
     });
 
+    // --- Lógica do Modal de Confirmação --- (sem alterações)
     function showConfirmationModal(title, message, onConfirm) {
         confirmTitle.textContent = title;
         confirmMessage.textContent = message;
-        confirmCallback = onConfirm;
-        confirmModal.classList.remove('hidden');
+        confirmCallback = onConfirm; // Armazena a função a ser chamada
+        confirmModal.classList.remove('hidden'); // Mostra o modal
     }
 
-    confirmOkBtn.addEventListener('click', () => {
+    confirmOkBtn.addEventListener('click', () => { // Botão confirmar
         if (confirmCallback) {
-            confirmCallback();
+            confirmCallback(); // Executa a função armazenada
         }
-        confirmModal.classList.add('hidden');
-        confirmCallback = null;
+        confirmModal.classList.add('hidden'); // Esconde o modal
+        confirmCallback = null; // Limpa a função
     });
 
-    confirmCancelBtn.addEventListener('click', () => {
-        confirmModal.classList.add('hidden');
-        confirmCallback = null;
+    confirmCancelBtn.addEventListener('click', () => { // Botão cancelar
+        confirmModal.classList.add('hidden'); // Apenas esconde o modal
+        confirmCallback = null; // Limpa a função
     });
 
+    // --- Busca TMDB para Pedidos --- (sem alterações)
     const tmdbSearchInput = document.getElementById('tmdb-search-input');
-    tmdbSearchInput.addEventListener('input', () => {
+    tmdbSearchInput.addEventListener('input', () => { // Busca com debounce
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
             handleTmdbSearch(tmdbSearchInput.value);
@@ -2463,15 +2837,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function handleTmdbSearch(query) {
         const resultsContainer = document.getElementById('tmdb-search-results');
-        if (query.length < 3) {
+        if (query.length < 3) { // Só busca com 3+ caracteres
             resultsContainer.innerHTML = '';
             return;
         }
-        resultsContainer.innerHTML = `<div class="col-span-full">${glassSpinnerHTML.replace('min-h-screen', '')}</div>`;
-        const data = await fetchFromTMDB('search/multi', `query=${encodeURIComponent(query)}`);
+        resultsContainer.innerHTML = `<div class="col-span-full">${glassSpinnerHTML.replace('min-h-screen', '')}</div>`; // Spinner
+        const data = await fetchFromTMDB('search/multi', `query=${encodeURIComponent(query)}`); // Busca na API
         if (data && data.results) {
+            // Filtra resultados (filmes/séries com poster)
             const filtered = data.results.filter(item => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path);
-            renderTmdbResults(filtered);
+            renderTmdbResults(filtered); // Renderiza os resultados
         } else {
             resultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum resultado encontrado.</p>`;
         }
@@ -2479,11 +2854,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function renderTmdbResults(results) {
         const container = document.getElementById('tmdb-search-results');
-        if (results.length === 0) {
+        if (results.length === 0) { // Mensagem se não houver resultados
             container.innerHTML = `<p class="col-span-full text-center text-gray-400">Nenhum resultado encontrado.</p>`;
             return;
         }
+        // Cria um card para cada resultado
         container.innerHTML = results.map(item => {
+            // --- ALTERAÇÃO AQUI: Usa o GIF se não tiver poster_path ---
             const posterPath = item.poster_path
                 ? `${IMG_URL_POSTER}${item.poster_path}`
                 : 'https://files.catbox.moe/sytt0s.gif';
@@ -2501,40 +2878,48 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
             `;
         }).join('');
-        attachGlassButtonListeners();
+        attachGlassButtonListeners(); // Reatacha listeners visuais
     }
 
+    // Listener para cliques nos resultados da busca TMDB (ATUALIZADO)
     document.getElementById('tmdb-search-results').addEventListener('click', (e) => {
         const itemElement = e.target.closest('.tmdb-result-item');
-        if (itemElement) {
-            const itemData = JSON.parse(itemElement.dataset.item);
+        if (itemElement) { // Se clicou em um item
+            const itemData = JSON.parse(itemElement.dataset.item); // Pega os dados armazenados
 
             if (itemData.media_type === 'movie') {
+                // Se for filme, segue o fluxo antigo
                 confirmAndAddRequest(itemData);
             } else if (itemData.media_type === 'tv') {
+                // Se for série, ABRE O NOVO MODAL
                 openTvRequestModal(itemData);
             }
         }
     });
 
+    // Listener para cliques nos botões de voto nos pedidos pendentes
     document.getElementById('pending-requests-container').addEventListener('click', e => {
         const voteButton = e.target.closest('.vote-btn');
-        if (voteButton) {
-            const requestId = voteButton.dataset.requestId;
-            handleVote(requestId);
+        if (voteButton) { // Se clicou no botão de voto
+            const requestId = voteButton.dataset.requestId; // Pega o ID do pedido
+            handleVote(requestId); // Processa o voto
         }
     });
 
+    /** Confirma e adiciona um pedido (ou voto) - ATUALIZADA */
     async function confirmAndAddRequest(item, isFromModal = false) {
+        // Define o título e poster final (pode vir modificado do modal de série)
         const titleToDisplay = item.displayTitle || item.title || item.name;
         const posterToSave = item.fullPosterUrl || (item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://placehold.co/300x450/1c1917/FFFFFF?text=Sem+Imagem');
 
+        // Função interna para executar o salvamento
         const executeAdd = async () => {
             if (!userId || !currentProfile) {
                 showToast("Você precisa estar logado e ter um perfil selecionado.", true);
                 return;
             }
 
+            // Verifica duplicidade pelo TÍTULO EXIBIDO (ex: "Dark - T1 E1")
             const existingRequest = pendingRequests.find(r => r.title === titleToDisplay);
 
             if (existingRequest) {
@@ -2554,14 +2939,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     showToast('Ocorreu um erro.', true);
                 }
             } else {
+                // Cria novo pedido com dados detalhados
                 const requestData = {
                     tmdbId: item.id,
-                    title: titleToDisplay,
-                    originalTitle: item.title || item.name,
+                    title: titleToDisplay, // Ex: "Breaking Bad - T5 E14"
+                    originalTitle: item.title || item.name, // Ex: "Breaking Bad"
                     year: (item.release_date || item.first_air_date || '').substring(0, 4),
                     posterUrl: posterToSave,
                     mediaType: item.media_type,
 
+                    // Novos campos para identificar o tipo de pedido
                     requestType: item.requestDetail?.type || 'movie',
                     seasonNumber: item.requestDetail?.season || null,
                     episodeNumber: item.requestDetail?.episode || null,
@@ -2581,6 +2968,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         };
 
+        // Se veio do modal, já teve interação, então salva direto. Se não, pede confirmação.
         if (isFromModal) {
             executeAdd();
         } else {
@@ -2588,101 +2976,111 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // --- Estado Inicial e Listener de Autenticação ---
+
+    /** Mostra a tela de login e esconde o resto */
     function showLoginScreen() {
-        userId = null;
-        userEmail = null;
-        userDisplayName = null;
-        currentProfile = null;
+        userId = null; // Limpa userId
+        currentProfile = null; // Limpa currentProfile
+        // Esconde todas as views principais, header e footer
         document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
-        loginView.classList.remove('hidden');
+        loginView.classList.remove('hidden'); // Mostra login
         document.querySelector('header').classList.add('hidden');
         document.querySelector('footer').classList.add('hidden');
-        document.getElementById('main-background').style.opacity = 0;
-        if (unsubscribeNewsListener) {
-            unsubscribeNewsListener();
-            unsubscribeNewsListener = null;
-        }
+        document.getElementById('main-background').style.opacity = 0; // Esconde background
     }
 
+    /** Mostra a tela de seleção/gerenciamento de perfil */
     async function showProfileScreen() {
+        // Esconde outras views, header e footer
         document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
         loginView.classList.add('hidden');
-        manageProfileView.classList.remove('hidden');
+        manageProfileView.classList.remove('hidden'); // Mostra gerenciamento de perfil
         document.querySelector('header').classList.add('hidden');
         document.querySelector('footer').classList.add('hidden');
-        document.getElementById('main-background').style.opacity = 0;
+        document.getElementById('main-background').style.opacity = 0; // Esconde background
+        // Reseta o modo de edição
         isEditMode = false;
         manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
         document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
-        await loadProfiles();
+        await loadProfiles(); // Carrega e renderiza os perfis
     }
 
+    // Listener principal de mudança de estado de autenticação
     onAuthStateChanged(auth, async (user) => {
-        document.body.classList.remove('auth-loading');
-        if (user) {
-            userId = user.uid;
-            userEmail = user.email;
-            userDisplayName = user.displayName;
+        document.body.classList.remove('auth-loading'); // Torna o body visível
+        if (user) { // Se o usuário está logado
+            userId = user.uid; // Define o userId global
+            userEmail = user.email; // Guarda email
+            userDisplayName = user.displayName; // Guarda nome do Google (se houver)
 
+            // Inicia listeners do Firestore que dependem do usuário
             listenForNotifications();
-            initializePlayerUI();
+            // listenToRequests(); // Movido para depois da seleção de perfil
 
+            initializePlayerUI(); // Inicializa UI do player (pode ser feito aqui)
+
+            // **LÓGICA DE PERFIL NO LOGIN:**
+            // Tenta carregar o último perfil do localStorage
             const lastProfileId = localStorage.getItem(`starlight-lastProfile-${userId}`);
             let autoSelectedProfile = false;
             if (lastProfileId) {
-                await loadProfiles();
+                await loadProfiles(); // Carrega perfis para verificar se o ID salvo é válido
                 const foundProfile = profiles.find(p => p.id === lastProfileId);
                 if (foundProfile) {
-                    selectAndEnterProfile(foundProfile);
+                    // Se encontrou, seleciona automaticamente e PULA a tela de seleção
+                    selectAndEnterProfile(foundProfile); // Esta função agora SÓ seleciona o perfil
                     autoSelectedProfile = true;
+                    handleNavigation(); // ADICIONE ESTA LINHA
                 }
             }
 
+            // Se nenhum perfil foi selecionado automaticamente, mostra a tela de seleção
             if (!autoSelectedProfile) {
-                currentProfile = null;
+                currentProfile = null; // Garante que currentProfile esteja nulo
                 if (window.location.hash !== '#manage-profile-view') {
                     history.replaceState(null, '', '#manage-profile-view');
                 }
-                handleNavigation();
+                handleNavigation(); // Roda o roteador (vai cair na condição !currentProfile)
             }
+            // Se um perfil foi selecionado (autoSelectedProfile = true),
+            // selectAndEnterProfile já chamou handleNavigation, então não precisa chamar de novo.
 
-        } else {
+        } else { // Se o usuário NÃO está logado
             userId = null;
             userEmail = null;
             userDisplayName = null;
             currentProfile = null;
+            // Para o listener de novidades se estiver ativo
+            if (unsubscribeNewsListener) {
+                unsubscribeNewsListener();
+                unsubscribeNewsListener = null;
+            }
+            // Garante que o hash seja #login-view
             if (window.location.hash !== '#login-view') {
                 history.replaceState(null, '', '#login-view');
             }
-            handleNavigation();
+            handleNavigation(); // Roda o roteador (vai cair na condição !userId)
         }
     });
 
-    function handleHeaderScroll() {
-        if (!headerElement || !playerView.classList.contains('hidden')) return;
-
-        const currentHash = window.location.hash;
-        const scrollY = window.scrollY;
-        const threshold = 50;
-
-        if (currentHash === '#home-view' || currentHash === '' || currentHash === '#') {
-            if (scrollY > threshold) {
-                headerElement.classList.remove('header-hidden');
-            } else {
-                headerElement.classList.add('header-hidden');
-            }
-        } else {
-            headerElement.classList.remove('header-hidden');
-        }
-    }
-
-    attachGlassButtonListeners();
-    window.addEventListener('scroll', handleHeaderScroll);
-    window.addEventListener('resize', () => {
-        updateMobileNavIndicator();
+    // --- Inicialização ---
+    attachGlassButtonListeners(); // Adiciona listeners visuais iniciais
+    window.addEventListener('resize', () => { // Listener para resize
+        updateMobileNavIndicator(); // Atualiza nav mobile
+        // Re-avalia qual listener de clique do player adicionar (mobile vs desktop)
         addPlayerEventListeners();
     });
 
+    // Chama o roteador na carga inicial da página para exibir a view correta
+    // O onAuthStateChanged pode chamar handleNavigation novamente, mas é seguro.
+    // handleNavigation(); << Removido - onAuthStateChanged cuidará da chamada inicial.
+
+    // -----------------------------------------------------------------
+    // --- NOVO: Funções de Novidades, Likes, Comentários, Respostas ---
+    // -----------------------------------------------------------------
+
+    /** Escuta por atualizações na coleção 'news' e atualiza o cache */
     function listenForNews() {
         if (unsubscribeNewsListener) {
             unsubscribeNewsListener();
@@ -2697,29 +3095,34 @@ document.addEventListener('DOMContentLoaded', function () {
                 const existingCard = newsContainer ? newsContainer.querySelector(`.news-card[data-news-id="${change.doc.id}"]`) : null;
 
                 if (change.type === "added") {
+                    // Adiciona o novo post no cache e na tela
                     if (!existingCard) {
-                        newsItemsCache.unshift(changedData);
+                        newsItemsCache.unshift(changedData); // Adiciona no início do array
                         if (window.location.hash === '#news-view' && newsContainer) {
+                            // Remove mensagem de "nenhuma novidade" se existir
                             const placeholder = newsContainer.querySelector('p');
                             if (placeholder) placeholder.remove();
 
                             const newCard = createNewsCard(changedData);
-                            newsContainer.prepend(newCard);
+                            newsContainer.prepend(newCard); // Adiciona no topo do feed
                             attachGlassButtonListeners();
                             lucide.createIcons();
                         }
                     }
                 }
                 if (change.type === "modified") {
+                    // Atualiza o post existente no cache e na tela
                     const index = newsItemsCache.findIndex(item => item.id === change.doc.id);
                     if (index > -1) {
                         newsItemsCache[index] = changedData;
                     }
                     if (existingCard) {
+                        // Esta é a função mágica que vamos criar no próximo passo
                         updateNewsCardUI(existingCard, changedData);
                     }
                 }
                 if (change.type === "removed") {
+                    // Remove o post do cache e da tela
                     newsItemsCache = newsItemsCache.filter(item => item.id !== change.doc.id);
                     if (existingCard) {
                         existingCard.remove();
@@ -2731,13 +3134,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /** Renderiza o feed de novidades na tela */
     function renderNewsFeed() {
         const newsContainer = document.getElementById('news-view');
         if (!newsContainer) return;
 
+        // Limpa o conteúdo anterior, exceto o título (se houver)
+        // Assume que o título está fora de um container específico de itens
         const itemsContainerId = 'news-items-container';
         let itemsContainer = newsContainer.querySelector(`#${itemsContainerId}`);
         if (!itemsContainer) {
+            // Se o container não existe, cria-o (ajuste conforme sua estrutura HTML)
             newsContainer.innerHTML = `
                 <div class="max-w-3xl mx-auto pb-16 w-full px-4 md:px-6 space-y-8">
                     <h2 class="text-3xl sm:text-4xl font-bold text-white mb-8">Novidades</h2>
@@ -2745,8 +3152,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>`;
             itemsContainer = newsContainer.querySelector(`#${itemsContainerId}`);
         } else {
-            itemsContainer.innerHTML = '';
+            itemsContainer.innerHTML = ''; // Limpa apenas o container dos itens
         }
+
 
         if (newsItemsCache.length === 0) {
             itemsContainer.innerHTML = '<p class="text-center text-gray-400">Nenhuma novidade publicada ainda.</p>';
@@ -2761,19 +3169,22 @@ document.addEventListener('DOMContentLoaded', function () {
         lucide.createIcons();
     }
 
+    /** Cria o elemento HTML para um card de novidade */
     function createNewsCard(item) {
         const card = document.createElement('div');
-        card.className = 'news-card liquid-glass-card bg-stone-900/50 rounded-lg overflow-hidden';
-        card.dataset.newsId = item.id;
+        card.className = 'news-card liquid-glass-card bg-stone-900/50 rounded-lg overflow-hidden'; // Estilo Liquid Glass
+        card.dataset.newsId = item.id; // Guarda o ID
 
         const date = item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Data indisponível';
 
+        // NOVO: Cria o selo "FIXADO" se o item tiver 'isPinned: true'
         const pinnedBadge = item.isPinned
             ? `<span class="text-xs font-bold bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded-full ml-2">FIXADO</span>`
             : '';
 
         let contentHTML = '';
 
+        // Renderiza o conteúdo principal (texto, imagem ou vídeo)
         switch (item.type) {
             case 'text':
                 contentHTML = `<p class="text-stone-300 mt-2 whitespace-pre-wrap">${item.content}</p>`;
@@ -2822,10 +3233,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
             </div>`;
 
+        // Adiciona listeners para os botões e área de comentários
         addNewsCardListeners(card);
         return card;
     }
 
+    /** Adiciona listeners aos botões e elementos de um card de novidade */
     function addNewsCardListeners(cardElement) {
         const likeBtn = cardElement.querySelector('.like-btn');
         const commentBtn = cardElement.querySelector('.comment-btn');
@@ -2835,6 +3248,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const commentsList = cardElement.querySelector('.comments-list');
         const newsId = cardElement.dataset.newsId;
 
+        // NOVO: Variável para armazenar a função que cancela o ouvinte de comentários
         let unsubscribeCommentsListener = null;
 
         likeBtn.addEventListener('click', () => handleLike(newsId, likeBtn));
@@ -2843,17 +3257,21 @@ document.addEventListener('DOMContentLoaded', function () {
             commentsSection.classList.toggle('hidden');
 
             if (!commentsSection.classList.contains('hidden')) {
+                // SEÇÃO ABRINDO: Liga o ouvinte em tempo real
+                // loadComments retorna a função de cancelamento.
                 unsubscribeCommentsListener = loadComments(newsId, commentsList);
             } else {
+                // SEÇÃO FECHANDO: Cancela o ouvinte se ele estiver ligado
                 if (unsubscribeCommentsListener) {
                     unsubscribeCommentsListener();
-                    unsubscribeCommentsListener = null;
+                    unsubscribeCommentsListener = null; // Limpa a variável
                 }
             }
         });
 
         submitCommentBtn.addEventListener('click', () => submitComment(newsId, commentInput, commentsList));
 
+        // Listener para submeter comentário com Enter (Shift+Enter para nova linha)
         commentInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -2862,6 +3280,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /** Lida com o clique no botão de curtir */
     async function handleLike(newsId, likeBtn) {
         if (!userId) {
             showToast("Você precisa estar logado para curtir.", true);
@@ -2872,37 +3291,43 @@ document.addEventListener('DOMContentLoaded', function () {
         const likeCountSpan = likeBtn.querySelector('.like-count');
         const isCurrentlyLiked = likeBtn.classList.contains('text-pink-500');
 
+        // Otimização: Atualiza UI imediatamente
         likeBtn.classList.toggle('text-pink-500');
         likeIcon.setAttribute('data-lucide', isCurrentlyLiked ? 'heart' : 'heart-handshake');
-        lucide.createIcons({ nodes: [likeIcon] });
+        lucide.createIcons({ nodes: [likeIcon] }); // Recria só o ícone clicado
         const currentCount = parseInt(likeCountSpan.textContent || '0');
         likeCountSpan.textContent = isCurrentlyLiked ? Math.max(0, currentCount - 1) : currentCount + 1;
-        likeBtn.disabled = true;
+        likeBtn.disabled = true; // Desabilita temporariamente
 
         try {
             if (isCurrentlyLiked) {
+                // Remove o like
                 await updateDoc(newsDocRef, {
                     likes: arrayRemove(userId),
-                    likeCount: increment(-1)
+                    likeCount: increment(-1) // Decrementa contador
                 });
             } else {
+                // Adiciona o like
                 await updateDoc(newsDocRef, {
                     likes: arrayUnion(userId),
-                    likeCount: increment(1)
+                    likeCount: increment(1) // Incrementa contador
                 });
             }
+            // A UI já foi atualizada, apenas reabilita o botão
         } catch (error) {
             console.error("Erro ao curtir/descurtir:", error);
             showToast("Erro ao processar o like.", true);
-            likeBtn.classList.toggle('text-pink-500');
+            // Reverte a UI em caso de erro
+            likeBtn.classList.toggle('text-pink-500'); // Reverte a cor
             likeIcon.setAttribute('data-lucide', isCurrentlyLiked ? 'heart-handshake' : 'heart');
             lucide.createIcons({ nodes: [likeIcon] });
-            likeCountSpan.textContent = currentCount;
+            likeCountSpan.textContent = currentCount; // Reverte contagem
         } finally {
-            likeBtn.disabled = false;
+            likeBtn.disabled = false; // Reabilita o botão
         }
     }
 
+    /** Submete um novo comentário */
     async function submitComment(newsId, inputElement, commentsListElement) {
         if (!userId || !currentProfile) {
             showToast("Você precisa estar logado para comentar.", true);
@@ -2916,26 +3341,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const commentData = {
             userId: userId,
-            userName: currentProfile.name || userEmail || "Usuário",
+            userName: currentProfile.name || userEmail || "Usuário", // Usa nome do perfil ou email
             text: commentText,
             createdAt: serverTimestamp(),
-            repliesCount: 0
+            repliesCount: 0 // Inicia contador de respostas
         };
 
-        inputElement.disabled = true;
-        const submitBtn = inputElement.nextElementSibling;
+        inputElement.disabled = true; // Desabilita input durante envio
+        const submitBtn = inputElement.nextElementSibling; // Assume que o botão é o próximo elemento
         if (submitBtn) submitBtn.disabled = true;
 
         try {
             const commentsColRef = collection(db, 'news', newsId, 'comments');
+            // MUDANÇA 1: Guardamos o resultado do addDoc em uma nova variável "newCommentRef"
             const newCommentRef = await addDoc(commentsColRef, commentData);
 
-            inputElement.value = '';
+            inputElement.value = ''; // Limpa input
             showToast('Comentário adicionado!');
 
+            // Opcional: Adicionar o comentário localmente na UI imediatamente
+            // MUDANÇA 2: Usamos a ID real (newCommentRef.id) em vez da ID temporária
             const newCommentCard = createCommentCard({ id: newCommentRef.id, ...commentData }, newsId);
 
-            commentsListElement.prepend(newCommentCard);
+            commentsListElement.prepend(newCommentCard); // Adiciona no início da lista
             attachGlassButtonListeners();
             lucide.createIcons();
         } catch (error) {
@@ -2947,10 +3375,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // CÓDIGO NOVO E CORRIGIDO PARA loadComments
+    /** Carrega e escuta os comentários de um post em tempo real. */
+    // Esta função NÃO é mais async
     function loadComments(newsId, commentsListElement) {
+        // A query para a coleção de comentários
         const q = query(collection(db, 'news', newsId, 'comments'), orderBy('createdAt', 'asc'));
 
+        // Configura o ouvinte em tempo real (onSnapshot)
+        // O onSnapshot retorna a função que cancela o ouvinte!
         const unsubscribe = onSnapshot(q, (snapshot) => {
+            // Limpa o conteúdo (Spinner/mensagens) ANTES de reconstruir
             commentsListElement.innerHTML = '';
 
             if (snapshot.empty) {
@@ -2958,6 +3393,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            // Reconstrói a lista de comentários
             snapshot.forEach(doc => {
                 const commentCard = createCommentCard({ id: doc.id, ...doc.data() }, newsId);
                 commentsListElement.appendChild(commentCard);
@@ -2970,9 +3406,11 @@ document.addEventListener('DOMContentLoaded', function () {
             commentsListElement.innerHTML = '<p class="text-red-400 text-sm text-center">Erro ao carregar comentários.</p>';
         });
 
+        // RETORNA a função de unsubscribe. Quem chamar 'loadComments' precisa guardar isso.
         return unsubscribe;
     }
 
+    /** Cria o HTML para um card de comentário */
     function createCommentCard(comment, newsId) {
         const card = document.createElement('div');
         card.className = 'comment-card liquid-glass-card bg-stone-800/40 rounded-lg p-3';
@@ -3011,6 +3449,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return card;
     }
 
+    /** Adiciona listeners aos botões de um card de comentário */
     function addCommentCardListeners(cardElement, newsId, commentId) {
         const replyBtn = cardElement.querySelector('.reply-btn');
         const viewRepliesBtn = cardElement.querySelector('.view-replies-btn');
@@ -3028,7 +3467,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     : `<i data-lucide="chevron-up" class="w-3 h-3"></i> Ocultar respostas`;
                 lucide.createIcons({ nodes: [viewRepliesBtn] });
                 if (!isHidden && repliesList.innerHTML === '') {
-                    loadReplies(newsId, commentId, repliesList);
+                    loadReplies(newsId, commentId, repliesList); // Carrega respostas ao expandir
                 }
             });
         }
@@ -3042,6 +3481,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /** Submete uma nova resposta a um comentário */
     async function submitReply(newsId, commentId, inputElement, repliesListElement, viewRepliesBtn) {
         if (!userId || !currentProfile) {
             showToast("Você precisa estar logado para responder.", true);
@@ -3068,29 +3508,34 @@ document.addEventListener('DOMContentLoaded', function () {
             const repliesColRef = collection(db, 'news', newsId, 'comments', commentId, 'replies');
             await addDoc(repliesColRef, replyData);
 
+            // Incrementa o contador de respostas no documento do comentário
             const commentDocRef = doc(db, 'news', newsId, 'comments', commentId);
             await updateDoc(commentDocRef, { repliesCount: increment(1) });
 
             inputElement.value = '';
-            inputElement.closest('.reply-input-area').classList.add('hidden');
+            inputElement.closest('.reply-input-area').classList.add('hidden'); // Esconde input area
             showToast('Resposta adicionada!');
+            // Opcional: Adicionar resposta localmente na UI imediatamente
             const newReplyCard = createReplyCard({ id: 'temp-reply-' + Date.now(), ...replyData });
-            repliesListElement.prepend(newReplyCard);
-            repliesListElement.classList.remove('hidden');
+            repliesListElement.prepend(newReplyCard); // Adiciona no início
+            repliesListElement.classList.remove('hidden'); // Garante que a lista esteja visível
+            // Atualiza o botão "Ver respostas"
             const newCount = (parseInt(viewRepliesBtn?.dataset.count || '0') + 1);
             if (viewRepliesBtn) {
                 viewRepliesBtn.dataset.count = newCount;
-                viewRepliesBtn.innerHTML = `<i data-lucide="chevron-up" class="w-3 h-3"></i> Ocultar respostas`;
+                viewRepliesBtn.innerHTML = `<i data-lucide="chevron-up" class="w-3 h-3"></i> Ocultar respostas`; // Assume que está expandido
                 lucide.createIcons({ nodes: [viewRepliesBtn] });
             } else {
+                // Se não havia botão (0 respostas), cria um agora (simplificado)
                 const commentCard = inputElement.closest('.comment-card');
-                const buttonContainer = commentCard.querySelector('.flex.items-center.gap-4');
+                const buttonContainer = commentCard.querySelector('.flex.items-center.gap-4'); // Container dos botões
                 if (buttonContainer) {
                     const newViewRepliesBtn = document.createElement('button');
                     newViewRepliesBtn.className = "view-replies-btn text-xs text-stone-400 hover:text-indigo-400 flex items-center gap-1";
                     newViewRepliesBtn.dataset.count = 1;
                     newViewRepliesBtn.innerHTML = `<i data-lucide="chevron-up" class="w-3 h-3"></i> Ocultar respostas`;
                     buttonContainer.appendChild(newViewRepliesBtn);
+                    // Adiciona listener ao novo botão (importante!)
                     addCommentCardListeners(commentCard, newsId, commentId);
                     lucide.createIcons({ nodes: [newViewRepliesBtn] });
                 }
@@ -3105,21 +3550,23 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    /** Carrega as respostas de um comentário */
     function loadReplies(newsId, commentId, repliesListElement) {
-        repliesListElement.innerHTML = `<div class="spinner mx-auto my-2 w-4 h-4 border-2"></div>`;
-        const q = query(collection(db, 'news', newsId, 'comments', commentId, 'replies'), orderBy('createdAt', 'asc'));
+        repliesListElement.innerHTML = `<div class="spinner mx-auto my-2 w-4 h-4 border-2"></div>`; // Spinner menor
+        const q = query(collection(db, 'news', newsId, 'comments', commentId, 'replies'), orderBy('createdAt', 'asc')); // Ordena por mais antigas
 
+        // Usar onSnapshot para atualizações
         onSnapshot(q, (snapshot) => {
             if (snapshot.empty) {
                 repliesListElement.innerHTML = '<p class="text-stone-500 text-xs text-center">Nenhuma resposta ainda.</p>';
                 return;
             }
-            repliesListElement.innerHTML = '';
+            repliesListElement.innerHTML = ''; // Limpa spinner/conteúdo anterior
             snapshot.forEach(doc => {
                 const replyCard = createReplyCard({ id: doc.id, ...doc.data() });
                 repliesListElement.appendChild(replyCard);
             });
-            attachGlassButtonListeners();
+            attachGlassButtonListeners(); // Reanexa se houver botões futuros na resposta
             lucide.createIcons();
         }, (error) => {
             console.error("Erro ao carregar respostas:", error);
@@ -3127,6 +3574,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /** Cria o HTML para um card de resposta */
     function createReplyCard(reply) {
         const card = document.createElement('div');
         card.className = 'reply-card liquid-glass-card bg-stone-700/30 rounded-md p-2';
@@ -3148,7 +3596,157 @@ document.addEventListener('DOMContentLoaded', function () {
         return card;
     }
 
+
+    // --- Lógica de Pedidos --- (Adaptações)
+    function listenToRequests() {
+        const q = query(collection(db, "pedidos"), where("status", "==", "pending"));
+        onSnapshot(q, (snapshot) => {
+            pendingRequests = [];
+            snapshot.forEach((doc) => {
+                pendingRequests.push({ id: doc.id, ...doc.data() });
+            });
+            // Ordena no cliente por data de criação (mais recente primeiro)
+            pendingRequests.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+            // Re-renderiza se a view de pedidos estiver ativa
+            if (window.location.hash === '#requests-view') {
+                renderPendingRequests();
+            }
+        }, (error) => {
+            console.error("Erro ao escutar pedidos: ", error);
+        });
+    }
+
+    // --- Estado Inicial e Listener de Autenticação ---
+
+    /** Mostra a tela de login e esconde o resto */
+    function showLoginScreen() {
+        userId = null; // Limpa userId
+        userEmail = null;
+        userDisplayName = null;
+        currentProfile = null; // Limpa currentProfile
+        // Esconde todas as views principais, header e footer
+        document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
+        loginView.classList.remove('hidden'); // Mostra login
+        document.querySelector('header').classList.add('hidden');
+        document.querySelector('footer').classList.add('hidden');
+        document.getElementById('main-background').style.opacity = 0; // Esconde background
+        // Para o listener de novidades se estiver ativo
+        if (unsubscribeNewsListener) {
+            unsubscribeNewsListener();
+            unsubscribeNewsListener = null;
+        }
+    }
+
+    /** Mostra a tela de seleção/gerenciamento de perfil */
+    async function showProfileScreen() {
+        // Esconde outras views, header e footer
+        document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
+        loginView.classList.add('hidden');
+        manageProfileView.classList.remove('hidden'); // Mostra gerenciamento de perfil
+        document.querySelector('header').classList.add('hidden');
+        document.querySelector('footer').classList.add('hidden');
+        document.getElementById('main-background').style.opacity = 0; // Esconde background
+        // Reseta o modo de edição
+        isEditMode = false;
+        manageProfilesBtn.querySelector('.glass-content').textContent = 'Gerenciar Perfis';
+        document.getElementById('profile-main-title').textContent = 'Quem está assistindo?';
+        await loadProfiles(); // Carrega e renderiza os perfis
+    }
+
+    // Listener principal de mudança de estado de autenticação
+    onAuthStateChanged(auth, async (user) => {
+        document.body.classList.remove('auth-loading'); // Torna o body visível
+        if (user) { // Se o usuário está logado
+            userId = user.uid; // Define o userId global
+            userEmail = user.email; // Guarda email
+            userDisplayName = user.displayName; // Guarda nome do Google (se houver)
+
+            // Inicia listeners do Firestore que dependem do usuário
+            listenForNotifications();
+            // listenToRequests(); // Movido para depois da seleção de perfil
+            // listenForNews(); // Movido para depois da seleção de perfil
+
+            initializePlayerUI(); // Inicializa UI do player (pode ser feito aqui)
+
+            // **LÓGICA DE PERFIL NO LOGIN:**
+            // Tenta carregar o último perfil do localStorage
+            const lastProfileId = localStorage.getItem(`starlight-lastProfile-${userId}`);
+            let autoSelectedProfile = false;
+            if (lastProfileId) {
+                await loadProfiles(); // Carrega perfis para verificar se o ID salvo é válido
+                const foundProfile = profiles.find(p => p.id === lastProfileId);
+                if (foundProfile) {
+                    // Se encontrou, seleciona automaticamente e PULA a tela de seleção
+                    selectAndEnterProfile(foundProfile);
+                    autoSelectedProfile = true;
+                }
+            }
+
+            // Se nenhum perfil foi selecionado automaticamente, mostra a tela de seleção
+            if (!autoSelectedProfile) {
+                currentProfile = null; // Garante que currentProfile esteja nulo
+                if (window.location.hash !== '#manage-profile-view') {
+                    history.replaceState(null, '', '#manage-profile-view');
+                }
+                handleNavigation(); // Roda o roteador (vai cair na condição !currentProfile)
+            }
+            // Se um perfil foi selecionado (autoSelectedProfile = true),
+            // selectAndEnterProfile já chamou handleNavigation, então não precisa chamar de novo.
+
+        } else { // Se o usuário NÃO está logado
+            userId = null;
+            userEmail = null;
+            userDisplayName = null;
+            currentProfile = null;
+            // Garante que o hash seja #login-view
+            if (window.location.hash !== '#login-view') {
+                history.replaceState(null, '', '#login-view');
+            }
+            handleNavigation(); // Roda o roteador (vai cair na condição !userId)
+        }
+    });
+    /** Controla a visibilidade do header com base no scroll (específico da home) */
+    function handleHeaderScroll() {
+        // Se o header não for encontrado ou o player estiver ativo, não faça nada
+        if (!headerElement || !playerView.classList.contains('hidden')) return;
+
+        const currentHash = window.location.hash;
+        const scrollY = window.scrollY;
+        // Distância pequena de scroll para acionar (50 pixels)
+        const threshold = 50;
+
+        // Se estivermos na home (#home-view, #, ou vazio)
+        if (currentHash === '#home-view' || currentHash === '' || currentHash === '#') {
+            if (scrollY > threshold) {
+                // Rolou para baixo: MOSTRA header
+                headerElement.classList.remove('header-hidden');
+            } else {
+                // Está no topo: ESCONDE header
+                headerElement.classList.add('header-hidden');
+            }
+        } else {
+            // Em QUALQUER outra tela (séries, filmes, etc.),
+            // o header deve estar sempre visível (remove a classe de esconder)
+            headerElement.classList.remove('header-hidden');
+        }
+    }
+    // --- Inicialização ---
+    attachGlassButtonListeners(); // Adiciona listeners visuais iniciais
+    window.addEventListener('scroll', handleHeaderScroll); // <-- LINHA ADICIONADA
+    window.addEventListener('resize', () => { // Listener para resize
+        updateMobileNavIndicator(); // Atualiza nav mobile
+        // Re-avalia qual listener de clique do player adicionar (mobile vs desktop)
+        addPlayerEventListeners();
+    });
+    // CÓDIGO NOVO (ADICIONAR ESTA FUNÇÃO)
+    /**
+     * Atualiza apenas os elementos visuais de um card de novidade que mudaram,
+     * sem recriar o card inteiro.
+     * @param {HTMLElement} cardElement - O elemento do card que já está na página.
+     * @param {object} updatedData - Os novos dados do post vindos do Firestore.
+     */
     function updateNewsCardUI(cardElement, updatedData) {
+        // --- Atualiza o contador de curtidas ---
         const likeCountSpan = cardElement.querySelector('.like-count');
         const likeBtn = cardElement.querySelector('.like-btn');
         const likeIcon = likeBtn ? likeBtn.firstElementChild : null;
@@ -3157,6 +3755,7 @@ document.addEventListener('DOMContentLoaded', function () {
             likeCountSpan.textContent = updatedData.likeCount || 0;
         }
 
+        // --- Atualiza o ícone de curtida para o usuário atual ---
         if (likeBtn && likeIcon) {
             const userHasLiked = userId && (updatedData.likes || []).includes(userId);
             const isCurrentlyLiked = likeBtn.classList.contains('text-pink-500');
@@ -3171,12 +3770,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 lucide.createIcons({ nodes: [likeIcon] });
             }
         }
-    }
 
+
+    }
+    // --- LÓGICA DO MODAL DE PEDIDO DE SÉRIE (ATUALIZADA - CUSTOM SELECT) ---
     const tvReqModal = document.getElementById('tv-request-modal');
+
+    // Elementos dos inputs escondidos (onde guardamos os valores reais)
     const reqSeasonValue = document.getElementById('req-season-value');
     const reqEpisodeValue = document.getElementById('req-episode-value');
 
+    // Elementos visuais (Triggers e Dropdowns)
     const reqSeasonTrigger = document.getElementById('req-season-trigger');
     const reqSeasonText = document.getElementById('req-season-text');
     const reqSeasonDropdown = document.getElementById('req-season-dropdown');
@@ -3189,34 +3793,42 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let currentRequestType = 'series';
 
+    // Função auxiliar para fechar dropdowns ao clicar fora
     document.addEventListener('click', (e) => {
         if (!reqSeasonTrigger.contains(e.target)) reqSeasonDropdown.classList.add('hidden');
         if (!reqEpisodeTrigger.contains(e.target)) reqEpisodeDropdown.classList.add('hidden');
     });
 
+    // Abrir/Fechar Dropdown Temporada
     reqSeasonTrigger.addEventListener('click', (e) => {
         e.stopPropagation();
-        reqEpisodeDropdown.classList.add('hidden');
+        reqEpisodeDropdown.classList.add('hidden'); // Fecha o outro
         reqSeasonDropdown.classList.toggle('hidden');
     });
 
+    // Abrir/Fechar Dropdown Episódio
     reqEpisodeTrigger.addEventListener('click', (e) => {
         e.stopPropagation();
         if (reqEpisodeTrigger.disabled) return;
-        reqSeasonDropdown.classList.add('hidden');
+        reqSeasonDropdown.classList.add('hidden'); // Fecha o outro
         reqEpisodeDropdown.classList.toggle('hidden');
     });
 
+    // Variável global auxiliar para passar dados da série existente para a função de episódios
     let currentExistingSeriesData = null;
 
     async function openTvRequestModal(item) {
+        // Preenche dados ocultos
         document.getElementById('req-tmdb-id').value = item.id;
         document.getElementById('req-title').value = item.name;
         document.getElementById('req-year').value = (item.first_air_date || '').substring(0, 4);
         document.getElementById('req-poster').value = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : '';
 
+        // --- LÓGICA NOVA: Verifica se a série já existe no catálogo local ---
         currentExistingSeriesData = firestoreContent.find(c => c.tmdb_id === item.id && c.type === 'tv');
+        // -------------------------------------------------------------------
 
+        // Reseta UI
         currentRequestType = 'series';
         document.querySelectorAll('.req-type-btn').forEach(btn => {
             btn.classList.remove('active');
@@ -3239,6 +3851,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         tvReqModal.classList.remove('hidden');
 
+        // Busca temporadas do TMDB
         const data = await fetchFromTMDB(`tv/${item.id}`);
         reqSeasonText.textContent = 'Selecione...';
         reqSeasonTrigger.disabled = false;
@@ -3247,8 +3860,9 @@ document.addEventListener('DOMContentLoaded', function () {
             data.seasons.forEach(season => {
                 if (season.season_number > 0) {
                     const option = document.createElement('div');
-                    option.className = 'req-option';
+                    option.className = 'req-option'; // Classe base
 
+                    // --- VERIFICAÇÃO: A temporada já existe? ---
                     let isSeasonAdded = false;
                     if (currentExistingSeriesData &&
                         currentExistingSeriesData.seasons &&
@@ -3256,9 +3870,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         isSeasonAdded = true;
                     }
 
+                    // Texto da opção
                     const seasonName = season.name || `Temporada ${season.season_number}`;
 
                     if (isSeasonAdded) {
+                        // Estiliza visualmente se já existir
                         option.innerHTML = `<span class="text-stone-500 line-through">${seasonName}</span> <span class="text-green-500 text-xs ml-2">(Já Disponível)</span>`;
                         option.style.cursor = 'not-allowed';
                     } else {
@@ -3266,15 +3882,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     option.onclick = () => {
+                        // Se a temporada já existe e o usuário quer pedir a TEMPORADA inteira, impede o clique
                         if (isSeasonAdded && currentRequestType === 'season') {
                             showToast('Esta temporada já está disponível no catálogo.', true);
                             return;
                         }
 
-                        reqSeasonText.textContent = seasonName;
+                        reqSeasonText.textContent = seasonName; // Mostra o nome mesmo se bloqueado (para selecionar episódios)
                         reqSeasonValue.value = season.season_number;
                         reqSeasonDropdown.classList.add('hidden');
 
+                        // Carrega episódios (mesmo se a temporada existir, pode faltar episódio)
                         if (currentRequestType === 'episode') {
                             loadEpisodesForDropdown(item.id, season.season_number);
                         }
@@ -3286,6 +3904,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // Carregar Episódios para o Custom Select
     async function loadEpisodesForDropdown(tmdbId, seasonNum) {
         reqEpisodeText.textContent = 'Carregando...';
         reqEpisodeTrigger.disabled = true;
@@ -3297,12 +3916,14 @@ document.addEventListener('DOMContentLoaded', function () {
         reqEpisodeText.textContent = 'Selecione...';
         reqEpisodeTrigger.disabled = false;
 
+        // Pega os episódios JÁ EXISTENTES dessa temporada específica
         let existingEpisodesNumbers = [];
         if (currentExistingSeriesData &&
             currentExistingSeriesData.seasons &&
             currentExistingSeriesData.seasons[seasonNum] &&
             currentExistingSeriesData.seasons[seasonNum].episodes) {
 
+            // Cria um array apenas com os números dos episódios existentes
             existingEpisodesNumbers = currentExistingSeriesData.seasons[seasonNum].episodes.map(e => e.episode_number);
         }
 
@@ -3311,10 +3932,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 const option = document.createElement('div');
                 option.className = 'req-option';
 
+                // Verifica se este episódio específico já existe
                 const isEpAdded = existingEpisodesNumbers.includes(ep.episode_number);
+
                 const epName = `Ep ${ep.episode_number}: ${ep.name}`;
 
                 if (isEpAdded) {
+                    // Bloqueia visualmente
                     option.innerHTML = `<span class="text-stone-500 line-through">${epName}</span> <span class="text-green-500 text-xs ml-2">(No Catálogo)</span>`;
                     option.style.cursor = 'not-allowed';
                 } else {
@@ -3336,6 +3960,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // Botões de Tipo (Série, Temporada, Episódio)
     document.querySelectorAll('.req-type-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.req-type-btn').forEach(b => b.classList.remove('active'));
@@ -3350,6 +3975,7 @@ document.addEventListener('DOMContentLoaded', function () {
             else if (currentRequestType === 'episode') {
                 sCont.classList.remove('hidden');
                 eCont.classList.remove('hidden');
+                // Se já tiver temporada selecionada, recarrega episodios
                 if (reqSeasonValue.value) {
                     loadEpisodesForDropdown(document.getElementById('req-tmdb-id').value, reqSeasonValue.value);
                 }
@@ -3361,8 +3987,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('confirm-tv-req-btn').addEventListener('click', () => {
         const title = document.getElementById('req-title').value;
-        const seasonNum = reqSeasonValue.value;
-        const episodeNum = reqEpisodeValue.value;
+        const seasonNum = reqSeasonValue.value; // Pega do input hidden
+        const episodeNum = reqEpisodeValue.value; // Pega do input hidden
         let finalTitle = title;
         let type = 'series';
 
@@ -3391,11 +4017,12 @@ document.addEventListener('DOMContentLoaded', function () {
         confirmAndAddRequest(customItem, true);
     });
 
+    // --- Lógica de Reports (Reportar Erros) ---
     const reportForm = document.getElementById('report-form');
 
     if (reportForm) {
         reportForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+            e.preventDefault(); // Impede recarregamento da página
 
             if (!userId || !currentProfile) {
                 showToast("Você precisa estar logado para reportar.", true);
@@ -3405,10 +4032,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const submitBtn = reportForm.querySelector('button[type="submit"]');
             const originalBtnText = submitBtn.innerText;
 
+            // Bloqueia botão e mostra loading
             submitBtn.disabled = true;
             submitBtn.innerText = "Enviando...";
             submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
 
+            // Pega os dados
             const reportType = document.querySelector('input[name="report-type"]:checked').value;
             const contentName = document.getElementById('report-content-name').value.trim();
             const description = document.getElementById('report-desc').value.trim();
@@ -3422,22 +4051,24 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const reportData = {
-                type: reportType,
+                type: reportType, // playback, bug, audio, other
                 affectedContent: contentName || "Geral",
                 description: description,
                 userId: userId,
                 userName: currentProfile.name,
-                status: 'open',
+                status: 'open', // Status inicial
                 createdAt: serverTimestamp(),
-                deviceInfo: navigator.userAgent
+                deviceInfo: navigator.userAgent // Salva se é celular ou PC
             };
 
             try {
+                // Salva na coleção 'reports'
                 await addDoc(collection(db, 'reports'), reportData);
 
                 showToast("Report enviado com sucesso! Obrigado.");
-                reportForm.reset();
+                reportForm.reset(); // Limpa o formulário
 
+                // Volta para a home após 2 segundos (opcional)
                 setTimeout(() => {
                     window.location.hash = '#home-view';
                 }, 2000);
@@ -3446,6 +4077,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.error("Erro ao enviar report:", error);
                 showToast("Erro ao enviar report. Tente novamente.", true);
             } finally {
+                // Restaura botão
                 submitBtn.disabled = false;
                 submitBtn.innerText = originalBtnText;
                 submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
@@ -3455,6 +4087,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 
+// --- REGISTRO DO PWA (SERVICE WORKER) ---
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
@@ -3467,14 +4100,18 @@ if ('serviceWorker' in navigator) {
     });
 }
 
+// Lógica para o botão de "Instalar App" (Opcional - Adicione se quiser um botão manual)
 let deferredPrompt;
-const installBtn = document.getElementById('install-app-btn');
+const installBtn = document.getElementById('install-app-btn'); // Você precisaria criar esse botão no HTML se quiser usar
 
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
+    // Se você tiver um botão de instalar oculto, mostre ele aqui:
+    // if (installBtn) installBtn.classList.remove('hidden');
 });
 
+// Exemplo de função para chamar no clique do botão:
 async function installPWA() {
     if (deferredPrompt) {
         deferredPrompt.prompt();
