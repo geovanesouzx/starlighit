@@ -1131,9 +1131,9 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     /**
-         * Renderiza a tela de detalhes para um item específico.
-         * @param {object} item - Objeto contendo o docId do item.
-         */
+             * Renderiza a tela de detalhes para um item específico.
+             * @param {object} item - Objeto contendo o docId do item.
+             */
     async function showDetailsView(item) {
         // Esconde header/footer
         document.querySelector('header').classList.add('hidden');
@@ -1154,7 +1154,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // Extrai informações do item
         const title = data.title || data.name;
         const releaseYear = data.year || '';
-        const genres = data.genres ? data.genres.map(g => `<span class="bg-white/10 text-xs font-semibold px-2 py-1 rounded-full text-white">${g}</span>`).join('') : '';
+        // Gêneros com estilo atualizado para parecer com a referência (bordas sutis)
+        const genres = data.genres ? data.genres.map(g => `<span class="border border-white/20 text-[10px] sm:text-xs font-semibold px-3 py-1 rounded-md text-stone-300 backdrop-blur-md bg-black/20">${g}</span>`).join('') : '';
         let duration = '';
         if (data.type === 'movie' && data.duration) {
             duration = data.duration;
@@ -1166,61 +1167,83 @@ document.addEventListener('DOMContentLoaded', function () {
         let backgroundUrl = data.backdrop;
         const finalImageUrl = (backgroundUrl && backgroundUrl.startsWith('http')) ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
 
-        // Verifica se existe poster e se é um link válido, senão usa o GIF
-        const posterUrl = (data.poster && data.poster.startsWith('http')) ? data.poster : 'https://files.catbox.moe/sytt0s.gif';
-
-        // -------- NOVO CÓDIGO AQUI --------
         // Verifica se tem logo para exibir imagem, senão exibe o h1 com texto
+        // ALINHAMENTO À ESQUERDA (mx-0) e tamanho ligeiramente maior
         const titleHTML = data.logo
-            ? `<img src="${data.logo}" alt="${title}" class="max-w-[200px] sm:max-w-[300px] md:max-w-[450px] max-h-[150px] mx-auto md:mx-0 object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">`
-            : `<h1 class="text-3xl md:text-5xl lg:text-6xl font-black text-white break-words" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.7);">${title}</h1>`;
-        // -----------------------------------
+            ? `<img src="${data.logo}" alt="${title}" class="max-w-[250px] sm:max-w-[350px] md:max-w-[500px] max-h-[180px] object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] mb-6">`
+            : `<h1 class="text-4xl md:text-5xl lg:text-7xl font-black text-white break-words mb-6 tracking-tight" style="text-shadow: 2px 4px 10px rgba(0,0,0,0.8);">${title}</h1>`;
 
         // Define o HTML da tela de detalhes
         detailsView.innerHTML = `
+            <!-- Background Full -->
             <div class="fixed inset-0 z-[-1] bg-cover bg-center bg-no-repeat" style="background-image: url('${finalImageUrl}');">
-                 <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-                 <div class="absolute inset-0 details-gradient-overlay"></div>
+                 <!-- Gradiente base para escurecer um pouco e dar contraste -->
+                 <div class="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent"></div>
+                 <div class="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/80 to-transparent md:h-[60%] md:top-auto md:bottom-0"></div>
             </div>
 
-            <div class="relative w-full overflow-x-hidden">
-                <button id="back-from-details" class="fixed top-6 left-6 z-20 bg-black/20 backdrop-blur-sm rounded-full p-2 hover:bg-black/40 transition-colors" aria-label="Voltar">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            <div class="relative w-full overflow-x-hidden pt-20">
+                <button id="back-from-details" class="fixed top-6 left-6 sm:left-10 z-50 glass-container glass-button rounded-full w-12 h-12 flex items-center justify-center p-0" aria-label="Voltar">
+                    <div class="glass-filter"></div><div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.4);"></div><div class="glass-specular"></div>
+                    <div class="glass-content w-full h-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg>
+                    </div>
                 </button>
 
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-screen flex items-center pt-24 pb-12">
-                    <div class="flex flex-col md:flex-row items-center md:items-start gap-8 lg:gap-12 w-full">
-                        <div class="flex-shrink-0 w-48 sm:w-56 md:w-64 mx-auto md:mx-0">
-                            <img src="${posterUrl}" alt="${title}" class="rounded-lg shadow-2xl w-full aspect-[2/3] object-cover bg-stone-800">
-                        </div>
+                <!-- Container Principal -->
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 pb-24">
+                    
+                    <!-- Área do Título/Logo e Infos Básicas (Alinhado à esquerda) -->
+                    <div class="flex flex-col items-start w-full md:w-2/3 lg:w-1/2 pt-[10vh] sm:pt-[15vh]"> 
                         
-                                                <div class="flex-1 mt-6 md:mt-0 text-center md:text-left w-full flex flex-col items-center md:items-start justify-center"> 
-                            ${titleHTML}
-                            
-                            <div id="details-meta" class="flex items-center justify-center md:justify-start flex-wrap gap-x-4 gap-y-2 mt-4 text-base text-stone-300">
-                                </div>
-                            <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">${genres}</div>
-                            
-                            <div class="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
-                                <button id="details-watch-btn" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"><svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>Assistir</div></button>
-                                
-                                <button id="details-add-to-list" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3"><div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div><div class="glass-content flex items-center gap-2"></div></button>
+                        ${titleHTML}
+                        
+                        <!-- Meta (Ano, Duração, Classificação) -->
+                        <div id="details-meta" class="flex items-center flex-wrap gap-x-3 gap-y-2 text-sm sm:text-base text-stone-200 font-medium mb-4">
+                        </div>
 
-                                <button id="details-report-btn" class="glass-container glass-button rounded-full text-base sm:text-lg px-7 py-2.5 sm:px-8 sm:py-3" style="--glass-highlight: rgba(239, 68, 68, 0.3);">
+                        <!-- Sinopse -->
+                        <p class="text-stone-300 text-sm sm:text-base leading-relaxed break-words text-left line-clamp-4 hover:line-clamp-none transition-all duration-300 cursor-pointer mb-6" title="Clique para ler mais">
+                            ${data.synopsis || data.overview || 'Sinopse não disponível.'}
+                        </p>
+
+                        <!-- Gêneros -->
+                        <div class="flex flex-wrap gap-2 mb-8">${genres}</div>
+                        
+                        <!-- Botões de Ação -->
+                        <div class="flex flex-wrap items-center gap-4 w-full">
+                            <!-- Botão Assistir (Destacado - Tema Starlight) -->
+                            <button id="details-watch-btn" class="glass-container glass-button rounded-full px-8 py-3.5 sm:px-10 sm:py-4 flex-grow sm:flex-grow-0" style="--bg-color: rgba(168, 85, 247, 0.2);">
+                                <div class="glass-filter"></div>
+                                <div class="absolute inset-0 bg-gradient-to-r from-purple-600/80 to-pink-600/80 backdrop-blur-md"></div>
+                                <div class="glass-specular"></div>
+                                <div class="glass-content flex items-center justify-center gap-3 font-bold text-white tracking-wide text-base sm:text-lg">
+                                    <i data-lucide="play" class="w-5 h-5 sm:w-6 sm:h-6 fill-white"></i> Assistir
+                                </div>
+                            </button>
+                            
+                            <!-- Botões Secundários (Redondos/Ícones + Texto) -->
+                            <div class="flex items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0">
+                                <button id="details-add-to-list" class="glass-container glass-button rounded-full px-5 py-3 sm:px-6 sm:py-3.5 flex-1 sm:flex-none" style="--bg-color: rgba(30,41,59,0.5);">
                                     <div class="glass-filter"></div><div class="glass-overlay"></div><div class="glass-specular"></div>
-                                    <div class="glass-content flex items-center gap-2 text-red-400 hover:text-red-300 transition-colors">
+                                    <div class="glass-content flex items-center justify-center gap-2 text-stone-200 text-sm sm:text-base font-semibold">
+                                        <!-- O conteúdo é injetado pela função updateListButton -->
+                                    </div>
+                                </button>
+
+                                <button id="details-report-btn" class="glass-container glass-button rounded-full w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center flex-shrink-0" style="--bg-color: rgba(30,41,59,0.5);" title="Reportar Problema">
+                                    <div class="glass-filter"></div><div class="glass-overlay hover:bg-red-500/20 transition-colors"></div><div class="glass-specular"></div>
+                                    <div class="glass-content flex items-center justify-center text-stone-300 hover:text-red-400 transition-colors">
                                         <i data-lucide="flag" class="w-5 h-5"></i>
-                                        Reportar
                                     </div>
                                 </button>
                             </div>
-                            
-                            <h3 class="mt-8 text-lg sm:text-xl font-semibold text-white">Sinopse</h3>
-                            
-                            <p class="mt-2 text-gray-300 max-w-2xl text-sm leading-relaxed break-words text-justify md:text-left mx-auto md:mx-0">${data.synopsis || data.overview || 'Sinopse não disponível.'}</p>
-                            
-                            <div id="tv-content-details" class="mt-10 w-full"></div> </div>
+                        </div>
                     </div>
+                        
+                    <!-- Área de Episódios (Para Séries) -->
+                    <div id="tv-content-details" class="mt-16 w-full"></div> 
+
                 </div>
             </div>
         `;
@@ -1232,14 +1255,14 @@ document.addEventListener('DOMContentLoaded', function () {
             // Adiciona ano e duração
             detailsMetaContainer.innerHTML += `
                 ${releaseYear ? `<span>${releaseYear}</span>` : ''}
-                ${duration ? `<span>•</span><span>${duration}</span>` : ''}
+                ${duration ? `<span class="text-stone-500">•</span><span>${duration}</span>` : ''}
             `;
         }
 
         // Adiciona listeners aos botões da tela de detalhes
         document.getElementById('back-from-details').addEventListener('click', () => history.back()); // Botão voltar
 
-        // --- LÓGICA DO BOTÃO REPORTAR (INSERIDA AQUI) ---
+        // --- LÓGICA DO BOTÃO REPORTAR ---
         const reportBtn = document.getElementById('details-report-btn');
         if (reportBtn) {
             reportBtn.addEventListener('click', () => {
@@ -1260,7 +1283,6 @@ document.addEventListener('DOMContentLoaded', function () {
             // Ativa o ícone do botão
             lucide.createIcons({ nodes: [reportBtn.querySelector('i')] });
         }
-        // ------------------------------------------------
 
         document.getElementById('details-watch-btn').addEventListener('click', () => { // Botão assistir
             if (data.type === 'movie') {
@@ -1295,6 +1317,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // Se for uma série, renderiza a seção de temporadas/episódios
         if (data.type === 'tv' && data.seasons) {
             renderTvDetails(data);
+        } else {
+            // Se for filme, inicializa os ícones Lucide restantes (como o play do botão assistir)
+            lucide.createIcons();
         }
         attachGlassButtonListeners(); // Reatacha listeners visuais
     }
@@ -1338,7 +1363,7 @@ document.addEventListener('DOMContentLoaded', function () {
                       </div>
                 </div>
             </div>
-            <div id="episode-list-container" class="space-y-3"></div>
+           <div id="episode-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         `;
         lucide.createIcons();
 
