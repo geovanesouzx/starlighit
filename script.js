@@ -190,7 +190,40 @@ document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => toast.classList.add('hidden'), 300); // Garante que 'hidden' seja adicionado após a transição
         }, 3000);
     }
+    // --- NOVA FUNÇÃO: VERIFICAÇÃO DE ÁUDIO (LEG/DUB/DUAL) ---
+    function getAudioBadge(item) {
+        if (!item) return '';
+        let leg = false;
+        let dub = false;
 
+        if (item.type === 'movie') {
+            leg = !!item.url;
+            dub = !!item.altUrl;
+        } else if (item.type === 'tv' && item.seasons) {
+            for (const sKey in item.seasons) {
+                const season = item.seasons[sKey];
+                if (season.episodes) {
+                    for (const ep of season.episodes) {
+                        if (ep.url) leg = true;
+                        if (ep.altUrl) dub = true;
+                    }
+                }
+            }
+        } else {
+            // Objeto avulso (episódio direto)
+            leg = !!item.url;
+            dub = !!item.altUrl;
+        }
+
+        if (leg && dub) {
+            return `<span class="bg-purple-600/90 text-white text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded backdrop-blur-sm border border-purple-400/50 shadow-md flex items-center justify-center tracking-wider" title="Legendado e Dublado">DUAL</span>`;
+        } else if (dub) {
+            return `<span class="bg-yellow-500/90 text-slate-900 text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded backdrop-blur-sm border border-yellow-300 shadow-md flex items-center justify-center tracking-wider" title="Dublado">DUB</span>`;
+        } else if (leg) {
+            return `<span class="bg-green-600/90 text-white text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded backdrop-blur-sm border border-green-400/50 shadow-md flex items-center justify-center tracking-wider" title="Legendado">LEG</span>`;
+        }
+        return '';
+    }
     // --- Funções de Dados do Firestore ---
 
     /**
@@ -410,25 +443,32 @@ document.addEventListener('DOMContentLoaded', function () {
       * Cria o HTML para um card de conteúdo.
       * Agora suporta barra de progresso se item.progressPercent existir.
       */
+    /**
+          * Cria o HTML para um card de conteúdo.
+          * Agora suporta barra de progresso se item.progressPercent existir.
+          */
     function createContentCard(item) {
-        if (!item) return ''; // Removi a checagem estrita !item.poster para o GIF aparecer se estiver vazio
+        if (!item) return '';
 
-        // LÓGICA ALTERADA AQUI:
         const posterPath = (item.poster && item.poster.startsWith('http')) ? item.poster : FALLBACK_IMAGE;
 
-        // ... o resto da função continua igual ...
         const progressBarHTML = item.progressPercent
             ? `<div class="cw-progress-track"><div class="cw-progress-fill" style="width: ${item.progressPercent}%"></div></div>`
             : '';
 
-        // Informação extra (ex: T1:E3) para séries no Continuar Assistindo
         const episodeInfoHTML = item.episodeInfo
             ? `<div class="absolute bottom-2 left-2 right-2 text-[10px] font-bold text-white bg-black/60 px-2 py-1 rounded backdrop-blur-sm truncate z-10">${item.episodeInfo}</div>`
             : '';
 
+        // CHAMA A FUNÇÃO DE BADGE DE ÁUDIO AQUI:
+        const audioBadge = getAudioBadge(item);
+
         return `
         <a href="#details/${item.docId}" class="carousel-item w-36 sm:w-48 cursor-pointer group block flex-shrink-0 relative">
-            <div class="liquid-glass-card aspect-[2/3] bg-stone-800 overflow-hidden">
+            <div class="liquid-glass-card aspect-[2/3] bg-stone-800 overflow-hidden relative">
+                 <!-- BADGE DE ÁUDIO INJETADO AQUI -->
+                 <div class="absolute top-2 left-2 z-20 flex gap-1">${audioBadge}</div>
+
                  <div class="glass-filter"></div>
                  <div class="glass-distortion-overlay"></div>
                  <div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.1);"></div>
@@ -442,20 +482,25 @@ document.addEventListener('DOMContentLoaded', function () {
         </a>`;
     };
     /**
-     * Cria o HTML para um card de conteúdo em grid (usado em Séries, Filmes, Minha Lista).
-     * @param {object} item - O objeto do item.
-     * @returns {string} - O HTML do card.
-     */
+         * Cria o HTML para um card de conteúdo em grid (usado em Séries, Filmes, Minha Lista).
+         * @param {object} item - O objeto do item.
+         * @returns {string} - O HTML do card.
+         */
     function createGridCard(item) {
-        if (!item) return ''; // Removi a checagem estrita
+        if (!item) return '';
 
-        // LÓGICA ALTERADA AQUI:
         const posterPath = (item.poster && item.poster.startsWith('http')) ? item.poster : FALLBACK_IMAGE;
+
+        // CHAMA A FUNÇÃO DE BADGE DE ÁUDIO AQUI:
+        const audioBadge = getAudioBadge(item);
 
         // Inclui o título abaixo da imagem
         return `
-        <a href="#details/${item.docId}" class="group block cursor-pointer">
-            <div class="liquid-glass-card aspect-[2/3] bg-stone-800">
+        <a href="#details/${item.docId}" class="group block cursor-pointer relative">
+            <div class="liquid-glass-card aspect-[2/3] bg-stone-800 relative">
+                 <!-- BADGE DE ÁUDIO INJETADO AQUI -->
+                 <div class="absolute top-2 left-2 z-20 flex gap-1">${audioBadge}</div>
+                 
                  <div class="glass-filter"></div>
                  <div class="glass-distortion-overlay"></div>
                  <div class="glass-overlay" style="--bg-color: rgba(0,0,0,0.1);"></div>
@@ -467,7 +512,6 @@ document.addEventListener('DOMContentLoaded', function () {
             <h4 class="text-white text-sm mt-2 truncate">${item.title}</h4>
         </a>`;
     };
-
     // --- Funções de População de Dados ---
 
     /**
@@ -559,7 +603,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const metaContainer = document.getElementById('hero-meta');
             metaContainer.innerHTML = ``; // Limpa o conteúdo anterior
             await displayContentRating(item, metaContainer); // Adiciona a classificação
-            metaContainer.innerHTML += `<span>${releaseYear}</span>`; // Adiciona o ano
+
+            // INJETANDO O BADGE DE ÁUDIO NO HERO
+            metaContainer.innerHTML += `<span>${releaseYear}</span>`;
+            const audioBadge = getAudioBadge(item);
+            if (audioBadge) {
+                metaContainer.innerHTML += audioBadge;
+            }
 
             // Atualiza o botão "Minha Lista"
             await updateListButton(document.getElementById('hero-add-to-list'), item);
@@ -1168,10 +1218,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const finalImageUrl = (backgroundUrl && backgroundUrl.startsWith('http')) ? backgroundUrl : 'https://placehold.co/1280x720/0c0a09/ffffff?text=Starlight';
 
         // Verifica se tem logo para exibir imagem, senão exibe o h1 com texto
-        // ALINHAMENTO À ESQUERDA (mx-0) e tamanho ligeiramente maior
         const titleHTML = data.logo
             ? `<img src="${data.logo}" alt="${title}" class="max-w-[250px] sm:max-w-[350px] md:max-w-[500px] max-h-[180px] object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] mb-6">`
             : `<h1 class="text-4xl md:text-5xl lg:text-7xl font-black text-white break-words mb-6 tracking-tight" style="text-shadow: 2px 4px 10px rgba(0,0,0,0.8);">${title}</h1>`;
+
+        const audioBadge = getAudioBadge(data); // <-- ADICIONADO AQUI
 
         // Define o HTML da tela de detalhes
         detailsView.innerHTML = `
@@ -1256,6 +1307,7 @@ document.addEventListener('DOMContentLoaded', function () {
             detailsMetaContainer.innerHTML += `
                 ${releaseYear ? `<span>${releaseYear}</span>` : ''}
                 ${duration ? `<span class="text-stone-500">•</span><span>${duration}</span>` : ''}
+                ${audioBadge}
             `;
         }
 
@@ -1287,7 +1339,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('details-watch-btn').addEventListener('click', () => { // Botão assistir
             if (data.type === 'movie') {
                 // Se for filme, inicia o player com a URL do filme
-                showPlayer({ videoUrl: data.url, title: title, itemData: data });
+                showPlayer({ videoUrl: data.url, altUrl: data.altUrl, title: title, itemData: data });
             } else if (data.type === 'tv' && data.seasons) {
                 // Se for série, encontra o primeiro episódio da primeira temporada
                 const firstSeasonKey = Object.keys(data.seasons).sort((a, b) => parseInt(a) - parseInt(b))[0];
@@ -1300,6 +1352,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     const context = {
                         videoUrl: firstEpisode.url,
+                        altUrl: firstEpisode.altUrl, // <-- ADICIONE AQUI
                         title: `${title} - T${firstSeasonKey} E${firstEpisode.episode_number || 1}${epTitle}`,
                         itemData: data,
                         episodes: allEpisodesOfSeason,
@@ -1402,11 +1455,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     : `<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                          <i data-lucide="play-circle" class="w-8 h-8 text-white"></i>
                        </div>`;
-
                 // Badge de texto para mobile/lista
                 const textBadge = isComingSoon
                     ? `<span class="ml-2 text-[10px] text-stone-400 border border-stone-600 px-1.5 py-0.5 rounded">Em Breve</span>`
                     : '';
+
+                // CHAMA O SELO DE ÁUDIO DO EPISÓDIO AQUI:
+                const audioBadge = getAudioBadge(ep);
 
                 return `
                     <div class="episode-item glass-container glass-button rounded-lg overflow-hidden ${cursorClass} ${opacityClass}" data-index="${index}" data-season="${seasonKey}" data-coming-soon="${isComingSoon}">
@@ -1419,9 +1474,10 @@ document.addEventListener('DOMContentLoaded', function () {
                                 ${overlayHTML}
                             </div>
                             <div class="flex-1 min-w-0">
-                                <h4 class="font-semibold text-white truncate flex items-center flex-wrap">
+                                <h4 class="font-semibold text-white truncate flex items-center flex-wrap gap-2">
                                     ${index + 1}. ${epTitle}
                                     ${textBadge}
+                                    ${audioBadge} <!-- A MÁGICA FOI INJETADA AQUI -->
                                 </h4>
                                 <p class="text-xs text-stone-300 mt-1 max-h-16 overflow-hidden line-clamp-3">${epOverview}</p> 
                             </div>
@@ -1479,6 +1535,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const context = {
                     videoUrl: episode.url,
+                    altUrl: episode.altUrl, // <-- ADICIONE AQUI
                     title: `${data.title || data.name} - T${seasonKey} E${episode.episode_number || episodeIndex + 1}${epTitle}`,
                     itemData: data,
                     episodes: allEpisodesOfSeason,
@@ -1538,9 +1595,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- Funções do Player ---
 
     /**
-     * Mostra e configura o player de vídeo.
-     * @param {object} context - Informações sobre o vídeo a ser reproduzido.
-     */
+         * Mostra e configura o player de vídeo.
+         * @param {object} context - Informações sobre o vídeo a ser reproduzido.
+         */
     async function showPlayer(context) {
         // 1. Reset completo do player antes de iniciar um novo
         hidePlayer(false, true); // Limpa estado anterior, marca como 'isChangingEpisode'
@@ -1553,16 +1610,23 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        let legUrl = '';
+        let dubUrl = '';
+
         // Define a chave com base se é filme ou episódio de série
         if (context.episodes) { // É uma série
             const episode = context.episodes[context.currentIndex];
             key = `tv-${itemData.docId}-s${episode.season_number}-e${episode.episode_number}`;
+            legUrl = episode.url || context.videoUrl;
+            dubUrl = episode.altUrl || context.altUrl;
         } else { // É um filme
             key = `movie-${itemData.docId}`;
+            legUrl = itemData.url || context.videoUrl;
+            dubUrl = itemData.altUrl || context.altUrl;
         }
 
         // Define o contexto atual do player
-        currentPlayerContext = { ...context, key, id: itemData.docId, itemData };
+        currentPlayerContext = { ...context, key, id: itemData.docId, itemData, legUrl, dubUrl };
 
         // Adiciona #player ao histórico do navegador se ainda não estiver lá
         if (window.location.hash !== '#player') {
@@ -1574,50 +1638,28 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.style.overflow = 'hidden';
         playerTitle.textContent = context.title; // Define o título no player
 
-        // Processa a URL do vídeo (caso especial para api.anivideo.net)
-        let urlToLoad = context.videoUrl;
-        try {
-            const urlObject = new URL(urlToLoad);
-            if (urlObject.hostname.includes('api.anivideo.net') && urlObject.pathname.includes('videohls.php')) {
-                const videoSrc = urlObject.searchParams.get('d');
-                if (videoSrc) {
-                    urlToLoad = videoSrc; // Usa a URL extraída do parâmetro 'd'
-                }
-            }
-        } catch (e) {
-            // URL inválida, usa a original
+        // --- LÓGICA DE ÁUDIO ---
+        let preferDub = localStorage.getItem('starlight-audio-pref') === 'dub';
+        let startAudio = 'leg';
+        let urlToLoad = legUrl;
+
+        // Se preferir DUB e ele existir, OU se não tiver legenda e só tiver Dub
+        if (dubUrl && (!legUrl || preferDub)) {
+            startAudio = 'dub';
+            urlToLoad = dubUrl;
+        } else if (!legUrl && !dubUrl) {
+            urlToLoad = context.videoUrl; // fallback de segurança
         }
 
-        // Configura HLS.js se for um stream .m3u8 e o navegador suportar
-        if (Hls.isSupported() && urlToLoad.includes('.m3u8')) {
-            // MUDANÇA: Adiciona configuração de buffer para tentar reduzir travamentos
-            hls = new Hls({
-                maxBufferLength: 30,    // Segundos de buffer
-                maxBufferSize: 60 * 1000 * 1000, // 60MB de buffer
-                startLevel: -1           // Começa na qualidade automática
-            });
-            hls.loadSource(urlToLoad); // Carrega a fonte
-            hls.attachMedia(videoPlayer); // Anexa ao elemento <video>
-            hls.on(Hls.Events.MANIFEST_PARSED, () => { // Quando o manifesto HLS for carregado
-                // Se houver um tempo inicial definido (ex: continuar assistindo), pula para ele
-                if (context.startTime && context.startTime > 5) { // Só pula se for maior que 5s
-                    videoPlayer.currentTime = context.startTime;
-                }
-                videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo HLS:", e)); // Tenta iniciar a reprodução
-            });
-        } else { // Se não for HLS ou não for suportado, usa a tag <video> nativa
-            videoPlayer.src = urlToLoad; // Define a fonte do vídeo
-            videoPlayer.addEventListener('loadedmetadata', () => { // Quando os metadados do vídeo carregarem
-                if (context.startTime && context.startTime > 5) {
-                    videoPlayer.currentTime = context.startTime; // Pula se necessário
-                }
-                videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo:", e)); // Tenta iniciar
-            }, { once: true }); // Executa este listener apenas uma vez
-        }
+        currentPlayerContext.currentAudio = startAudio;
+        updateAudioBtnUI();
+
+        // Carrega o stream
+        loadVideoStream(urlToLoad, context.startTime || 0);
 
         // 2. Lógica de orientação e tela cheia para mobile
         if (window.innerWidth < 768) { // Se for tela pequena (considerado mobile)
-            // MUDANÇA: Lógica ajustada para (re)tentar bloquear a orientação
+            // Lógica ajustada para (re)tentar bloquear a orientação
             if (!document.fullscreenElement) { // Só tenta entrar em fullscreen se já não estiver
                 try {
                     await playerView.requestFullscreen();
@@ -1626,9 +1668,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
             // Tenta (re)travar a orientação.
-            // Se foi um clique (nextBtn), funciona.
-            // Se foi 'ended', pode falhar, mas como não demos unlock,
-            // a orientação anterior (landscape) deve ser mantida.
             try {
                 if (screen.orientation && typeof screen.orientation.lock === 'function') {
                     await screen.orientation.lock('landscape');
@@ -1648,6 +1687,58 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         attachGlassButtonListeners(); // Reatacha listeners visuais
+    }
+
+    function loadVideoStream(url, startTime = 0, autoPlay = true) {
+        if (!url) return;
+
+        let finalUrl = url;
+        try {
+            const urlObject = new URL(finalUrl);
+            if (urlObject.hostname.includes('api.anivideo.net') && urlObject.pathname.includes('videohls.php')) {
+                const videoSrc = urlObject.searchParams.get('d');
+                if (videoSrc) finalUrl = videoSrc;
+            }
+        } catch (e) { }
+
+        if (Hls.isSupported() && finalUrl.includes('.m3u8')) {
+            if (hls) { hls.destroy(); }
+            hls = new Hls({
+                maxBufferLength: 30,
+                maxBufferSize: 60 * 1000 * 1000,
+                startLevel: -1
+            });
+            hls.loadSource(finalUrl);
+            hls.attachMedia(videoPlayer);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                if (startTime > 5) videoPlayer.currentTime = startTime;
+                if (autoPlay) videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo HLS:", e));
+            });
+        } else {
+            if (hls) { hls.destroy(); hls = null; }
+            videoPlayer.src = finalUrl;
+            videoPlayer.addEventListener('loadedmetadata', () => {
+                if (startTime > 5) videoPlayer.currentTime = startTime;
+                if (autoPlay) videoPlayer.play().catch(e => console.error("Erro ao tentar reproduzir o vídeo:", e));
+            }, { once: true });
+        }
+    }
+
+    function updateAudioBtnUI() {
+        let audioBtn = document.getElementById('player-audio-btn');
+        if (!audioBtn) return; // Criado no initializePlayerUI
+
+        const ctx = currentPlayerContext;
+        // Só mostra se tiver as duas opções
+        if (ctx.legUrl && ctx.dubUrl) {
+            audioBtn.classList.remove('hidden');
+            const isDub = ctx.currentAudio === 'dub';
+
+            audioBtn.style.setProperty('--glass-highlight', isDub ? 'rgba(234, 179, 8, 0.3)' : 'rgba(34, 197, 94, 0.3)');
+            audioBtn.querySelector('.glass-content').innerHTML = `<span class="${isDub ? 'text-yellow-400' : 'text-green-400'} font-black text-xs">${isDub ? 'DUB' : 'LEG'}</span>`;
+        } else {
+            audioBtn.classList.add('hidden');
+        }
     }
 
     /**
